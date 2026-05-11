@@ -57,6 +57,8 @@ const expertise = [
   { label: "Technical / Engineering", pct: 88 },
   { label: "Cleared Security Positions", pct: 95 },
   { label: "Fortune 100/500 Placements", pct: 85 },
+  { label: "MEP Engineering", pct: 80 },
+  { label: "Transportation / DOT", pct: 83 },
 ];
 
 const quickStats = [

@@ -49,8 +49,6 @@ const contactItems = [
 
 const socials = [
   { Icon: SocialIcons.LinkedIn, href: "https://www.linkedin.com/in/patricknovick/", label: "LinkedIn" },
-  { Icon: SocialIcons.Facebook, href: "#", label: "Facebook" },
-  { Icon: SocialIcons.Twitter, href: "#", label: "Twitter" },
 ];
 
 export default function Contact() {

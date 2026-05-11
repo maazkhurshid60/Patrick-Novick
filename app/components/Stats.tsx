@@ -28,7 +28,7 @@ const stats = [
   { value: 20, suffix: "+", label: "Years of Experience" },
   { value: 500, suffix: "+", label: "Successful Placements" },
   { value: 100, suffix: "%", label: "Fortune Sector Focus" },
-  { value: 6, suffix: "", label: "Industry Verticals" },
+  { value: 8, suffix: "", label: "Metro Markets" },
 ];
 
 export default function Stats() {

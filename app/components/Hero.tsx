@@ -154,8 +154,6 @@ export default function Hero() {
               <div className="flex-1 h-px" style={{ background: "var(--color-border)" }} />
               {[
                 { Icon: SocialIcons.LinkedIn, href: "https://www.linkedin.com/in/patricknovick/", label: "LinkedIn" },
-                { Icon: SocialIcons.Facebook, href: "#", label: "Facebook" },
-                { Icon: SocialIcons.Twitter, href: "#", label: "Twitter" },
               ].map(({ Icon, href, label }) => (
                 <a
                   key={label}

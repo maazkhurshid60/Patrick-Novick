@@ -48,6 +48,8 @@ const cities = [
   { name: "Atlanta, GA",       primary: false },
   { name: "Dallas, TX",        primary: false },
   { name: "Los Angeles, CA",   primary: false },
+  { name: "New York City, NY", primary: false },
+  { name: "Hartford, CT",      primary: false },
 ];
 
 function DisciplineCard({
@@ -199,7 +201,7 @@ export default function Metro() {
               Nationwide Presence
             </div>
             <div className="text-sm font-medium" style={{ color: "var(--color-dark)" }}>
-              Metro Associates offices across 6 major U.S. markets
+              Metro Associates offices across 8 major U.S. markets
             </div>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
