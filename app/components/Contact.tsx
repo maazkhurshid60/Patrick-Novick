@@ -27,8 +27,8 @@ const contactItems = [
   {
     Icon: Mail,
     label: "Email",
-    value: "patrick@patricknovick.com",
-    href: "mailto:patrick@patricknovick.com",
+    value: "patric@metroassoc.com",
+    href: "mailto:patric@metroassoc.com",
     external: false,
   },
   {
@@ -119,7 +119,7 @@ export default function Contact() {
               className="flex flex-wrap gap-4"
             >
               <a
-                href="mailto:patrick@patricknovick.com"
+                href="mailto:patric@metroassoc.com"
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm text-white transition-all duration-200 hover:scale-105"
                 style={{
                   background: "var(--color-red)",
@@ -152,7 +152,7 @@ export default function Contact() {
             initial={{ opacity: 0, x: 30 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.25 }}
-            className="rounded-3xl p-8"
+            className="rounded-3xl p-6 sm:p-8"
             style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             <h3

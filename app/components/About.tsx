@@ -135,7 +135,7 @@ export default function About() {
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.32 }}
-              className="grid grid-cols-3 gap-4 mb-8 p-5 rounded-2xl"
+              className="grid grid-cols-3 gap-2 sm:gap-4 mb-8 p-4 sm:p-5 rounded-2xl"
               style={{ background: "#fff", border: "1px solid var(--color-border)" }}
             >
               {quickStats.map((s) => (
@@ -222,14 +222,18 @@ export default function About() {
               <div className="flex flex-wrap gap-2">
                 {[
                   "DOD / Intelligence",
+                  "Civil Engineering",
+                  "Structural Engineering",
+                  "Transportation / DOT",
                   "MEP Engineering",
+                  "CEI / Inspection",
+                  "Water & Utilities",
                   "Software Development",
+                  "AWS / DevOps",
+                  "Full-Stack Dev",
                   "Finance",
                   "Automotive",
                   "Electronics",
-                  "Computer Games",
-                  "AWS / DevOps",
-                  "Full-Stack Dev",
                 ].map((tag) => (
                   <span
                     key={tag}

@@ -70,7 +70,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight mb-2"
+              className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight mb-2"
               style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
             >
               Hello<span style={{ color: "var(--color-red)" }}>.</span>
@@ -79,7 +79,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight mb-2"
+              className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight mb-2"
               style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
             >
               I&apos;m
@@ -88,7 +88,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight"
+              className="text-5xl sm:text-6xl md:text-7xl xl:text-8xl font-black leading-none tracking-tight"
               style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
             >
               Patrick<span style={{ color: "var(--color-red)" }}>.</span>
@@ -210,7 +210,7 @@ export default function Hero() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 1.0 }}
-                className="absolute -bottom-6 -left-8 bg-white rounded-2xl px-5 py-3 shadow-xl flex items-center gap-3"
+                className="absolute bottom-4 left-4 bg-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3"
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black"
@@ -232,22 +232,23 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator — only visible when viewport is tall enough */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        className="hidden lg:flex absolute bottom-8 right-8 flex-col items-center gap-2"
       >
-        <span className="text-xs uppercase tracking-widest" style={{ color: "var(--color-gray)" }}>
-          Scroll
-        </span>
         <motion.div
           animate={{ y: [0, 8, 0] }}
           transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-          className="w-0.5 h-8"
-          style={{ background: "var(--color-red)" }}
-        />
+          className="flex flex-col items-center gap-2"
+        >
+          <span className="text-xs uppercase tracking-widest" style={{ color: "var(--color-gray)", writingMode: "vertical-rl" }}>
+            Scroll
+          </span>
+          <div className="w-0.5 h-10" style={{ background: "var(--color-red)" }} />
+        </motion.div>
       </motion.div>
     </section>
   );

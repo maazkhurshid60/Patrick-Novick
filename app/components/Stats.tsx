@@ -49,7 +49,7 @@ export default function Stats() {
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: i * 0.1 }}
-              className="text-center md:border-r last:border-r-0"
+              className="text-center md:border-r md:last:border-r-0"
               style={{ borderColor: "rgba(255,255,255,0.1)" }}
             >
               <div
