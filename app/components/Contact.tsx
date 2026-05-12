@@ -2,7 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { Mail, Globe, ExternalLink, ArrowRight } from "lucide-react";
+import { Mail, Globe, ExternalLink, ArrowRight, Briefcase } from "lucide-react";
 
 const SocialIcons = {
   LinkedIn: () => (
@@ -141,6 +141,20 @@ export default function Contact() {
               >
                 Visit Metro Associates
                 <ExternalLink size={13} />
+              </a>
+              <a
+                href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm border transition-all duration-200 hover:scale-105 hover:border-red-500 hover:text-red-400"
+                style={{
+                  borderColor: "rgba(255,255,255,0.2)",
+                  color: "#fff",
+                  fontFamily: "var(--font-heading)",
+                }}
+              >
+                <Briefcase size={14} />
+                View All Jobs
               </a>
             </motion.div>
           </div>
