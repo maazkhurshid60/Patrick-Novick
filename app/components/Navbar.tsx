@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Briefcase } from "lucide-react";
 
 const links = [
   { label: "Home", href: "#home" },
@@ -72,14 +73,26 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* CTA */}
-        <a
-          href="#contact"
-          className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all duration-200 hover:scale-105"
-          style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)" }}
-        >
-          Let&apos;s Talk
-        </a>
+        {/* CTAs */}
+        <div className="hidden md:flex items-center gap-3">
+          <a
+            href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 hover:border-red-500 hover:text-red-500"
+            style={{ borderColor: "var(--color-border)", color: "var(--color-gray)", fontFamily: "var(--font-heading)" }}
+          >
+            <Briefcase size={13} />
+            View Jobs
+          </a>
+          <a
+            href="#contact"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all duration-200 hover:scale-105"
+            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)" }}
+          >
+            Let&apos;s Talk
+          </a>
+        </div>
 
         {/* Mobile Hamburger */}
         <button
@@ -125,9 +138,20 @@ export default function Navbar() {
                 </a>
               ))}
               <a
+                href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuOpen(false)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border mt-2"
+                style={{ borderColor: "var(--color-border)", color: "var(--color-gray)" }}
+              >
+                <Briefcase size={14} />
+                View Open Jobs
+              </a>
+              <a
                 href="#contact"
                 onClick={() => setMenuOpen(false)}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-semibold text-white mt-2"
+                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-semibold text-white mt-1"
                 style={{ background: "var(--color-red)" }}
               >
                 Let&apos;s Talk

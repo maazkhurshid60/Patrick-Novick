@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowRight, Download, Briefcase } from "lucide-react";
 
 const SocialIcons = {
   LinkedIn: () => (
@@ -135,6 +135,20 @@ export default function Hero() {
               >
                 <Download size={15} />
                 Download CV
+              </a>
+              <a
+                href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm border-2 transition-all duration-200 hover:scale-105 hover:border-red-500 hover:text-red-500"
+                style={{
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-gray)",
+                  fontFamily: "var(--font-heading)",
+                }}
+              >
+                <Briefcase size={15} />
+                View Open Jobs
               </a>
             </motion.div>
 
