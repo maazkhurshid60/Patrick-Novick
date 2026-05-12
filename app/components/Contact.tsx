@@ -27,8 +27,8 @@ const contactItems = [
   {
     Icon: Mail,
     label: "Email",
-    value: "patric@metroassoc.com",
-    href: "mailto:patric@metroassoc.com",
+    value: "patrick@metroassoc.com",
+    href: "mailto:patrick@metroassoc.com",
     external: false,
   },
   {
@@ -117,7 +117,7 @@ export default function Contact() {
               className="flex flex-wrap gap-4"
             >
               <a
-                href="mailto:patric@metroassoc.com"
+                href="mailto:patrick@metroassoc.com"
                 className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm text-white transition-all duration-200 hover:scale-105"
                 style={{
                   background: "var(--color-red)",
