@@ -5,7 +5,7 @@ import { useRef } from "react";
 import {
   ArrowRight, HardHat, Car, Building2, Droplets, Zap, ScanSearch,
   Code2, ShieldCheck, BarChart3, Monitor, Compass,
-  FolderKanban, MapPin,
+  FolderKanban, MapPin, Phone,
 } from "lucide-react";
 
 const disciplines = [
@@ -256,16 +256,26 @@ export default function Metro() {
                 unlocks opportunities within Metro&apos;s network that other
                 recruiters simply can&apos;t access.
               </p>
-              <a
-                href="https://metroassoc.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all duration-200 hover:scale-105"
-                style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)" }}
-              >
-                Visit Metro Associates
-                <ArrowRight size={14} />
-              </a>
+              <div className="flex flex-col gap-3">
+                <a
+                  href="https://metroassoc.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)" }}
+                >
+                  Visit Metro Associates
+                  <ArrowRight size={14} />
+                </a>
+                <a
+                  href="tel:+12392555921"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 hover:scale-105"
+                  style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)", fontFamily: "var(--font-heading)" }}
+                >
+                  <Phone size={13} />
+                  +1 (239) 255-5921
+                </a>
+              </div>
             </div>
 
             {/* Right — 3 specialty cards */}

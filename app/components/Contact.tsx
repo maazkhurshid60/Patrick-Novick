@@ -2,7 +2,7 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { Mail, Globe, ExternalLink, ArrowRight, Briefcase } from "lucide-react";
+import { Mail, Globe, ExternalLink, ArrowRight, Briefcase, Phone } from "lucide-react";
 
 const SocialIcons = {
   LinkedIn: () => (
@@ -24,6 +24,13 @@ const SocialIcons = {
 };
 
 const contactItems = [
+  {
+    Icon: Phone,
+    label: "Phone",
+    value: "+1 (239) 255-5921",
+    href: "tel:+12392555921",
+    external: false,
+  },
   {
     Icon: Mail,
     label: "Email",
