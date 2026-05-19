@@ -47,7 +47,7 @@ export default function Hero() {
         </span>
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-28 pb-20 w-full">
+      <div className="relative z-[1] max-w-6xl mx-auto px-6 pt-28 pb-20 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
           {/* Left — Text */}
