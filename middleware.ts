@@ -5,12 +5,12 @@ const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 
 const PROTECTED = ["/admin", "/connect"];
 
-function hexToBytes(hex: string): Uint8Array {
+function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
   }
-  return bytes;
+  return bytes.buffer as ArrayBuffer;
 }
 
 async function verifyToken(token: string): Promise<boolean> {
