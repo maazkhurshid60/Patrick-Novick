@@ -1,26 +1,5 @@
 @import "tailwindcss";
 
-/* NextivaCX / Simplify360 widget — force above all page content */
-[id*="simplify360"],
-[id*="nextivacx"],
-[class*="simplify360"],
-[class*="nextivacx"],
-[id*="s360"],
-[class*="s360"] {
-  position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
-  z-index: 2147483647 !important;
-}
-
-[id*="simplify360"] *,
-[id*="nextivacx"] *,
-[class*="simplify360"] *,
-[class*="nextivacx"] *,
-[id*="s360"] *,
-[class*="s360"] * {
-  z-index: 2147483647 !important;
-}
 
 :root {
   --font-heading: var(--font-space-grotesk), "Helvetica Neue", sans-serif;

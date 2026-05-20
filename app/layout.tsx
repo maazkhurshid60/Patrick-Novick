@@ -38,7 +38,6 @@ export default function RootLayout({
           src="https://d3po7etsbw5eiv.cloudfront.net/Simplify360Chat.js?key=NmEwNWU5OTE5NjFjZTYzZTcwOGFmZWU1fDQxNzIzNzA="
           strategy="afterInteractive"
         />
-        <Script id="hide-greeting" src="/hide-greeting.js" strategy="afterInteractive" />
       </body>
     </html>
   );
