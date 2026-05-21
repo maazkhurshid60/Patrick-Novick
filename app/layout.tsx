@@ -35,7 +35,7 @@ export default function RootLayout({
         {children}
         <Script
           id="nextivacx-code-snippet"
-          src="https://d3po7etsbw5eiv.cloudfront.net/Simplify360Chat.js?key=NmEwYjYzMGE5NjFjZTYzZTcwOGQzNzBlfDQxNzIzNzA="
+          src="https://d3po7etsbw5eiv.cloudfront.net/Simplify360Chat.js?key=NmEwNWU5OTE5NjFjZTYzZTcwOGFmZWU1fDQxNzIzNzA="
           strategy="afterInteractive"
         />
       </body>
