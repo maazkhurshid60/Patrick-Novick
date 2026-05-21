@@ -60,17 +60,17 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   );
 
   if (!isProtected) return NextResponse.next();
-  if (pathname === "/login") return NextResponse.next();
+  if (pathname === "/feb58da15ece") return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (token && (await verifyToken(token))) return NextResponse.next();
 
   const loginUrl = req.nextUrl.clone();
-  loginUrl.pathname = "/login";
+  loginUrl.pathname = "/feb58da15ece";
   loginUrl.searchParams.set("from", pathname);
   return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/admin", "/dashboard/:path*", "/connect/:path*", "/connect", "/login"],
+  matcher: ["/admin/:path*", "/admin", "/dashboard/:path*", "/connect/:path*", "/connect", "/feb58da15ece"],
 };
