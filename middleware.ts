@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const SESSION_COOKIE = "admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 
-const PROTECTED = ["/admin", "/connect"];
+const PROTECTED = ["/dashboard", "/connect"];
 
 function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array(hex.length / 2);
@@ -50,22 +50,27 @@ async function verifyToken(token: string): Promise<boolean> {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
+  // Return 404 for old /admin path so bots get nothing
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const isProtected = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
 
   if (!isProtected) return NextResponse.next();
-  if (pathname === "/admin/login") return NextResponse.next();
+  if (pathname === "/login") return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   if (token && (await verifyToken(token))) return NextResponse.next();
 
   const loginUrl = req.nextUrl.clone();
-  loginUrl.pathname = "/admin/login";
+  loginUrl.pathname = "/login";
   loginUrl.searchParams.set("from", pathname);
   return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/connect/:path*", "/connect"],
+  matcher: ["/admin/:path*", "/admin", "/dashboard/:path*", "/connect/:path*", "/connect", "/login"],
 };
