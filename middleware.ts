@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const SESSION_COOKIE = "admin_session";
 const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 
-const PROTECTED = ["/dashboard", "/connect"];
+const PROTECTED = ["/bd825db8c738", "/connect"];
 
 function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array(hex.length / 2);
@@ -72,5 +72,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/admin", "/dashboard/:path*", "/connect/:path*", "/connect", "/feb58da15ece"],
+  matcher: ["/admin/:path*", "/admin", "/bd825db8c738/:path*", "/connect/:path*", "/connect", "/feb58da15ece"],
 };

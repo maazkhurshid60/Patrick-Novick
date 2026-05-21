@@ -19,7 +19,7 @@ export default function ConnectPage({
   const connection = getConnection(ADMIN_USER_ID);
 
   // Already connected — send to admin
-  if (connection) redirect("/dashboard");
+  if (connection) redirect("/bd825db8c738");
 
   const errorMsg = searchParams.error
     ? (ERROR_MESSAGES[searchParams.error] ?? "An unknown error occurred.")

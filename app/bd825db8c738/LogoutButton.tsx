@@ -14,8 +14,8 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="text-xs font-medium transition-colors duration-200 hover:text-red-500"
-      style={{ color: "var(--color-gray)" }}
+      className="text-xs font-medium transition-colors duration-200 hover:text-red-400"
+      style={{ color: "rgba(255,255,255,0.3)" }}
     >
       Sign out
     </button>

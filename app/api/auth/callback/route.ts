@@ -48,7 +48,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   // Clear the state cookie and send user to the admin dashboard
-  const response = NextResponse.redirect(new URL("/dashboard", req.url));
+  const response = NextResponse.redirect(new URL("/bd825db8c738", req.url));
   response.cookies.set(COOKIE_NAME, "", { maxAge: 0, path: "/" });
   return response;
 }
