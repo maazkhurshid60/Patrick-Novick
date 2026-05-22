@@ -40,7 +40,18 @@ export default function CampaignClient({ contactCount }: { contactCount: number 
     setHistory(data);
   }
 
-  useEffect(() => { fetchHistory(); }, []);
+  useEffect(() => {
+    fetchHistory();
+    const draft = localStorage.getItem("campaign_draft");
+    if (draft) {
+      try {
+        const { subject: s, body: b } = JSON.parse(draft);
+        setSubject(s ?? "");
+        setBody(b ?? "");
+        localStorage.removeItem("campaign_draft");
+      } catch { /* ignore */ }
+    }
+  }, []);
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();

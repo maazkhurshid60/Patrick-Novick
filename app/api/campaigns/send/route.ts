@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { sendCampaignEmail } from "@/lib/brevo";
+import { sendCampaignEmail } from "@/lib/mailer";
 
 interface ContactRow {
   id: number;

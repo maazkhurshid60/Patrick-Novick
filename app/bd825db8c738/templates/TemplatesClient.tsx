@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send } from "lucide-react";
 
 interface Template {
   id: number;
@@ -11,66 +12,228 @@ interface Template {
   updated_at: number;
 }
 
+const EMAIL_WRAPPER = (content: string, preheader = "") => `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metro Associates</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${preheader}</div>` : ""}
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f4f5;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background:#1a1a2e;border-radius:12px 12px 0 0;padding:28px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Metro</span>
+                    <span style="font-size:20px;font-weight:800;color:#e63946;">.</span>
+                    <span style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Associates</span>
+                  </td>
+                  <td align="right">
+                    <span style="font-size:11px;color:rgba(255,255,255,0.4);font-weight:500;letter-spacing:1px;text-transform:uppercase;">Executive Recruiting</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="background:#ffffff;padding:40px 40px 32px;border-left:1px solid #e8e8e8;border-right:1px solid #e8e8e8;">
+              <div style="font-size:15px;line-height:1.75;color:#1a1a2e;">
+                ${content}
+              </div>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background:#f9f9f9;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 12px 12px;padding:24px 40px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#1a1a2e;">Patrick Novick</p>
+                    <p style="margin:0 0 2px;font-size:12px;color:#666;">Senior Recruiter — Metro Associates</p>
+                    <p style="margin:0;font-size:12px;color:#999;">
+                      <a href="mailto:patrick@metroassoc.com" style="color:#e63946;text-decoration:none;">patrick@metroassoc.com</a>
+                      &nbsp;·&nbsp;+1 (239) 255-5921
+                    </p>
+                  </td>
+                  <td align="right" style="vertical-align:top;">
+                    <p style="margin:0;font-size:11px;color:#bbb;line-height:1.5;">
+                      Metro Associates<br/>
+                      <a href="https://patricknovick.com" style="color:#bbb;text-decoration:none;">patricknovick.com</a>
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding-top:16px;border-top:1px solid #e8e8e8;margin-top:16px;">
+                    <p style="margin:0;font-size:10px;color:#bbb;line-height:1.5;">
+                      You are receiving this because you are a professional in our network.
+                      If you'd prefer not to receive future emails, simply reply with "unsubscribe."
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
 const STARTER_TEMPLATES = [
   {
     name: "Job Opportunity",
     subject: "Exciting Opportunity — {{role}} at {{company}}",
-    body: `<p>Hi {{first_name}},</p>
+    body: EMAIL_WRAPPER(`
+<p style="margin:0 0 20px;font-size:15px;color:#1a1a2e;">Hi {{first_name}},</p>
 
-<p>I hope you're doing well! I came across your profile and immediately thought of an exciting opportunity that aligns perfectly with your background.</p>
+<p style="margin:0 0 16px;">I hope you're doing well. I came across your profile and immediately thought of an exciting opportunity that aligns with your background.</p>
 
-<p>We are currently recruiting for a <strong>{{role}}</strong> position at <strong>{{company}}</strong> — a leading firm in the {{industry}} space.</p>
+<p style="margin:0 0 16px;">I'm recruiting for a <strong style="color:#1a1a2e;">{{role}}</strong> at <strong style="color:#1a1a2e;">{{company}}</strong> — a respected firm in the {{industry}} space.</p>
 
-<p><strong>What's on offer:</strong></p>
-<ul>
-  <li>Competitive compensation package</li>
-  <li>Growth opportunities</li>
-  <li>Strong company culture</li>
-</ul>
+<!-- Highlight box -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+  <tr>
+    <td style="background:#fff8f8;border-left:4px solid #e63946;border-radius:0 8px 8px 0;padding:16px 20px;">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#e63946;text-transform:uppercase;letter-spacing:0.5px;">What's on offer</p>
+      <ul style="margin:0;padding-left:18px;color:#333;font-size:14px;line-height:1.8;">
+        <li>Competitive compensation — {{compensation}}</li>
+        <li>Location: {{location}}</li>
+        <li>Strong growth trajectory</li>
+        <li>Collaborative, high-performing team</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
-<p>If you're open to a confidential conversation, I'd love to connect. Simply reply to this email or call me directly.</p>
+<p style="margin:0 0 16px;">If you're open to a confidential conversation, I'd love to connect — just reply to this email or give me a call.</p>
 
-<p>Best regards,<br/>
-Patrick Novick<br/>
-Metro Associates<br/>
-+1 (239) 255-5921</p>`,
+<p style="margin:0;">Best regards,</p>`,
+      "New opportunity — {{role}} at {{company}} — confidential conversation welcome."),
   },
   {
     name: "Follow Up",
     subject: "Following up — {{role}} opportunity",
-    body: `<p>Hi {{first_name}},</p>
+    body: EMAIL_WRAPPER(`
+<p style="margin:0 0 20px;font-size:15px;color:#1a1a2e;">Hi {{first_name}},</p>
 
-<p>I wanted to follow up on my previous message regarding the <strong>{{role}}</strong> opportunity.</p>
+<p style="margin:0 0 16px;">I wanted to follow up on my previous message regarding the <strong style="color:#1a1a2e;">{{role}}</strong> opportunity.</p>
 
-<p>I understand you're busy, but I believe this could be a great fit for your career trajectory. Even if the timing isn't right, I'd love to keep in touch for future opportunities.</p>
+<p style="margin:0 0 16px;">I completely understand you're busy — I just wanted to make sure my note didn't get buried. Even if the timing isn't quite right, I'd genuinely love to keep you in mind for future roles.</p>
 
-<p>Would you have 10 minutes for a quick call this week?</p>
+<!-- CTA box -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+  <tr>
+    <td align="center" style="background:#f9f9f9;border-radius:8px;padding:24px;">
+      <p style="margin:0 0 12px;font-size:14px;color:#666;">Would you have 10 minutes for a quick call?</p>
+      <a href="mailto:patrick@metroassoc.com?subject=Re: {{role}} opportunity"
+         style="display:inline-block;background:#e63946;color:#fff;font-size:13px;font-weight:700;padding:12px 28px;border-radius:50px;text-decoration:none;letter-spacing:0.3px;">
+        Reply to Connect
+      </a>
+    </td>
+  </tr>
+</table>
 
-<p>Best,<br/>
-Patrick Novick<br/>
-Metro Associates</p>`,
+<p style="margin:0 0 16px;">No pressure at all — I appreciate your time either way.</p>
+
+<p style="margin:0;">Best,</p>`,
+      "Quick follow-up on the {{role}} role — no pressure, just checking in."),
   },
   {
-    name: "DOT Recruiting Outreach",
+    name: "DOT / Transportation Outreach",
     subject: "DOT / Transportation Engineering Role — Are You Open?",
-    body: `<p>Hi {{first_name}},</p>
+    body: EMAIL_WRAPPER(`
+<p style="margin:0 0 20px;font-size:15px;color:#1a1a2e;">Hi {{first_name}},</p>
 
-<p>My name is Patrick Novick, Senior Recruiter at Metro Associates. We specialize exclusively in DOT, transportation infrastructure, and engineering placements across the United States.</p>
+<p style="margin:0 0 16px;">My name is Patrick Novick — I'm a Senior Recruiter at Metro Associates, where we specialize exclusively in <strong style="color:#1a1a2e;">DOT, transportation infrastructure, and civil engineering placements</strong> across the United States.</p>
 
-<p>I'm currently working on a <strong>{{role}}</strong> role with a well-established firm and your background caught my attention.</p>
+<p style="margin:0 0 20px;">Your background caught my attention. I'm currently working on a role that may be a strong fit:</p>
 
-<p>Key details:</p>
-<ul>
-  <li>Location: {{location}}</li>
-  <li>Role: {{role}}</li>
-  <li>Experience required: {{experience}}</li>
-</ul>
+<!-- Role details box -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+  <tr>
+    <td style="background:#1a1a2e;border-radius:8px;padding:20px 24px;">
+      <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#e63946;text-transform:uppercase;letter-spacing:0.5px;">Role Details</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;width:120px;">Position</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{role}}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Location</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{location}}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Experience</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{experience}}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Compensation</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{compensation}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
 
-<p>If you're open to exploring this confidentially, please reply or reach out directly.</p>
+<p style="margin:0 0 16px;">If you're open to exploring this confidentially, please reply or call me directly — I'm happy to share more details.</p>
 
-<p>Patrick Novick<br/>
-Metro Associates<br/>
-patrick@metroassoc.com | +1 (239) 255-5921</p>`,
+<p style="margin:0;">Best,</p>`,
+      "DOT/Transportation Engineering role — confidential, open to a quick conversation?"),
+  },
+  {
+    name: "MEP Engineering Outreach",
+    subject: "MEP Engineering Opportunity — {{role}} | Confidential",
+    body: EMAIL_WRAPPER(`
+<p style="margin:0 0 20px;font-size:15px;color:#1a1a2e;">Hi {{first_name}},</p>
+
+<p style="margin:0 0 16px;">I'm Patrick Novick, Senior Recruiter at Metro Associates. We place top-tier <strong style="color:#1a1a2e;">MEP engineers</strong> — Mechanical, Electrical, and Plumbing — with leading firms nationwide.</p>
+
+<p style="margin:0 0 20px;">I have a confidential opening that aligns well with your experience:</p>
+
+<!-- Role details box -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
+  <tr>
+    <td style="background:#1a1a2e;border-radius:8px;padding:20px 24px;">
+      <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#e63946;text-transform:uppercase;letter-spacing:0.5px;">Role Details</p>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;width:120px;">Discipline</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{discipline}} (MEP)</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Role</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{role}}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Location</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{location}}</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:rgba(255,255,255,0.6);padding:4px 0;">Compensation</td>
+          <td style="font-size:13px;color:#fff;font-weight:600;padding:4px 0;">{{compensation}}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0 0 16px;">This is completely confidential. If you'd like to learn more or just stay connected for future roles, feel free to reply any time.</p>
+
+<p style="margin:0;">Best regards,</p>`,
+      "Confidential MEP Engineering opportunity — {{role}} — open to a conversation?"),
   },
 ];
 
@@ -86,6 +249,7 @@ const inputStyle = {
 };
 
 export default function TemplatesClient() {
+  const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Template | null>(null);
@@ -152,6 +316,11 @@ export default function TemplatesClient() {
     navigator.clipboard.writeText(body);
     setCopied(id);
     setTimeout(() => setCopied(null), 1500);
+  }
+
+  function useTemplate(t: Template) {
+    localStorage.setItem("campaign_draft", JSON.stringify({ subject: t.subject, body: t.body }));
+    router.push("/bd825db8c738/campaigns");
   }
 
   return (
@@ -279,10 +448,17 @@ export default function TemplatesClient() {
             </div>
             <pre
               className="text-xs rounded-xl p-3 overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", maxHeight: "80px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid rgba(255,255,255,0.04)" }}
+              style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", maxHeight: "72px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid rgba(255,255,255,0.04)" }}
             >
               {t.body.replace(/<[^>]+>/g, " ").trim().slice(0, 150)}…
             </pre>
+            <button
+              onClick={() => useTemplate(t)}
+              className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+              style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+            >
+              <Send size={11} /> Use in Campaign
+            </button>
           </div>
         ))}
       </div>
