@@ -2,7 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
 
 interface Template {
   id: number;
@@ -256,6 +256,7 @@ export default function TemplatesClient() {
   const [form, setForm] = useState({ name: "", subject: "", body: "" });
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
+  const [previewing, setPreviewing] = useState<Template | null>(null);
 
   async function fetchTemplates() {
     const res = await fetch("/api/templates");
@@ -318,8 +319,14 @@ export default function TemplatesClient() {
     setTimeout(() => setCopied(null), 1500);
   }
 
+  function getFullHtml(body: string): string {
+    const trimmed = body.trimStart();
+    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) return body;
+    return EMAIL_WRAPPER(body);
+  }
+
   function useTemplate(t: Template) {
-    localStorage.setItem("campaign_draft", JSON.stringify({ subject: t.subject, body: t.body }));
+    localStorage.setItem("campaign_draft", JSON.stringify({ subject: t.subject, body: getFullHtml(t.body) }));
     router.push("/bd825db8c738/campaigns");
   }
 
@@ -424,9 +431,18 @@ export default function TemplatesClient() {
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button
+                  onClick={() => setPreviewing(t)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  title="Preview"
+                >
+                  <Eye size={13} />
+                </button>
+                <button
                   onClick={() => copyBody(t.id, t.body)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
                   style={{ color: copied === t.id ? "#4ade80" : "rgba(255,255,255,0.25)" }}
+                  title="Copy HTML"
                 >
                   {copied === t.id ? <Check size={13} /> : <Copy size={13} />}
                 </button>
@@ -434,6 +450,7 @@ export default function TemplatesClient() {
                   onClick={() => startEdit(t)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
                   style={{ color: "rgba(255,255,255,0.25)" }}
+                  title="Edit"
                 >
                   <Edit2 size={13} />
                 </button>
@@ -441,6 +458,7 @@ export default function TemplatesClient() {
                   onClick={() => handleDelete(t.id)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
                   style={{ color: "rgba(255,255,255,0.25)" }}
+                  title="Delete"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -462,6 +480,54 @@ export default function TemplatesClient() {
           </div>
         ))}
       </div>
+
+      {/* Preview modal */}
+      {previewing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={() => setPreviewing(null)}
+        >
+          <div
+            className="relative w-full flex flex-col"
+            style={{ maxWidth: "680px", maxHeight: "90vh", background: "#1a1d23", borderRadius: "1rem", border: "1px solid rgba(255,255,255,0.08)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{previewing.name}</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Subject: {previewing.subject}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { useTemplate(previewing); setPreviewing(null); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02]"
+                  style={{ background: "var(--color-red)", color: "#fff" }}
+                >
+                  <Send size={11} /> Use in Campaign
+                </button>
+                <button
+                  onClick={() => setPreviewing(null)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                  style={{ color: "rgba(255,255,255,0.4)" }}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+            {/* Email rendered in iframe */}
+            <div className="overflow-auto flex-1 p-4">
+              <iframe
+                srcDoc={getFullHtml(previewing.body)}
+                sandbox="allow-same-origin"
+                style={{ width: "100%", height: "600px", border: "none", borderRadius: "0.5rem", background: "#fff" }}
+                title="Email Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Starter buttons when templates exist */}
       {templates.length > 0 && !creating && (
