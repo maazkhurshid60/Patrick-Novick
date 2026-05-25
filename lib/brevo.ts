@@ -52,8 +52,20 @@ export async function sendCampaignEmail(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Brevo API error ${res.status}: ${err}`);
+    const errText = await res.text();
+    if (res.status === 401) {
+      let msg = "Brevo authentication failed.";
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.message?.includes("unrecognised IP")) {
+          msg = "Brevo blocked this request — your current IP is not whitelisted. Go to app.brevo.com → Security → Authorised IPs and add your IP, or remove the restriction entirely.";
+        } else if (parsed.message?.includes("Key not found") || parsed.code === "unauthorized") {
+          msg = "Brevo API key is invalid. Check BREVO_API_KEY in your environment variables.";
+        }
+      } catch { /* ignore parse error */ }
+      throw new Error(msg);
+    }
+    throw new Error(`Email send failed (${res.status}). Please try again.`);
   }
 
   const data = await res.json() as { messageId?: string };
