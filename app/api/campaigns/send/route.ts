@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { sendCampaignEmail } from "@/lib/mailer";
+import { sendCampaignEmail } from "@/lib/brevo";
 
 interface ContactRow {
   id: number;
@@ -16,7 +16,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
   }
 
-  const contacts = db.prepare("SELECT * FROM contacts").all() as ContactRow[];
+  const contactsResult = await db.execute("SELECT * FROM contacts");
+  const contacts = contactsResult.rows as unknown as ContactRow[];
   if (contacts.length === 0) {
     return NextResponse.json({ error: "No contacts to send to" }, { status: 400 });
   }
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     result = await sendCampaignEmail({
       subject,
       htmlContent: body,
-      recipients: contacts.map((c) => ({ email: c.email, name: c.name || undefined })),
+      recipients: contacts.map((c) => ({ email: c.email as string, name: (c.name as string) || undefined })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";
@@ -34,18 +35,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Log campaign to DB
-  db.prepare(`
-    INSERT INTO campaigns (subject, body, recipient_count, status, brevo_msg_id, sent_at)
-    VALUES (?, ?, ?, 'sent', ?, unixepoch())
-  `).run(subject, body, contacts.length, result.messageId ?? null);
+  await db.execute({
+    sql: `INSERT INTO campaigns (subject, body, recipient_count, status, brevo_msg_id, sent_at)
+      VALUES (?, ?, ?, 'sent', ?, unixepoch())`,
+    args: [subject, body, contacts.length, result.messageId ?? null],
+  });
 
   return NextResponse.json({ success: true, recipients: contacts.length, messageId: result.messageId });
 }
 
 // GET /api/campaigns/send — list campaign history
 export async function GET(): Promise<NextResponse> {
-  const campaigns = db.prepare(
+  const result = await db.execute(
     "SELECT id, subject, recipient_count, status, sent_at FROM campaigns ORDER BY sent_at DESC LIMIT 50"
-  ).all();
-  return NextResponse.json(campaigns);
+  );
+  return NextResponse.json(result.rows);
 }

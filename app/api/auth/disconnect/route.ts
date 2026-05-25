@@ -8,6 +8,6 @@ const ADMIN_USER_ID = 1;
  * Deletes the stored Top Echelon connection and all tokens for the admin user.
  */
 export async function POST(): Promise<NextResponse> {
-  deleteConnection(ADMIN_USER_ID);
+  await deleteConnection(ADMIN_USER_ID);
   return NextResponse.json({ success: true });
 }

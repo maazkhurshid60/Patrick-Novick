@@ -81,8 +81,8 @@ export async function storeTokens(
   const expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
   const now = Math.floor(Date.now() / 1000);
 
-  db.prepare(`
-    INSERT INTO te_connections
+  await db.execute({
+    sql: `INSERT INTO te_connections
       (user_id, access_token, refresh_token, expires_at, scope, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET
@@ -90,16 +90,9 @@ export async function storeTokens(
       refresh_token = excluded.refresh_token,
       expires_at    = excluded.expires_at,
       scope         = excluded.scope,
-      updated_at    = excluded.updated_at
-  `).run(
-    userId,
-    encrypt(data.access_token),
-    encrypt(data.refresh_token),
-    expiresAt,
-    data.scope,
-    now,
-    now
-  );
+      updated_at    = excluded.updated_at`,
+    args: [userId, encrypt(data.access_token), encrypt(data.refresh_token), expiresAt, data.scope, now, now],
+  });
 }
 
 /**
@@ -108,25 +101,27 @@ export async function storeTokens(
  * This is the ONLY function that should be used when making TE API calls.
  */
 export async function getValidAccessToken(userId: number): Promise<string> {
-  const row = db
-    .prepare("SELECT * FROM te_connections WHERE user_id = ?")
-    .get(userId) as TokenRow | undefined;
+  const result = await db.execute({
+    sql: "SELECT * FROM te_connections WHERE user_id = ?",
+    args: [userId],
+  });
+  const row = result.rows[0] as unknown as TokenRow | undefined;
 
   if (!row) {
     throw new Error(`No Top Echelon connection found for user ${userId}`);
   }
 
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const expiresIn = row.expires_at - nowSeconds;
+  const expiresIn = Number(row.expires_at) - nowSeconds;
 
   if (expiresIn > 60) {
-    return decrypt(row.access_token);
+    return decrypt(row.access_token as string);
   }
 
   // Token expired or expiring soon — refresh
   const fresh = await callTokenEndpoint({
     grant_type: "refresh_token",
-    refresh_token: decrypt(row.refresh_token),
+    refresh_token: decrypt(row.refresh_token as string),
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
     redirect_uri: REDIRECT_URI,
@@ -150,17 +145,18 @@ export async function exchangeCodeForTokens(
 }
 
 /** Returns connection metadata (no tokens). */
-export function getConnection(userId: number): ConnectionInfo | null {
-  return (
-    (db
-      .prepare(
-        "SELECT user_id, expires_at, scope, created_at, updated_at FROM te_connections WHERE user_id = ?"
-      )
-      .get(userId) as ConnectionInfo | undefined) ?? null
-  );
+export async function getConnection(userId: number): Promise<ConnectionInfo | null> {
+  const result = await db.execute({
+    sql: "SELECT user_id, expires_at, scope, created_at, updated_at FROM te_connections WHERE user_id = ?",
+    args: [userId],
+  });
+  return (result.rows[0] as unknown as ConnectionInfo) ?? null;
 }
 
 /** Deletes the stored connection and tokens for a user. */
-export function deleteConnection(userId: number): void {
-  db.prepare("DELETE FROM te_connections WHERE user_id = ?").run(userId);
+export async function deleteConnection(userId: number): Promise<void> {
+  await db.execute({
+    sql: "DELETE FROM te_connections WHERE user_id = ?",
+    args: [userId],
+  });
 }

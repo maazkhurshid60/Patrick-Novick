@@ -3,8 +3,9 @@ import LogoutButton from "../LogoutButton";
 import CampaignClient from "./CampaignClient";
 import db from "@/lib/db";
 
-export default function CampaignsPage() {
-  const contactCount = (db.prepare("SELECT COUNT(*) as count FROM contacts").get() as { count: number }).count;
+export default async function CampaignsPage() {
+  const result = await db.execute("SELECT COUNT(*) as count FROM contacts");
+  const contactCount = Number(result.rows[0]?.count ?? 0);
 
   return (
     <div className="min-h-screen" style={{ background: "#0d0f12" }}>

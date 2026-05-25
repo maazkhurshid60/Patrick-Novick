@@ -12,15 +12,20 @@ function formatDate(unix: number) {
   });
 }
 
-export default function AdminPage() {
-  const contactCount = (db.prepare("SELECT COUNT(*) as count FROM contacts").get() as { count: number }).count;
-  const campaignCount = (db.prepare("SELECT COUNT(*) as count FROM campaigns").get() as { count: number }).count;
-  const templateCount = (db.prepare("SELECT COUNT(*) as count FROM email_templates").get() as { count: number }).count;
-  const brevoConfigured = !!(process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL);
+export default async function AdminPage() {
+  const [contactRes, campaignRes, templateRes, recentRes, sumRes] = await Promise.all([
+    db.execute("SELECT COUNT(*) as count FROM contacts"),
+    db.execute("SELECT COUNT(*) as count FROM campaigns"),
+    db.execute("SELECT COUNT(*) as count FROM email_templates"),
+    db.execute("SELECT id, subject, recipient_count, status, sent_at FROM campaigns ORDER BY sent_at DESC LIMIT 8"),
+    db.execute("SELECT SUM(recipient_count) as s FROM campaigns"),
+  ]);
 
-  const recentCampaigns = db.prepare(
-    "SELECT id, subject, recipient_count, status, sent_at FROM campaigns ORDER BY sent_at DESC LIMIT 8"
-  ).all() as { id: number; subject: string; recipient_count: number; status: string; sent_at: number }[];
+  const contactCount = Number(contactRes.rows[0]?.count ?? 0);
+  const campaignCount = Number(campaignRes.rows[0]?.count ?? 0);
+  const templateCount = Number(templateRes.rows[0]?.count ?? 0);
+  const recentCampaigns = recentRes.rows as unknown as { id: number; subject: string; recipient_count: number; status: string; sent_at: number }[];
+  const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
 
   return (
     <div className="min-h-screen" style={{ background: "#0d0f12" }}>
@@ -34,10 +39,10 @@ export default function AdminPage() {
         >
           <p className="text-sm font-semibold text-white/60">Dashboard</p>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: brevoConfigured ? "rgba(22,163,74,0.12)" : "rgba(230,57,70,0.12)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: brevoConfigured ? "#16a34a" : "#e63946" }} />
-              <span className="text-xs font-medium" style={{ color: brevoConfigured ? "#4ade80" : "#f87171" }}>
-                {brevoConfigured ? "Brevo active" : "Brevo not set"}
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: smtpConfigured ? "rgba(22,163,74,0.12)" : "rgba(230,57,70,0.12)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: smtpConfigured ? "#16a34a" : "#e63946" }} />
+              <span className="text-xs font-medium" style={{ color: smtpConfigured ? "#4ade80" : "#f87171" }}>
+                {smtpConfigured ? "SMTP active" : "SMTP not set"}
               </span>
             </div>
             <LogoutButton />
@@ -114,7 +119,7 @@ export default function AdminPage() {
               { label: "Email Templates",   value: templateCount, change: null,   color: "#c4b5fd", dim: "rgba(196,181,253,0.1)" },
               { label: "Avg. Recipients",
                 value: campaignCount > 0
-                  ? Math.round((db.prepare("SELECT SUM(recipient_count) as s FROM campaigns").get() as { s: number }).s / campaignCount)
+                  ? Math.round(Number(sumRes.rows[0]?.s ?? 0) / campaignCount)
                   : 0,
                 change: null, color: "#7dd3fc", dim: "rgba(125,211,252,0.1)" },
             ].map(({ label, value, color, dim }) => (
