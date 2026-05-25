@@ -19,11 +19,6 @@ export const metadata: Metadata = {
   title: "Patrick Novick — Professional Recruiter",
   description:
     "Patrick Novick is an elite professional recruiter with 20+ years of experience placing talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
-  icons: {
-    icon: "/cropped-ChatGPT-Image-Mar-14-2026-12_48_02-PM.webp",
-    shortcut: "/cropped-ChatGPT-Image-Mar-14-2026-12_48_02-PM.webp",
-    apple: "/cropped-ChatGPT-Image-Mar-14-2026-12_48_02-PM.webp",
-  },
 };
 
 export default function RootLayout({
