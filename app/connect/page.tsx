@@ -11,12 +11,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   access_denied: "You denied access to the integration.",
 };
 
-export default function ConnectPage({
+export default async function ConnectPage({
   searchParams,
 }: {
   searchParams: { error?: string };
 }) {
-  const connection = getConnection(ADMIN_USER_ID);
+  const connection = await getConnection(ADMIN_USER_ID);
 
   // Already connected — send to admin
   if (connection) redirect("/bd825db8c738");
