@@ -8,6 +8,18 @@ interface ContactRow {
   name: string;
 }
 
+function personalize(template: string, contact: ContactRow): string {
+  const fullName = (contact.name as string) || "";
+  const firstName = fullName.split(" ")[0] || fullName || "there";
+  const lastName = fullName.split(" ").slice(1).join(" ") || "";
+  return template
+    .replace(/\{\{first_name\}\}/gi, firstName)
+    .replace(/\{\{last_name\}\}/gi, lastName)
+    .replace(/\{\{full_name\}\}/gi, fullName)
+    .replace(/\{\{name\}\}/gi, fullName)
+    .replace(/\{\{email\}\}/gi, contact.email as string);
+}
+
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { subject, body } = await req.json() as { subject: string; body: string };
@@ -27,7 +39,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     result = await sendCampaignEmail({
       subject,
       htmlContent: body,
-      recipients: contacts.map((c) => ({ email: c.email as string, name: (c.name as string) || undefined })),
+      recipients: contacts.map((c) => ({
+        email: c.email as string,
+        name: (c.name as string) || undefined,
+        personalizedHtml: personalize(body, c),
+        personalizedSubject: personalize(subject, c),
+      })),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";

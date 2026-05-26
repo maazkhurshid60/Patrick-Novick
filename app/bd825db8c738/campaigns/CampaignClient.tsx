@@ -105,11 +105,11 @@ export default function CampaignClient({ contactCount }: { contactCount: number 
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-              Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(HTML supported)</span>
+              Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(plain text — use {"{{first_name}}"} etc.)</span>
             </label>
             <textarea
               style={{ ...inputStyle, minHeight: "280px", resize: "vertical", fontFamily: "monospace", fontSize: "0.8rem" }}
-              placeholder={"<p>Hi there,</p>\n<p>Your message here...</p>"}
+              placeholder={"Hi {{first_name}},\n\nYour message here...\n\nBest,\nPatrick"}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               required
