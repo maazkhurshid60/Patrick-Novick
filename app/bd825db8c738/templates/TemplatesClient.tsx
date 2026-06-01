@@ -14,82 +14,49 @@ interface Template {
 
 const SIGNATURE = `
 
---
-Patrick Novick
-Senior Recruiter — Metro Associates
-patrick@metroassoc.com | +1 (239) 255-5921
-patricknovick.com`;
+Patrick
+(239) 255-5921`;
 
 const STARTER_TEMPLATES = [
   {
-    name: "Job Opportunity",
-    subject: "Exciting Opportunity — {{role}} at {{company}}",
+    name: "Initial Outreach",
+    subject: "quick question",
     body: `Hi {{first_name}},
 
-I hope you're doing well. I came across your profile and immediately thought of an exciting opportunity that aligns with your background.
+Came across your background and wanted to reach out. I'm a recruiter working on a senior engineering search in the US — based on your experience I thought it might be worth a quick conversation.
 
-I'm recruiting for a {{role}} at {{company}} — a respected firm in the {{industry}} space.
-
-What's on offer:
-- Competitive compensation: {{compensation}}
-- Location: {{location}}
-- Strong growth trajectory
-- Collaborative, high-performing team
-
-If you're open to a confidential conversation, I'd love to connect — just reply to this email or give me a call.
-
-Best regards,${SIGNATURE}`,
+Would you be open to a 10-minute call this week?
+${SIGNATURE}`,
   },
   {
     name: "Follow Up",
-    subject: "Following up — {{role}} opportunity",
+    subject: "checking in",
     body: `Hi {{first_name}},
 
-I wanted to follow up on my previous message regarding the {{role}} opportunity.
+Just wanted to make sure my last note didn't get buried. No pressure at all — if the timing isn't right I completely understand.
 
-I completely understand you're busy — I just wanted to make sure my note didn't get buried. Even if the timing isn't quite right, I'd genuinely love to keep you in mind for future roles.
-
-Would you have 10 minutes for a quick call? Just reply to this email and we'll find a time.
-
-No pressure at all — I appreciate your time either way.
-
-Best,${SIGNATURE}`,
+If you ever want to connect, just reply and we'll find a time.
+${SIGNATURE}`,
   },
   {
-    name: "DOT / Transportation Outreach",
-    subject: "DOT / Transportation Engineering Role — Are You Open?",
+    name: "DOT / Transportation",
+    subject: "had a quick question for you",
     body: `Hi {{first_name}},
 
-My name is Patrick Novick — I'm a Senior Recruiter at Metro Associates, where we specialize exclusively in DOT, transportation infrastructure, and civil engineering placements across the United States.
+I work with firms on DOT and transportation infrastructure placements across the US. I came across your background and have a search I think could be a fit — it's confidential so I can't share everything here, but it's a strong position.
 
-Your background caught my attention. I'm currently working on a role that may be a strong fit:
-
-Position: {{role}}
-Location: {{location}}
-Experience: {{experience}}
-Compensation: {{compensation}}
-
-If you're open to exploring this confidentially, please reply or call me directly — I'm happy to share more details.
-
-Best,${SIGNATURE}`,
+Would you have 10 minutes this week to hear more?
+${SIGNATURE}`,
   },
   {
-    name: "MEP Engineering Outreach",
-    subject: "MEP Engineering Opportunity — {{role}} | Confidential",
+    name: "MEP Engineering",
+    subject: "had a question about your background",
     body: `Hi {{first_name}},
 
-I'm Patrick Novick, Senior Recruiter at Metro Associates. We place top-tier MEP engineers — Mechanical, Electrical, and Plumbing — with leading firms nationwide.
+I place MEP engineers with firms nationwide and came across your profile. I have a search I'm working on that I think aligns well with your experience.
 
-I have a confidential opening that aligns well with your experience:
-
-Discipline: {{discipline}} (MEP)
-Role: {{role}}
-Location: {{location}}
-Compensation: {{compensation}}
-
-This is completely confidential. If you'd like to learn more or just stay connected for future roles, feel free to reply any time.
-
-Best regards,${SIGNATURE}`,
+Would you be open to a quick call this week?
+${SIGNATURE}`,
   },
 ];
 
