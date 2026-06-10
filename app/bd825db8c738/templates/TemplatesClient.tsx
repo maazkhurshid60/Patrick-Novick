@@ -19,43 +19,47 @@ Patrick
 
 const STARTER_TEMPLATES = [
   {
-    name: "Initial Outreach",
+    name: "CT Engineering — Email 1",
+    subject: "engineering hiring in Connecticut",
+    body: `Hi {{first_name}},
+
+I work with Metro Associates placing civil, transportation, structural, and inspection engineers throughout Connecticut. Over the past year we have placed professionals on CTDOT projects, bridge rehab work, and water and wastewater infrastructure.
+
+If your team anticipates any hiring in the next 30 to 90 days — even for hard-to-fill roles — I would be glad to share what we are seeing in the market.
+
+Worth a quick call?
+${SIGNATURE}`,
+  },
+  {
+    name: "CT Engineering — Email 2",
+    subject: "following up",
+    body: `Hi {{first_name}},
+
+Just wanted to follow up on my last note. We are currently representing several engineers and inspectors in Connecticut who are not on job boards — they are only available through direct recruiter contact.
+
+If timing is not right, no problem. But if you have anything in the pipeline, I would welcome a 10-minute conversation.
+${SIGNATURE}`,
+  },
+  {
+    name: "CT Engineering — Email 3",
+    subject: "one more thought",
+    body: `Hi {{first_name}},
+
+I have reached out a couple of times about engineering and inspection talent in Connecticut. I do not want to clutter your inbox, but wanted to mention — a lot of our placements happen before any urgent opening exists.
+
+If succession planning, upcoming projects, or specialized roles are on your radar in the next few months, I am happy to have a brief conversation.
+
+Otherwise, I will stop reaching out and wish you well.
+${SIGNATURE}`,
+  },
+  {
+    name: "CT Engineering — Email 4",
     subject: "quick question",
     body: `Hi {{first_name}},
 
-Came across your background and wanted to reach out. I'm a recruiter working on a senior engineering search in the US — based on your experience I thought it might be worth a quick conversation.
+Would it be useful if I occasionally sent a short note when a strong engineer or inspector becomes available in Connecticut — even if you are not actively hiring?
 
-Would you be open to a 10-minute call this week?
-${SIGNATURE}`,
-  },
-  {
-    name: "Follow Up",
-    subject: "checking in",
-    body: `Hi {{first_name}},
-
-Just wanted to make sure my last note didn't get buried. No pressure at all — if the timing isn't right I completely understand.
-
-If you ever want to connect, just reply and we'll find a time.
-${SIGNATURE}`,
-  },
-  {
-    name: "DOT / Transportation",
-    subject: "had a quick question for you",
-    body: `Hi {{first_name}},
-
-I work with firms on DOT and transportation infrastructure placements across the US. I came across your background and have a search I think could be a fit — it's confidential so I can't share everything here, but it's a strong position.
-
-Would you have 10 minutes this week to hear more?
-${SIGNATURE}`,
-  },
-  {
-    name: "MEP Engineering",
-    subject: "had a question about your background",
-    body: `Hi {{first_name}},
-
-I place MEP engineers with firms nationwide and came across your profile. I have a search I'm working on that I think aligns well with your experience.
-
-Would you be open to a quick call this week?
+A simple reply is all it takes. No pressure if the timing is not right.
 ${SIGNATURE}`,
   },
 ];

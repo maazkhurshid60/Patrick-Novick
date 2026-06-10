@@ -4,8 +4,23 @@ import CampaignClient from "./CampaignClient";
 import db from "@/lib/db";
 
 export default async function CampaignsPage() {
-  const result = await db.execute("SELECT COUNT(*) as count FROM contacts");
-  const contactCount = Number(result.rows[0]?.count ?? 0);
+  const [countResult, listsResult] = await Promise.all([
+    db.execute("SELECT COUNT(*) as count FROM contacts WHERE status = 'active' OR status IS NULL"),
+    db.execute(`
+      SELECT cl.id, cl.name, COUNT(clm.contact_id) as member_count
+      FROM contact_lists cl
+      LEFT JOIN contact_list_members clm ON cl.id = clm.list_id
+      GROUP BY cl.id
+      ORDER BY cl.name ASC
+    `),
+  ]);
+
+  const contactCount = Number(countResult.rows[0]?.count ?? 0);
+  const lists = listsResult.rows.map((r) => ({
+    id: Number(r.id),
+    name: r.name as string,
+    member_count: Number(r.member_count),
+  }));
 
   return (
     <div className="min-h-screen" style={{ background: "#0d0f12" }}>
@@ -17,7 +32,7 @@ export default async function CampaignsPage() {
           <LogoutButton />
         </header>
         <main className="px-8 py-7">
-          <CampaignClient contactCount={contactCount} />
+          <CampaignClient contactCount={contactCount} lists={lists} />
         </main>
       </div>
     </div>

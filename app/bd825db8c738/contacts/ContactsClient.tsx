@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, FormEvent, useRef } from "react";
-import { Trash2, Plus, Upload, Users, FileText } from "lucide-react";
+import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck } from "lucide-react";
 
 interface Contact {
   id: number;
   email: string;
   name: string;
+  status: string;
   created_at: number;
 }
 
@@ -136,6 +137,16 @@ export default function ContactsClient() {
     fetchContacts();
   }
 
+  async function handleToggleStatus(id: number, current: string) {
+    const status = current === "unsubscribed" ? "active" : "unsubscribed";
+    await fetch("/api/contacts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    fetchContacts();
+  }
+
   return (
     <div className="grid grid-cols-3 gap-5">
       {/* Left: forms */}
@@ -229,26 +240,43 @@ export default function ContactsClient() {
             {contacts.map((c, i) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/[0.02]"
+                className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/2"
                 style={{ borderBottom: i < contacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                    style={{ background: c.status === "unsubscribed" ? "rgba(255,255,255,0.06)" : "rgba(230,57,70,0.12)", color: c.status === "unsubscribed" ? "rgba(255,255,255,0.3)" : "#f87171" }}>
                     {(c.name || c.email)[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{c.name || c.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium" style={{ color: c.status === "unsubscribed" ? "rgba(255,255,255,0.4)" : "#fff" }}>{c.name || c.email}</p>
+                      {c.status === "unsubscribed" && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>
+                          unsubscribed
+                        </span>
+                      )}
+                    </div>
                     {c.name && <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(c.id)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
-                  style={{ color: "rgba(255,255,255,0.2)" }}
-                >
-                  <Trash2 size={13} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleToggleStatus(c.id, c.status)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                    style={{ color: "rgba(255,255,255,0.2)" }}
+                    title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
+                  >
+                    {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(c.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
+                    style={{ color: "rgba(255,255,255,0.2)" }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

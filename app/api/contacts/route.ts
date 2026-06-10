@@ -34,6 +34,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ added });
 }
 
+// PATCH /api/contacts — update status (active | unsubscribed)
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const { id, status } = await req.json() as { id: number; status: string };
+  if (!["active", "unsubscribed"].includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  await db.execute({ sql: "UPDATE contacts SET status = ? WHERE id = ?", args: [status, id] });
+  return NextResponse.json({ success: true });
+}
+
 // DELETE /api/contacts — delete by id
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const { id } = await req.json();
