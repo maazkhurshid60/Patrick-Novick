@@ -75,13 +75,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let result;
   try {
+    const emailFooter = "\n\n---\nMetro Associates\nTo unsubscribe from future mailings, click here: https://patricknovick.com/unsubscribe?email={{email}}";
+    const bodyWithFooter = body.trim() + emailFooter;
+
     result = await sendCampaignEmail({
       subject,
-      htmlContent: body,
+      htmlContent: bodyWithFooter,
       recipients: contacts.map((c) => ({
         email: c.email as string,
         name: (c.name as string) || undefined,
-        personalizedHtml: personalize(body, c),
+        personalizedHtml: personalize(bodyWithFooter, c),
         personalizedSubject: personalize(subject, c),
       })),
     });
