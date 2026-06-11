@@ -20,6 +20,60 @@ function personalize(template: string, contact: ContactRow): string {
     .replace(/\{\{email\}\}/gi, contact.email as string);
 }
 
+function wrapInHtmlTemplate(bodyText: string, email: string): string {
+  // Convert newlines to breaks for HTML email clients
+  const formattedBody = bodyText.trim().replace(/\n/g, "<br />");
+  const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patrick Novick</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9f9f9; padding: 20px 0;">
+    <tr>
+      <td align="center">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #eef0f3; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+          <tr>
+            <td style="padding: 40px 30px; font-size: 16px; line-height: 1.6; color: #2d3748;">
+              ${formattedBody}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 30px; background-color: #f7fafc; border-top: 1px solid #edf2f7; text-align: center;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td style="font-size: 12px; line-height: 1.5; color: #718096; text-align: center;">
+                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #4a5568; font-size: 13px;">
+                      Metro Associates, LLC
+                    </p>
+                    <p style="margin: 0 0 20px 0; font-style: normal; color: #a0aec0;">
+                      1317 Edgewater Drive #4452<br>
+                      Orlando, FL 32804, United States
+                    </p>
+                    <p style="margin: 0;">
+                      <a href="${unsubscribeUrl}" target="_blank" style="display: inline-block; background-color: #e63946; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 9999px; font-weight: 600; font-size: 12px; box-shadow: 0 4px 12px rgba(230, 57, 70, 0.25); text-align: center;">
+                        Unsubscribe
+                      </a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const { subject, body, listId, excludeRecentDays, dailyLimit } = await req.json() as {
@@ -75,18 +129,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let result;
   try {
-    const emailFooter = "\n\n---\nMetro Associates\nTo unsubscribe from future mailings, click here: https://patricknovick.com/unsubscribe?email={{email}}";
-    const bodyWithFooter = body.trim() + emailFooter;
-
     result = await sendCampaignEmail({
       subject,
-      htmlContent: bodyWithFooter,
-      recipients: contacts.map((c) => ({
-        email: c.email as string,
-        name: (c.name as string) || undefined,
-        personalizedHtml: personalize(bodyWithFooter, c),
-        personalizedSubject: personalize(subject, c),
-      })),
+      htmlContent: body, // Fallback
+      recipients: contacts.map((c) => {
+        const personalizedText = personalize(body, c);
+        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string);
+        return {
+          email: c.email as string,
+          name: (c.name as string) || undefined,
+          personalizedHtml: wrappedHtml,
+          personalizedSubject: personalize(subject, c),
+        };
+      }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Send failed";

@@ -44,7 +44,7 @@ export async function sendCampaignEmail(
       sender: { email: senderEmail, name: senderName },
       to: [{ email: recipient.email, name: recipient.name ?? recipient.email }],
       subject: recipient.personalizedSubject ?? opts.subject,
-      textContent: html,
+      htmlContent: html,
     };
 
     const res = await fetch(`${BREVO_API_URL}/smtp/email`, {
