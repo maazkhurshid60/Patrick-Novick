@@ -15,9 +15,9 @@ export default function UnsubscribeForm() {
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
-    if (emailParam) {
-      setEmail(emailParam);
-    }
+    const status = searchParams.get("status");
+    if (emailParam) setEmail(emailParam);
+    if (status === "done") setSuccess(true);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {

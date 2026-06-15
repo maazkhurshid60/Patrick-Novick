@@ -41,6 +41,20 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
   await db.execute({ sql: "UPDATE contacts SET status = ? WHERE id = ?", args: [status, id] });
+
+  // Keep suppression list in sync
+  const emailResult = await db.execute({ sql: "SELECT email FROM contacts WHERE id = ?", args: [id] });
+  const email = emailResult.rows[0]?.email as string | undefined;
+  if (email) {
+    if (status === "unsubscribed") {
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, 'unsubscribed')",
+        args: [email],
+      });
+    } else {
+      await db.execute({ sql: "DELETE FROM suppression_list WHERE email = ?", args: [email] });
+    }
+  }
   return NextResponse.json({ success: true });
 }
 

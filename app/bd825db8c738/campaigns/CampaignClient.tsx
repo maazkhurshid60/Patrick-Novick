@@ -44,8 +44,7 @@ const labelStyle = {
 };
 
 export default function CampaignClient({
-  contactCount,
-  lists,
+  contactCount: initialContactCount,
 }: {
   contactCount: number;
   lists: ContactList[];
@@ -53,8 +52,17 @@ export default function CampaignClient({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [listId, setListId] = useState<number | null>(null);
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [contactCount, setContactCount] = useState(initialContactCount);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dailyLimit, setDailyLimit] = useState(50);
+  const [excludeRecent, setExcludeRecent] = useState(false);
+  const [excludeDays, setExcludeDays] = useState(7);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [history, setHistory] = useState<Campaign[]>([]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -65,13 +73,19 @@ export default function CampaignClient({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const [dailyLimit, setDailyLimit] = useState(50);
-  const [excludeRecent, setExcludeRecent] = useState(false);
-  const [excludeDays, setExcludeDays] = useState(7);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [history, setHistory] = useState<Campaign[]>([]);
+
+  async function fetchLists() {
+    const res = await fetch("/api/lists");
+    setLists(await res.json());
+  }
+
+  async function fetchContactCount() {
+    const res = await fetch("/api/contacts/count");
+    if (res.ok) {
+      const data = await res.json();
+      setContactCount(data.count);
+    }
+  }
 
   async function fetchHistory() {
     const res = await fetch("/api/campaigns/send");
@@ -79,6 +93,8 @@ export default function CampaignClient({
   }
 
   useEffect(() => {
+    fetchLists();
+    fetchContactCount();
     fetchHistory();
     const draft = localStorage.getItem("campaign_draft");
     if (draft) {

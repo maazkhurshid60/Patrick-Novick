@@ -56,6 +56,11 @@ db.batch([
     sent_at     INTEGER NOT NULL DEFAULT (unixepoch()),
     PRIMARY KEY (campaign_id, email)
   )`,
+  `CREATE TABLE IF NOT EXISTS suppression_list (
+    email      TEXT PRIMARY KEY,
+    reason     TEXT NOT NULL DEFAULT 'unsubscribed',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ], "write").catch(console.error);
 
 // Safely add new columns to existing tables (no-op if already exist)

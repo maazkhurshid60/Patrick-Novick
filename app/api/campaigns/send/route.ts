@@ -21,57 +21,36 @@ function personalize(template: string, contact: ContactRow): string {
 }
 
 function wrapInHtmlTemplate(bodyText: string, email: string): string {
-  // Convert newlines to breaks for HTML email clients
   const formattedBody = bodyText.trim().replace(/\n/g, "<br />");
   const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
-  
-  return `
-<!DOCTYPE html>
+
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Patrick Novick</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f9f9f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f9f9f9; padding: 20px 0;">
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%">
     <tr>
-      <td align="center">
-        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #eef0f3; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
-          <tr>
-            <td style="padding: 40px 30px; font-size: 16px; line-height: 1.6; color: #2d3748;">
-              ${formattedBody}
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 30px; background-color: #f7fafc; border-top: 1px solid #edf2f7; text-align: center;">
-              <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td style="font-size: 12px; line-height: 1.5; color: #718096; text-align: center;">
-                    <p style="margin: 0 0 10px 0; font-weight: 600; color: #4a5568; font-size: 13px;">
-                      Metro Associates, LLC
-                    </p>
-                    <p style="margin: 0 0 20px 0; font-style: normal; color: #a0aec0;">
-                      1317 Edgewater Drive #4452<br>
-                      Orlando, FL 32804, United States
-                    </p>
-                    <p style="margin: 0;">
-                      <a href="${unsubscribeUrl}" target="_blank" style="display: inline-block; background-color: #e63946; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 9999px; font-weight: 600; font-size: 12px; box-shadow: 0 4px 12px rgba(230, 57, 70, 0.25); text-align: center;">
-                        Unsubscribe
-                      </a>
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
+      <td style="padding:40px 30px;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:600px;">
+        ${formattedBody}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:80px 30px 0 30px;">&nbsp;</td>
+    </tr>
+    <tr>
+      <td style="padding:30px;border-top:1px solid #eeeeee;text-align:center;">
+        <p style="margin:0 0 6px 0;font-size:12px;color:#999999;">Metro Associates, LLC &nbsp;&bull;&nbsp; 1317 Edgewater Drive #4452, Orlando, FL 32804</p>
+        <p style="margin:0;">
+          <a href="${unsubscribeUrl}" style="font-size:11px;color:#999999;text-decoration:underline;">Unsubscribe</a>
+        </p>
       </td>
     </tr>
   </table>
 </body>
-</html>
-  `.trim();
+</html>`.trim();
 }
 
 // POST /api/campaigns/send
@@ -96,10 +75,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sql = `SELECT c.id, c.email, c.name
            FROM contacts c
            JOIN contact_list_members m ON c.id = m.contact_id
-           WHERE m.list_id = ? AND c.status = 'active'`;
+           WHERE m.list_id = ? AND c.status = 'active'
+           AND c.email NOT IN (SELECT email FROM suppression_list)`;
     args.push(listId);
   } else {
-    sql = `SELECT id, email, name FROM contacts WHERE status = 'active'`;
+    sql = `SELECT id, email, name FROM contacts WHERE status = 'active'
+           AND email NOT IN (SELECT email FROM suppression_list)`;
   }
 
   if (excludeRecentDays && excludeRecentDays > 0) {
