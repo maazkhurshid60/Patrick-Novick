@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent, useRef } from "react";
-import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck } from "lucide-react";
+import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck } from "lucide-react";
 
 interface Contact {
   id: number;
@@ -147,6 +147,16 @@ export default function ContactsClient() {
     fetchContacts();
   }
 
+  async function handleValidate() {
+    if (!confirm("Check all active contacts for valid email domains? This may take a minute.")) return;
+    setLoading(true); setError(""); setSuccess("");
+    const res = await fetch("/api/contacts/validate", { method: "POST" });
+    const data = await res.json();
+    setSuccess(`Checked ${data.checked} contacts — ${data.valid} valid, ${data.invalid} marked invalid`);
+    fetchContacts();
+    setLoading(false);
+  }
+
   return (
     <div className="grid grid-cols-3 gap-5">
       {/* Left: forms */}
@@ -222,9 +232,20 @@ export default function ContactsClient() {
       <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
-          <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
-            {contacts.length} total
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
+              {contacts.length} total
+            </span>
+            <button
+              onClick={handleValidate}
+              disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+              style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
+              title="Check all emails for valid domains"
+            >
+              <ShieldCheck size={12} /> Validate Emails
+            </button>
+          </div>
         </div>
 
         {contacts.length === 0 ? (
@@ -245,30 +266,36 @@ export default function ContactsClient() {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: c.status === "unsubscribed" ? "rgba(255,255,255,0.06)" : "rgba(230,57,70,0.12)", color: c.status === "unsubscribed" ? "rgba(255,255,255,0.3)" : "#f87171" }}>
+                    style={{
+                      background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
+                      color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)"
+                    }}>
                     {(c.name || c.email)[0].toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium" style={{ color: c.status === "unsubscribed" ? "rgba(255,255,255,0.4)" : "#fff" }}>{c.name || c.email}</p>
+                      <p className="text-sm font-medium" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>{c.name || c.email}</p>
                       {c.status === "unsubscribed" && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>
-                          unsubscribed
-                        </span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsubscribed</span>
+                      )}
+                      {c.status === "invalid" && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>
                       )}
                     </div>
                     {c.name && <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleToggleStatus(c.id, c.status)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                    title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
-                  >
-                    {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
-                  </button>
+                  {c.status !== "invalid" && (
+                    <button
+                      onClick={() => handleToggleStatus(c.id, c.status)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                      style={{ color: "rgba(255,255,255,0.2)" }}
+                      title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
+                    >
+                      {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDelete(c.id)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
