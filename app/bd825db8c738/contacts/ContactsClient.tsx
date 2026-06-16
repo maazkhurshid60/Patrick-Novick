@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent, useRef } from "react";
-import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck, Pencil, Check, X } from "lucide-react";
+import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck, Pencil, Check, X, Download } from "lucide-react";
 
 interface Contact {
   id: number;
@@ -181,6 +181,12 @@ export default function ContactsClient() {
     setLoading(false);
   }
 
+  function triggerDownload(url: string) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.click();
+  }
+
   const activeCount = contacts.filter((c) => c.status === "active" || !c.status).length;
 
   return (
@@ -243,6 +249,37 @@ export default function ContactsClient() {
 
         {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
         {success && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>{success}</div>}
+
+        {/* Export downloads */}
+        <div style={cardStyle}>
+          <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Export Data</p>
+          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+            Download CSVs for use in outside systems or third-party tools.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => triggerDownload("/api/export/contacts?filter=all")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
+            >
+              <Download size={13} /> All Contacts
+            </button>
+            <button
+              onClick={() => triggerDownload("/api/export/suppression")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)", fontFamily: "var(--font-heading)" }}
+            >
+              <Download size={13} /> Suppression List
+            </button>
+            <button
+              onClick={() => triggerDownload("/api/export/contacts?filter=removed")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+              style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.15)", fontFamily: "var(--font-heading)" }}
+            >
+              <Download size={13} /> Removed / Opted Out
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Right: list */}

@@ -17,6 +17,7 @@ export interface SendEmailOptions {
   subject: string;
   htmlContent: string;
   recipients: Recipient[];
+  replyTo?: string;
 }
 
 export interface SendResult {
@@ -33,6 +34,7 @@ export async function sendCampaignEmail(
 ): Promise<SendResult> {
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
   const senderName = process.env.BREVO_SENDER_NAME ?? "Patrick Novick";
+  const replyToEmail = opts.replyTo ?? process.env.BREVO_REPLY_TO_EMAIL;
 
   if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL is not set");
 
@@ -40,12 +42,13 @@ export async function sendCampaignEmail(
   let lastMessageId: string | undefined;
   for (const recipient of opts.recipients) {
     const html = recipient.personalizedHtml ?? opts.htmlContent;
-    const payload = {
+    const payload: Record<string, unknown> = {
       sender: { email: senderEmail, name: senderName },
       to: [{ email: recipient.email, name: recipient.name ?? recipient.email }],
       subject: recipient.personalizedSubject ?? opts.subject,
       htmlContent: html,
     };
+    if (replyToEmail) payload.replyTo = { email: replyToEmail };
 
     const res = await fetch(`${BREVO_API_URL}/smtp/email`, {
       method: "POST",

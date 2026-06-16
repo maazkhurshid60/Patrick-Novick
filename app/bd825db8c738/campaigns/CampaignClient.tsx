@@ -61,6 +61,7 @@ export default function CampaignClient({
   const [dailyLimit, setDailyLimit] = useState(50);
   const [excludeRecent, setExcludeRecent] = useState(false);
   const [excludeDays, setExcludeDays] = useState(7);
+  const [replyTo, setReplyTo] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -130,6 +131,7 @@ export default function CampaignClient({
         listId: listId ?? null,
         dailyLimit,
         excludeRecentDays: excludeRecent ? excludeDays : null,
+        replyTo: replyTo.trim() || null,
       }),
     });
     const data = await res.json();
@@ -255,6 +257,20 @@ export default function CampaignClient({
                 </span>
               )}
             </label>
+          </div>
+
+          {/* Reply-to */}
+          <div>
+            <label style={labelStyle}>
+              Reply-to email <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — replies land here)</span>
+            </label>
+            <input
+              style={inputStyle}
+              type="email"
+              placeholder="patrick@patricknovick.com (default)"
+              value={replyTo}
+              onChange={(e) => setReplyTo(e.target.value)}
+            />
           </div>
 
           {/* Subject */}

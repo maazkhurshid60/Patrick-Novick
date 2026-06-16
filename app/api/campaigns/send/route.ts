@@ -59,12 +59,13 @@ function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number)
 
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { subject, body, listId, excludeRecentDays, dailyLimit } = await req.json() as {
+  const { subject, body, listId, excludeRecentDays, dailyLimit, replyTo } = await req.json() as {
     subject: string;
     body: string;
     listId?: number | null;
     excludeRecentDays?: number | null;
     dailyLimit?: number | null;
+    replyTo?: string | null;
   };
 
   if (!subject?.trim() || !body?.trim()) {
@@ -125,6 +126,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     result = await sendCampaignEmail({
       subject,
       htmlContent: body,
+      replyTo: replyTo ?? undefined,
       recipients: contacts.map((c) => {
         const personalizedText = personalize(body, c);
         const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId);
