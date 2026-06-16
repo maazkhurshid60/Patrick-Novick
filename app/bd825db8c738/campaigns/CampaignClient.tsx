@@ -10,6 +10,8 @@ interface Campaign {
   status: string;
   target_list: string | null;
   sent_at: number;
+  total_opens: number;
+  unique_opens: number;
 }
 
 interface ContactList {
@@ -311,6 +313,11 @@ export default function CampaignClient({
                     {c.status}
                   </span>
                   <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.recipient_count} sent</span>
+                  {Number(c.unique_opens) > 0 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+                      {c.unique_opens} opened
+                    </span>
+                  )}
                   {c.target_list && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>
                       {c.target_list}

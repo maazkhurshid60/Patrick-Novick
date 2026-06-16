@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, FormEvent, useRef } from "react";
-import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck } from "lucide-react";
+import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck, Pencil, Check, X } from "lucide-react";
 
 interface Contact {
   id: number;
   email: string;
   name: string;
   status: string;
+  tags: string;
+  campaigns_sent: number;
   created_at: number;
 }
 
@@ -39,12 +41,35 @@ export default function ContactsClient() {
   const [success, setSuccess] = useState("");
   const csvRef = useRef<HTMLInputElement>(null);
 
+  // Inline edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+
   async function fetchContacts() {
     const res = await fetch("/api/contacts");
     setContacts(await res.json());
   }
 
   useEffect(() => { fetchContacts(); }, []);
+
+  function startEdit(c: Contact) {
+    setEditingId(c.id);
+    setEditName(c.name);
+    setEditEmail(c.email);
+  }
+
+  async function handleSaveEdit(id: number) {
+    const res = await fetch("/api/contacts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name: editName, email: editEmail }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? "Update failed"); }
+    setEditingId(null);
+    fetchContacts();
+  }
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -77,7 +102,7 @@ export default function ContactsClient() {
     });
     const data = await res.json();
     if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Added ${data.added} contacts`); setBulk(""); fetchContacts(); }
+    else { setSuccess(`Added ${data.added} contacts${data.skipped ? `, skipped ${data.skipped} suppressed` : ""}`); setBulk(""); fetchContacts(); }
     setLoading(false);
   }
 
@@ -89,7 +114,6 @@ export default function ContactsClient() {
     const text = await file.text();
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
-    // Detect header row and find email/name column indexes
     const headers = lines[0].toLowerCase().split(",").map((h) => h.replace(/"/g, "").trim());
     const emailIdx = headers.findIndex((h) => h.includes("email"));
     const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("first") || h.includes("contact"));
@@ -123,7 +147,7 @@ export default function ContactsClient() {
     });
     const data = await res.json();
     if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Imported ${data.added} of ${entries.length} contacts from CSV`); fetchContacts(); }
+    else { setSuccess(`Imported ${data.added} of ${entries.length} contacts from CSV${data.skipped ? `, ${data.skipped} suppressed skipped` : ""}`); fetchContacts(); }
     setLoading(false);
     if (csvRef.current) csvRef.current.value = "";
   }
@@ -156,6 +180,8 @@ export default function ContactsClient() {
     fetchContacts();
     setLoading(false);
   }
+
+  const activeCount = contacts.filter((c) => c.status === "active" || !c.status).length;
 
   return (
     <div className="grid grid-cols-3 gap-5">
@@ -204,18 +230,9 @@ export default function ContactsClient() {
             <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
               Or upload a <strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv</strong> file with <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>email</code> and optional <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>name</code> columns
             </p>
-            <input
-              ref={csvRef}
-              type="file"
-              accept=".csv"
-              onChange={handleCsvUpload}
-              disabled={loading}
-              style={{ display: "none" }}
-            />
+            <input ref={csvRef} type="file" accept=".csv" onChange={handleCsvUpload} disabled={loading} style={{ display: "none" }} />
             <button
-              type="button"
-              disabled={loading}
-              onClick={() => csvRef.current?.click()}
+              type="button" disabled={loading} onClick={() => csvRef.current?.click()}
               className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
               style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
             >
@@ -234,7 +251,7 @@ export default function ContactsClient() {
           <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
           <div className="flex items-center gap-3">
             <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
-              {contacts.length} total
+              {activeCount} active / {contacts.length} total
             </span>
             <button
               onClick={handleValidate}
@@ -261,49 +278,116 @@ export default function ContactsClient() {
             {contacts.map((c, i) => (
               <div
                 key={c.id}
-                className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/2"
+                className="flex items-center justify-between px-6 py-3 transition-colors hover:bg-white/2"
                 style={{ borderBottom: i < contacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{
-                      background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
-                      color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)"
-                    }}>
-                    {(c.name || c.email)[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>{c.name || c.email}</p>
-                      {c.status === "unsubscribed" && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsubscribed</span>
-                      )}
-                      {c.status === "invalid" && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>
-                      )}
-                    </div>
-                    {c.name && <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {c.status !== "invalid" && (
+                {editingId === c.id ? (
+                  /* ── Inline edit mode ── */
+                  <div className="flex items-center gap-2 flex-1 mr-2">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
+                    />
+                    <input
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Email"
+                      type="email"
+                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
+                    />
                     <button
-                      onClick={() => handleToggleStatus(c.id, c.status)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                      style={{ color: "rgba(255,255,255,0.2)" }}
-                      title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
+                      onClick={() => handleSaveEdit(c.id)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-green-500/10"
+                      style={{ color: "#4ade80" }}
+                      title="Save"
                     >
-                      {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
+                      <Check size={13} />
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(c.id)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
-                    style={{ color: "rgba(255,255,255,0.2)" }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                      style={{ color: "rgba(255,255,255,0.3)" }}
+                      title="Cancel"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  /* ── Normal display mode ── */
+                  <>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{
+                          background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
+                          color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)",
+                        }}
+                      >
+                        {(c.name || c.email)[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-medium truncate" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>
+                            {c.name || c.email}
+                          </p>
+                          {/* Status badges */}
+                          {c.status === "unsubscribed" && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsub</span>
+                          )}
+                          {c.status === "invalid" && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>
+                          )}
+                          {/* Test seed badge */}
+                          {c.tags?.includes("test_seed") && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>
+                          )}
+                          {/* Sent badge */}
+                          {Number(c.campaigns_sent) > 0 && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>
+                              sent ×{c.campaigns_sent}
+                            </span>
+                          )}
+                        </div>
+                        {c.name && (
+                          <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {/* Edit button */}
+                      <button
+                        onClick={() => startEdit(c)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                        style={{ color: "rgba(255,255,255,0.2)" }}
+                        title="Edit name / email"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      {/* Subscribe / Unsubscribe toggle */}
+                      {c.status !== "invalid" && (
+                        <button
+                          onClick={() => handleToggleStatus(c.id, c.status)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
+                          style={{ color: "rgba(255,255,255,0.2)" }}
+                          title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
+                        >
+                          {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
+                        </button>
+                      )}
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
+                        style={{ color: "rgba(255,255,255,0.2)" }}
+                        title="Delete and suppress"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

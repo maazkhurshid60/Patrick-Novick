@@ -61,10 +61,26 @@ db.batch([
     reason     TEXT NOT NULL DEFAULT 'unsubscribed',
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
-], "write").catch(console.error);
-
-// Safely add new columns to existing tables (no-op if already exist)
-db.execute("ALTER TABLE contacts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {});
-db.execute("ALTER TABLE campaigns ADD COLUMN target_list TEXT").catch(() => {});
+  `CREATE TABLE IF NOT EXISTS email_opens (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL,
+    email       TEXT NOT NULL,
+    opened_at   INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+], "write")
+  .catch(console.error)
+  .then(() => Promise.all([
+    db.execute("ALTER TABLE contacts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}),
+    db.execute("ALTER TABLE campaigns ADD COLUMN target_list TEXT").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN tags TEXT NOT NULL DEFAULT ''").catch(() => {}),
+  ]))
+  .then(() => db.batch([
+    // Seed test recipients — upsert so re-runs are safe
+    { sql: "INSERT OR IGNORE INTO contacts (email, name) VALUES ('fiveer840@gmail.com', 'TEST SEED - Patrick')", args: [] },
+    { sql: "INSERT OR IGNORE INTO contacts (email, name) VALUES ('news@patricknovick.com', 'TEST SEED - Sender')", args: [] },
+    { sql: "UPDATE contacts SET name = 'TEST SEED - Patrick', tags = 'test_seed' WHERE email = 'fiveer840@gmail.com'", args: [] },
+    { sql: "UPDATE contacts SET name = 'TEST SEED - Sender', tags = 'test_seed' WHERE email = 'news@patricknovick.com'", args: [] },
+  ], "write"))
+  .catch(console.error);
 
 export default db;

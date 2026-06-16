@@ -20,9 +20,12 @@ function personalize(template: string, contact: ContactRow): string {
     .replace(/\{\{email\}\}/gi, contact.email as string);
 }
 
-function wrapInHtmlTemplate(bodyText: string, email: string): string {
+function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number): string {
   const formattedBody = bodyText.trim().replace(/\n/g, "<br />");
   const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
+  // base64-encode email for tracking pixel — decoded server-side on open
+  const eid = encodeURIComponent(Buffer.from(email.toLowerCase()).toString("base64"));
+  const trackingPixel = `https://patricknovick.com/api/track/open?cid=${campaignId}&eid=${eid}`;
 
   return `<!DOCTYPE html>
 <html>
@@ -49,6 +52,7 @@ function wrapInHtmlTemplate(bodyText: string, email: string): string {
       </td>
     </tr>
   </table>
+  <img src="${trackingPixel}" width="1" height="1" style="display:none;width:1px;height:1px;position:absolute;opacity:0;" alt="" />
 </body>
 </html>`.trim();
 }
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
   }
 
-  // Build query based on targeting
+  // Build targeting query
   let sql: string;
   const args: (string | number)[] = [];
 
@@ -101,21 +105,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "No eligible contacts to send to" }, { status: 400 });
   }
 
-  // Get list name for logging
+  // Resolve list name for logging
   let targetListName: string | null = null;
   if (listId) {
     const listResult = await db.execute({ sql: "SELECT name FROM contact_lists WHERE id = ?", args: [listId] });
     targetListName = (listResult.rows[0]?.name as string) ?? null;
   }
 
+  // Create campaign record FIRST to get ID for tracking pixel
+  const campaignInsert = await db.execute({
+    sql: `INSERT INTO campaigns (subject, body, recipient_count, status, target_list, sent_at)
+          VALUES (?, ?, 0, 'sending', ?, unixepoch())`,
+    args: [subject, body, targetListName],
+  });
+  const campaignId = Number(campaignInsert.lastInsertRowid);
+
   let result;
   try {
     result = await sendCampaignEmail({
       subject,
-      htmlContent: body, // Fallback
+      htmlContent: body,
       recipients: contacts.map((c) => {
         const personalizedText = personalize(body, c);
-        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string);
+        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId);
         return {
           email: c.email as string,
           name: (c.name as string) || undefined,
@@ -125,36 +137,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }),
     });
   } catch (err) {
+    await db.execute({ sql: "UPDATE campaigns SET status = 'failed' WHERE id = ?", args: [campaignId] });
     const message = err instanceof Error ? err.message : "Send failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // Log campaign
-  const campaignResult = await db.execute({
-    sql: `INSERT INTO campaigns (subject, body, recipient_count, status, brevo_msg_id, target_list, sent_at)
-          VALUES (?, ?, ?, 'sent', ?, ?, unixepoch())`,
-    args: [subject, body, contacts.length, result.messageId ?? null, targetListName],
+  // Mark campaign sent with final recipient count
+  await db.execute({
+    sql: "UPDATE campaigns SET status = 'sent', recipient_count = ?, brevo_msg_id = ? WHERE id = ?",
+    args: [contacts.length, result.messageId ?? null, campaignId],
   });
-  const campaignId = Number(campaignResult.lastInsertRowid);
 
-  // Track recipients so future sends can exclude them
-  if (contacts.length > 0) {
-    await db.batch(
-      contacts.map((c) => ({
-        sql: "INSERT OR IGNORE INTO campaign_recipients (campaign_id, email) VALUES (?, ?)",
-        args: [campaignId, c.email as string],
-      })),
-      "write"
-    );
-  }
+  // Track recipients for future exclude-recent logic
+  await db.batch(
+    contacts.map((c) => ({
+      sql: "INSERT OR IGNORE INTO campaign_recipients (campaign_id, email) VALUES (?, ?)",
+      args: [campaignId, c.email as string],
+    })),
+    "write"
+  );
 
-  return NextResponse.json({ success: true, recipients: contacts.length, messageId: result.messageId });
+  return NextResponse.json({ success: true, recipients: contacts.length, campaignId, messageId: result.messageId });
 }
 
-// GET /api/campaigns/send — list campaign history
+// GET /api/campaigns/send — campaign history with open counts
 export async function GET(): Promise<NextResponse> {
-  const result = await db.execute(
-    "SELECT id, subject, recipient_count, status, target_list, sent_at FROM campaigns ORDER BY sent_at DESC LIMIT 50"
-  );
+  const result = await db.execute(`
+    SELECT c.id, c.subject, c.recipient_count, c.status, c.target_list, c.sent_at,
+           (SELECT COUNT(*) FROM email_opens WHERE campaign_id = c.id) AS total_opens,
+           (SELECT COUNT(DISTINCT email) FROM email_opens WHERE campaign_id = c.id) AS unique_opens
+    FROM campaigns c
+    ORDER BY c.sent_at DESC
+    LIMIT 50
+  `);
   return NextResponse.json(result.rows);
 }
