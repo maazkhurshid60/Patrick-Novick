@@ -41,7 +41,7 @@ function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number)
       </td>
     </tr>
     <tr>
-      <td style="padding:80px 30px 0 30px;">&nbsp;</td>
+      <td style="height:400px;font-size:0;line-height:0;">&nbsp;</td>
     </tr>
     <tr>
       <td style="padding:30px;border-top:1px solid #eeeeee;text-align:center;">
