@@ -5,7 +5,11 @@ import db from "@/lib/db";
 export async function GET(): Promise<NextResponse> {
   const result = await db.execute(`
     SELECT c.*,
-      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent
+      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent,
+      (SELECT GROUP_CONCAT(cl.name, ', ')
+       FROM contact_list_members clm
+       JOIN contact_lists cl ON clm.list_id = cl.id
+       WHERE clm.contact_id = c.id) AS lists
     FROM contacts c
     ORDER BY c.created_at DESC
   `);

@@ -11,6 +11,7 @@ interface Contact {
   tags: string;
   campaigns_sent: number;
   created_at: number;
+  lists?: string | null;
 }
 
 const cardStyle = {
@@ -384,6 +385,12 @@ export default function ContactsClient() {
                           {Number(c.campaigns_sent) > 0 && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>
                               sent ×{c.campaigns_sent}
+                            </span>
+                          )}
+                          {/* Lists badge */}
+                          {c.lists && (
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>
+                              lists: {c.lists}
                             </span>
                           )}
                         </div>
