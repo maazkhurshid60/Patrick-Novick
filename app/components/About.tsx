@@ -62,7 +62,7 @@ const expertise = [
 ];
 
 const quickStats = [
-  { value: 20, suffix: "+", label: "Years" },
+  { value: 35, suffix: "+", label: "Years" },
   { value: 500, suffix: "+", label: "Placements" },
   { value: 6, suffix: "", label: "Verticals" },
 ];
@@ -112,7 +112,7 @@ export default function About() {
               className="text-base leading-relaxed mb-5"
               style={{ color: "var(--color-gray)" }}
             >
-              With over 20 years of recruiting experience, Patrick Novick
+              With over 35 years of recruiting experience, Patrick Novick
               possesses an exceptional level of expertise in professional talent
               acquisition. His ability to connect the right people with the
               right roles is almost unmatched in the industry.
@@ -164,7 +164,7 @@ export default function About() {
               {[
                 { label: "Name", value: "Patrick Novick" },
                 { label: "Specialty", value: "Technical Recruiting" },
-                { label: "Experience", value: "20+ Years" },
+                { label: "Experience", value: "35+ Years" },
                 { label: "Focus", value: "Fortune 100/500" },
               ].map((item) => (
                 <div key={item.label}>

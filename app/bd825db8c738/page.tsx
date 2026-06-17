@@ -15,10 +15,10 @@ function formatDate(unix: number) {
 export default async function AdminPage() {
   const [contactRes, campaignRes, templateRes, recentRes, sumRes] = await Promise.all([
     db.execute("SELECT COUNT(*) as count FROM contacts"),
-    db.execute("SELECT COUNT(*) as count FROM campaigns"),
+    db.execute("SELECT COUNT(*) as count FROM campaigns WHERE status = 'sent' AND recipient_count > 0"),
     db.execute("SELECT COUNT(*) as count FROM email_templates"),
-    db.execute("SELECT id, subject, recipient_count, status, sent_at FROM campaigns ORDER BY sent_at DESC LIMIT 8"),
-    db.execute("SELECT SUM(recipient_count) as s FROM campaigns"),
+    db.execute("SELECT id, subject, recipient_count, status, sent_at FROM campaigns WHERE status = 'sent' AND recipient_count > 0 ORDER BY sent_at DESC LIMIT 8"),
+    db.execute("SELECT SUM(recipient_count) as s FROM campaigns WHERE status = 'sent' AND recipient_count > 0"),
   ]);
 
   const contactCount = Number(contactRes.rows[0]?.count ?? 0);

@@ -24,6 +24,51 @@ export interface SendResult {
   messageId?: string;
 }
 
+export interface BrevoStats {
+  range: string;
+  requests: number;
+  delivered: number;
+  hardBounces: number;
+  softBounces: number;
+  clicks: number;
+  uniqueClicks: number;
+  opens: number;
+  uniqueOpens: number;
+  spamReports: number;
+  blocked: number;
+  invalid: number;
+  unsubscribed: number;
+}
+
+/**
+ * Fetches Brevo's aggregated transactional-email deliverability report
+ * for the last `days` days. Returns zeros if Brevo can't be reached so the
+ * dashboard still renders.
+ */
+export async function getBrevoStats(days = 30): Promise<BrevoStats> {
+  const empty: BrevoStats = {
+    range: `last ${days} days`,
+    requests: 0, delivered: 0, hardBounces: 0, softBounces: 0,
+    clicks: 0, uniqueClicks: 0, opens: 0, uniqueOpens: 0,
+    spamReports: 0, blocked: 0, invalid: 0, unsubscribed: 0,
+  };
+
+  try {
+    const res = await fetch(
+      `${BREVO_API_URL}/smtp/statistics/aggregatedReport?days=${days}`,
+      {
+        headers: { "api-key": getApiKey(), Accept: "application/json" },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return empty;
+    const data = (await res.json()) as Partial<BrevoStats>;
+    return { ...empty, ...data, range: `last ${days} days` };
+  } catch {
+    return empty;
+  }
+}
+
 
 /**
  * Sends a transactional email to multiple recipients via Brevo API.

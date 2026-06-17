@@ -252,7 +252,7 @@ export default function Metro() {
                 What Patrick Brings to Metro
               </h3>
               <p className="text-sm leading-relaxed mb-6" style={{ color: "rgba(255,255,255,0.5)" }}>
-                Patrick&apos;s 20+ years recruiting for government &amp; defense
+                Patrick&apos;s 35+ years recruiting for government &amp; defense
                 unlocks opportunities within Metro&apos;s network that other
                 recruiters simply can&apos;t access.
               </p>

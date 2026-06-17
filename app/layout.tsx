@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://patricknovick.com"),
   title: "Patrick Novick — Professional Recruiter",
   description:
-    "Patrick Novick is an elite professional recruiter with 20+ years of experience placing talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
+    "Patrick Novick is an elite professional recruiter with 35+ years of experience placing talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
   keywords: [
     "recruiter",
     "professional recruiter",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     url: "https://patricknovick.com",
     title: "Patrick Novick — Professional Recruiter",
     description:
-      "20+ years placing top talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
+      "35+ years placing top talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
     siteName: "Patrick Novick",
     images: [{ url: "/cropped-ChatGPT-Image-Mar-14-2026-12_48_02-PM.webp", width: 1200, height: 630, alt: "Patrick Novick" }],
   },
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Patrick Novick — Professional Recruiter",
     description:
-      "20+ years placing top talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
+      "35+ years placing top talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
   },
   alternates: {
     canonical: "https://patricknovick.com",

@@ -25,7 +25,7 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
 }
 
 const stats = [
-  { value: 20, suffix: "+", label: "Years of Experience" },
+  { value: 35, suffix: "+", label: "Years of Experience" },
   { value: 500, suffix: "+", label: "Successful Placements" },
   { value: 100, suffix: "%", label: "Fortune Sector Focus" },
   { value: 8, suffix: "", label: "Metro Markets" },

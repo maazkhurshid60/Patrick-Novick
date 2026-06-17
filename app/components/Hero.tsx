@@ -101,7 +101,7 @@ export default function Hero() {
               className="mt-6 text-lg leading-relaxed max-w-lg"
               style={{ color: "var(--color-gray)" }}
             >
-              20+ years connecting elite talent with Fortune 100/500 companies
+              35+ years connecting elite talent with Fortune 100/500 companies
               across government, defense &amp; commercial sectors. Expertise in
               technical, cleared, and executive placements.
             </motion.p>
@@ -216,7 +216,7 @@ export default function Hero() {
                   className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-black"
                   style={{ background: "var(--color-red)" }}
                 >
-                  20+
+                  35+
                 </div>
                 <div>
                   <div className="text-xs font-semibold" style={{ color: "var(--color-dark)" }}>

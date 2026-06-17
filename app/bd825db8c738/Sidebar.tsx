@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ExternalLink, BarChart2, Mail, Users, Layout, List } from "lucide-react";
+import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity } from "lucide-react";
 
 const BASE = "/bd825db8c738";
 
 const navItems = [
   { label: "Dashboard",       icon: BarChart2, href: BASE,                key: "dashboard" },
+  { label: "Analytics",       icon: Activity,  href: `${BASE}/analytics`, key: "analytics" },
   { label: "Contacts",        icon: Users,     href: `${BASE}/contacts`,  key: "contacts" },
   { label: "Lists",           icon: List,      href: `${BASE}/lists`,     key: "lists" },
   { label: "Email Campaigns", icon: Mail,      href: `${BASE}/campaigns`, key: "campaigns" },
