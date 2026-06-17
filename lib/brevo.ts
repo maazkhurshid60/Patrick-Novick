@@ -34,7 +34,7 @@ export async function sendCampaignEmail(
 ): Promise<SendResult> {
   const senderEmail = process.env.BREVO_SENDER_EMAIL;
   const senderName = process.env.BREVO_SENDER_NAME ?? "Patrick Novick";
-  const replyToEmail = opts.replyTo ?? process.env.BREVO_REPLY_TO_EMAIL;
+  const replyToEmail = opts.replyTo ?? process.env.BREVO_REPLY_TO_EMAIL ?? "patrick@metroassoc.com";
 
   if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL is not set");
 

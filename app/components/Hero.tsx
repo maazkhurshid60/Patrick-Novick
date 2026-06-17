@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { ArrowRight, Download, Briefcase } from "lucide-react";
+import { ArrowRight, Briefcase } from "lucide-react";
 
 const SocialIcons = {
   LinkedIn: () => (
@@ -123,18 +123,6 @@ export default function Hero() {
               >
                 Learn More
                 <ArrowRight size={15} />
-              </a>
-              <a
-                href="#contact"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm border-2 transition-all duration-200 hover:scale-105"
-                style={{
-                  borderColor: "var(--color-dark)",
-                  color: "var(--color-dark)",
-                  fontFamily: "var(--font-heading)",
-                }}
-              >
-                <Download size={15} />
-                Download CV
               </a>
               <a
                 href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df"
