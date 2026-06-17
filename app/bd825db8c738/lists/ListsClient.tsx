@@ -15,6 +15,8 @@ interface Contact {
   email: string;
   name: string;
   status: string;
+  lists?: string | null;
+  campaigns_sent?: number;
 }
 
 const inputStyle = {
@@ -271,13 +273,30 @@ export default function ListsClient() {
                             <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                               <div className="overflow-hidden">
                                 <p className="text-xs font-medium text-white truncate">{c.name || c.email}</p>
-                                {c.name && <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
+                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                  {c.name && <span className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</span>}
+                                  {Number(c.campaigns_sent) > 0 && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.15)" }}>
+                                      sent ×{c.campaigns_sent}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              {isAlreadyMember && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
-                                  already in list
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isAlreadyMember ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
+                                    already in list
+                                  </span>
+                                ) : c.lists ? (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }} title={`Member of: ${c.lists}`}>
+                                    in: {c.lists}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.2)" }}>
+                                    no lists
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );

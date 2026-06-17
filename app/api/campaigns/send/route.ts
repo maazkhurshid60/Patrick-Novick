@@ -59,17 +59,47 @@ function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number)
 
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { subject, body, listId, excludeRecentDays, dailyLimit, replyTo } = await req.json() as {
+  const { subject, body, listId, excludeRecentDays, dailyLimit, replyTo, isTestSend, testEmail } = await req.json() as {
     subject: string;
     body: string;
     listId?: number | null;
     excludeRecentDays?: number | null;
     dailyLimit?: number | null;
     replyTo?: string | null;
+    isTestSend?: boolean;
+    testEmail?: string | null;
   };
 
   if (!subject?.trim() || !body?.trim()) {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
+  }
+
+  // Handle Test Send logic (does not write to campaigns logs)
+  if (isTestSend) {
+    if (!testEmail?.trim()) {
+      return NextResponse.json({ error: "Test email address is required" }, { status: 400 });
+    }
+    try {
+      const testContact = { id: 0, email: testEmail.trim(), name: "Test Recipient" };
+      const personalizedBody = personalize(body, testContact);
+      const personalizedSubject = `[TEST] ${personalize(subject, testContact)}`;
+      const wrappedHtml = wrapInHtmlTemplate(personalizedBody, testEmail.trim(), 0);
+
+      const result = await sendCampaignEmail({
+        subject: personalizedSubject,
+        htmlContent: wrappedHtml,
+        replyTo: replyTo ?? undefined,
+        recipients: [{
+          email: testEmail.trim(),
+          name: "Test Recipient",
+          personalizedHtml: wrappedHtml
+        }]
+      });
+      return NextResponse.json({ success: true, isTest: true, recipients: 1, messageId: result.messageId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Test send failed";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   }
 
   // Build targeting query
@@ -173,4 +203,21 @@ export async function GET(): Promise<NextResponse> {
     LIMIT 50
   `);
   return NextResponse.json(result.rows);
+}
+
+// DELETE /api/campaigns/send — delete campaign record
+export async function DELETE(req: NextRequest): Promise<NextResponse> {
+  try {
+    const { id } = await req.json() as { id: number };
+    if (!id) {
+      return NextResponse.json({ error: "Campaign ID is required" }, { status: 400 });
+    }
+    await db.execute({ sql: "DELETE FROM campaigns WHERE id = ?", args: [id] });
+    await db.execute({ sql: "DELETE FROM campaign_recipients WHERE campaign_id = ?", args: [id] });
+    await db.execute({ sql: "DELETE FROM email_opens WHERE campaign_id = ?", args: [id] });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to delete campaign";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }

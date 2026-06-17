@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { Send, Clock, ChevronDown, Users } from "lucide-react";
+import { Send, Clock, ChevronDown, Users, Trash2 } from "lucide-react";
 
 interface Campaign {
   id: number;
@@ -62,10 +62,27 @@ export default function CampaignClient({
   const [excludeRecent, setExcludeRecent] = useState(false);
   const [excludeDays, setExcludeDays] = useState(7);
   const [replyTo, setReplyTo] = useState("");
+  const [isTestSend, setIsTestSend] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [history, setHistory] = useState<Campaign[]>([]);
+
+  async function handleDeleteCampaign(id: number) {
+    if (!confirm("Delete this campaign record from history?")) return;
+    const res = await fetch("/api/campaigns/send", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) {
+      fetchHistory();
+    } else {
+      const data = await res.json();
+      setError(data.error ?? "Delete failed");
+    }
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -118,8 +135,13 @@ export default function CampaignClient({
     e.preventDefault();
     setError(""); setSuccess("");
     if (!subject.trim() || !body.trim()) { setError("Subject and body are required"); return; }
-    if (recipientCount === 0) { setError("No contacts in selected list"); return; }
-    if (!confirm(`Send to up to ${sendCount} contacts?`)) return;
+    if (isTestSend && !testEmail.trim()) { setError("Test email is required"); return; }
+    if (!isTestSend && recipientCount === 0) { setError("No contacts in selected list"); return; }
+    
+    const confirmMsg = isTestSend 
+      ? `Send test email to ${testEmail.trim()}?` 
+      : `Send to up to ${sendCount} contacts?`;
+    if (!confirm(confirmMsg)) return;
 
     setLoading(true);
     const res = await fetch("/api/campaigns/send", {
@@ -132,14 +154,18 @@ export default function CampaignClient({
         dailyLimit,
         excludeRecentDays: excludeRecent ? excludeDays : null,
         replyTo: replyTo.trim() || null,
+        isTestSend,
+        testEmail: isTestSend ? testEmail.trim() : null,
       }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Send failed"); }
     else {
-      setSuccess(`Sent to ${data.recipients} recipients`);
-      setSubject(""); setBody("");
-      fetchHistory();
+      setSuccess(isTestSend ? `Test email sent to ${testEmail.trim()}` : `Sent to ${data.recipients} recipients`);
+      if (!isTestSend) {
+        setSubject(""); setBody("");
+        fetchHistory();
+      }
     }
     setLoading(false);
   }
@@ -273,6 +299,40 @@ export default function CampaignClient({
             />
           </div>
 
+          {/* Test send toggle */}
+          <div className="flex flex-col gap-2.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isTestSend}
+                onChange={(e) => {
+                  setIsTestSend(e.target.checked);
+                  if (e.target.checked && !testEmail) {
+                    setTestEmail("patrick@metroassoc.com");
+                  }
+                }}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-white">Enable Test Send</span>
+                <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Does not write log entry to sent history</span>
+              </div>
+            </label>
+            {isTestSend && (
+              <div className="mt-1 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                <label style={{ ...labelStyle, marginBottom: "0.25rem" }}>Test Email Address</label>
+                <input
+                  style={inputStyle}
+                  type="email"
+                  placeholder="e.g. patrick@metroassoc.com"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  required={isTestSend}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Subject */}
           <div>
             <label style={labelStyle}>Subject</label>
@@ -294,12 +354,12 @@ export default function CampaignClient({
           </div>
 
           <button
-            type="submit" disabled={loading || recipientCount === 0}
+            type="submit" disabled={loading || (!isTestSend && recipientCount === 0)}
             className="self-start flex items-center gap-2 px-7 py-3 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
           >
             <Send size={14} />
-            {loading ? "Sending…" : `Send to ${sendCount} contacts`}
+            {loading ? "Sending…" : isTestSend ? "Send Test Email" : `Send to ${sendCount} contacts`}
           </button>
         </form>
       </div>
@@ -320,27 +380,38 @@ export default function CampaignClient({
             {history.map((c, i) => (
               <div
                 key={c.id}
-                className="px-5 py-4"
+                className="px-5 py-4 relative group"
                 style={{ borderBottom: i < history.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
               >
-                <p className="text-sm font-semibold text-white mb-1.5 truncate">{c.subject}</p>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>
-                    {c.status}
-                  </span>
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.recipient_count} sent</span>
-                  {Number(c.unique_opens) > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
-                      {c.unique_opens} opened
-                    </span>
-                  )}
-                  {c.target_list && (
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>
-                      {c.target_list}
-                    </span>
-                  )}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-white mb-1.5 truncate">{c.subject}</p>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: c.status === "failed" ? "rgba(230,57,70,0.12)" : "rgba(74,222,128,0.1)", color: c.status === "failed" ? "#f87171" : "#4ade80" }}>
+                        {c.status}
+                      </span>
+                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.recipient_count} sent</span>
+                      {Number(c.unique_opens) > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+                          {c.unique_opens} opened
+                        </span>
+                      )}
+                      {c.target_list && (
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>
+                          {c.target_list}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>{formatDate(c.sent_at)}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteCampaign(c.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 shrink-0"
+                    title="Delete campaign log"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>{formatDate(c.sent_at)}</p>
               </div>
             ))}
           </div>
