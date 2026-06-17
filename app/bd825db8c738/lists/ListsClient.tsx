@@ -122,7 +122,6 @@ export default function ListsClient() {
   }
 
   const memberIds = new Set(members.map((m) => m.id));
-  const nonMembers = allContacts.filter((c) => !memberIds.has(c.id));
 
   return (
     <div className="grid grid-cols-3 gap-5">
@@ -236,27 +235,53 @@ export default function ListsClient() {
                   <p className="text-xs font-semibold text-white">Select contacts to add</p>
                   <button onClick={() => setShowAddPanel(false)} style={{ color: "rgba(255,255,255,0.3)" }}><X size={14} /></button>
                 </div>
-                {nonMembers.length === 0 ? (
-                  <p className="text-xs py-2" style={{ color: "rgba(255,255,255,0.3)" }}>All contacts are already in this list.</p>
+                {allContacts.length === 0 ? (
+                  <p className="text-xs py-2" style={{ color: "rgba(255,255,255,0.3)" }}>No contacts found.</p>
                 ) : (
                   <>
                     <div className="max-h-48 overflow-y-auto flex flex-col gap-1 mb-3">
-                      {nonMembers.map((c) => (
-                        <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer transition-colors hover:bg-white/[0.03]">
-                          <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${selectedIds.has(c.id) ? "border-red-400 bg-red-500/20" : "border-white/20"}`}
+                      {allContacts.map((c) => {
+                        const isAlreadyMember = memberIds.has(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${
+                              isAlreadyMember
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer hover:bg-white/[0.03]"
+                            }`}
                             onClick={() => {
+                              if (isAlreadyMember) return;
                               const next = new Set(selectedIds);
                               if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
                               setSelectedIds(next);
-                            }}>
-                            {selectedIds.has(c.id) && <Check size={10} style={{ color: "#f87171" }} />}
+                            }}
+                          >
+                            <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-colors ${
+                              isAlreadyMember
+                                ? "border-white/10 bg-white/5"
+                                : selectedIds.has(c.id)
+                                ? "border-red-400 bg-red-500/20"
+                                : "border-white/20"
+                            }`}>
+                              {(isAlreadyMember || selectedIds.has(c.id)) && (
+                                <Check size={10} style={{ color: isAlreadyMember ? "rgba(255,255,255,0.3)" : "#f87171" }} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                              <div className="overflow-hidden">
+                                <p className="text-xs font-medium text-white truncate">{c.name || c.email}</p>
+                                {c.name && <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
+                              </div>
+                              {isAlreadyMember && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
+                                  already in list
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="overflow-hidden">
-                            <p className="text-xs font-medium text-white truncate">{c.name || c.email}</p>
-                            {c.name && <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
-                          </div>
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                     <button
                       disabled={selectedIds.size === 0 || loading}

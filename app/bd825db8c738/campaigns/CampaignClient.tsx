@@ -267,7 +267,7 @@ export default function CampaignClient({
             <input
               style={inputStyle}
               type="email"
-              placeholder="patrick@patricknovick.com (default)"
+              placeholder="patrick@metroassoc.com (default)"
               value={replyTo}
               onChange={(e) => setReplyTo(e.target.value)}
             />
