@@ -31,3 +31,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   ], "write");
   return NextResponse.json({ success: true });
 }
+
+// PATCH /api/unsubscribe — update unsubscribe reason / feedback
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  try {
+    const { email, reason } = await req.json() as { email?: string; reason?: string };
+    const cleanEmail = (email ?? "").trim().toLowerCase();
+    const cleanReason = (reason ?? "").trim();
+    if (!cleanEmail || !cleanReason) {
+      return NextResponse.json({ error: "Email and reason are required" }, { status: 400 });
+    }
+
+    await db.execute({
+      sql: "UPDATE suppression_list SET reason = ? WHERE LOWER(email) = ?",
+      args: [cleanReason, cleanEmail],
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to update reason";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

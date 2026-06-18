@@ -6,12 +6,26 @@ import { motion } from "framer-motion";
 import { Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+const FEEDBACK_OPTIONS = [
+  "I no longer want to receive these emails",
+  "I never signed up for this mailing list",
+  "The emails are inappropriate",
+  "The emails are spam and should be reported",
+  "Other (fill in reason below)",
+];
+
 export default function UnsubscribeForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  // Feedback states
+  const [feedbackSelected, setFeedbackSelected] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
@@ -51,6 +65,40 @@ export default function UnsubscribeForm() {
     }
   };
 
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let finalReason = feedbackSelected;
+    if (feedbackSelected.startsWith("Other")) {
+      if (!feedbackText.trim()) {
+        setError("Please fill in your reason in the text box.");
+        return;
+      }
+      finalReason = `Other: ${feedbackText.trim()}`;
+    }
+
+    setFeedbackLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/unsubscribe", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, reason: finalReason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit feedback.");
+      }
+
+      setFeedbackSubmitted(true);
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred. Please try again.");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-md w-full mx-auto px-4">
       <motion.div
@@ -59,29 +107,164 @@ export default function UnsubscribeForm() {
         transition={{ duration: 0.5 }}
         className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100"
       >
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-5 h-5 text-red-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Unsubscribe</h1>
-          <p className="text-sm text-gray-500 mt-2">
-            We are sorry to see you go. Enter your email address below to unsubscribe from our newsletter and updates.
-          </p>
-        </div>
+        {/* Normal Unsubscribe Flow */}
+        {!success && (
+          <>
+            <div className="text-center mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-5 h-5 text-red-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Unsubscribe</h1>
+              <p className="text-sm text-gray-500 mt-2">
+                We are sorry to see you go. Enter your email address below to unsubscribe from our newsletter and updates.
+              </p>
+            </div>
 
-        {success ? (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex items-start gap-2.5"
+                >
+                  <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              <div>
+                <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none text-sm transition-all text-gray-800 bg-gray-50/50"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70 disabled:hover:scale-100 bg-red-500 hover:bg-red-600 cursor-pointer"
+                style={{
+                  boxShadow: "0 4px 14px rgba(230, 57, 70, 0.2)",
+                }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Unsubscribe"
+                )}
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* Unsubscribe Success Feedback Questionnaire Form */}
+        {success && !feedbackSubmitted && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col text-left"
+          >
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Unsubscribe Successful</h1>
+            <p className="text-sm text-gray-600 mb-2">You will no longer receive email marketing from this list.</p>
+            <p className="text-sm text-gray-900 font-bold mb-4">If you have a moment, please let us know why you unsubscribed:</p>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-100 text-xs text-red-600 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+              <div className="flex flex-col gap-2.5">
+                {FEEDBACK_OPTIONS.map((opt) => (
+                  <label key={opt} className="flex items-start gap-3 text-sm text-gray-600 cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="feedbackReason"
+                      value={opt}
+                      checked={feedbackSelected === opt}
+                      onChange={(e) => {
+                        setFeedbackSelected(e.target.value);
+                        setError("");
+                      }}
+                      className="w-4 h-4 text-red-500 accent-red-500 shrink-0 mt-0.5"
+                    />
+                    <span>{opt}</span>
+                  </label>
+                ))}
+              </div>
+
+              {feedbackSelected.startsWith("Other") && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="pt-2"
+                >
+                  <textarea
+                    required
+                    value={feedbackText}
+                    onChange={(e) => setFeedbackText(e.target.value)}
+                    placeholder="Please tell us your reason..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none text-xs transition-all text-gray-800 bg-gray-50/50 resize-y min-h-[70px]"
+                  />
+                </motion.div>
+              )}
+
+              <button
+                type="submit"
+                disabled={feedbackLoading || !feedbackSelected}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-xs text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:hover:scale-100 bg-red-500 hover:bg-red-600 cursor-pointer mt-4"
+                style={{
+                  boxShadow: "0 4px 12px rgba(230, 57, 70, 0.15)",
+                }}
+              >
+                {feedbackLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit"
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 border-t border-gray-100 pt-4">
+              <Link
+                href="/"
+                className="text-xs text-blue-500 hover:text-blue-600 hover:underline transition-all"
+              >
+                &laquo; return to our website
+              </Link>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Feedback Success Screen */}
+        {success && feedbackSubmitted && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center py-4"
+            className="text-center py-6"
           >
             <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Successfully Unsubscribed</h2>
+            <h2 className="text-xl font-bold text-gray-900">Thank You for Your Feedback!</h2>
             <p className="text-sm text-gray-500 mt-2">
-              Your email <strong className="text-gray-900">{email}</strong> has been successfully unsubscribed from all email campaigns.
+              Your response has been saved to help us improve our communications.
             </p>
             <div className="mt-8">
               <Link
@@ -89,56 +272,10 @@ export default function UnsubscribeForm() {
                 className="inline-flex items-center gap-2 text-sm font-semibold text-red-500 hover:text-red-600 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to homepage
+                Return to homepage
               </Link>
             </div>
           </motion.div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 rounded-xl bg-red-50 border border-red-100 text-sm text-red-600 flex items-start gap-2.5"
-              >
-                <AlertCircle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
-                <span>{error}</span>
-              </motion.div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none text-sm transition-all text-gray-800 bg-gray-50/50"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-70 disabled:hover:scale-100 bg-red-500 hover:bg-red-600 cursor-pointer"
-              style={{
-                boxShadow: "0 4px 14px rgba(230, 57, 70, 0.2)",
-              }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Unsubscribe"
-              )}
-            </button>
-          </form>
         )}
       </motion.div>
     </div>
