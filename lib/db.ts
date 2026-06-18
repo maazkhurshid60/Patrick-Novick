@@ -21,6 +21,8 @@ db.batch([
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     email      TEXT NOT NULL UNIQUE,
     name       TEXT NOT NULL DEFAULT '',
+    title      TEXT NOT NULL DEFAULT '',
+    company    TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
   `CREATE TABLE IF NOT EXISTS email_templates (
@@ -73,13 +75,15 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN status TEXT NOT NULL DEFAULT 'active'").catch(() => {}),
     db.execute("ALTER TABLE campaigns ADD COLUMN target_list TEXT").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN tags TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN title TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN company TEXT NOT NULL DEFAULT ''").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe
-    { sql: "INSERT OR IGNORE INTO contacts (email, name) VALUES ('fiveer840@gmail.com', 'TEST SEED - Patrick')", args: [] },
-    { sql: "INSERT OR IGNORE INTO contacts (email, name) VALUES ('news@patricknovick.com', 'TEST SEED - Sender')", args: [] },
-    { sql: "UPDATE contacts SET name = 'TEST SEED - Patrick', tags = 'test_seed' WHERE email = 'fiveer840@gmail.com'", args: [] },
-    { sql: "UPDATE contacts SET name = 'TEST SEED - Sender', tags = 'test_seed' WHERE email = 'news@patricknovick.com'", args: [] },
+    { sql: "INSERT OR IGNORE INTO contacts (email, name, title, company) VALUES ('fiveer840@gmail.com', 'TEST SEED - Patrick', 'Senior Recruiter', 'Metro Associates')", args: [] },
+    { sql: "INSERT OR IGNORE INTO contacts (email, name, title, company) VALUES ('news@patricknovick.com', 'TEST SEED - Sender', 'Marketing Coordinator', 'Metro Associates')", args: [] },
+    { sql: "UPDATE contacts SET name = 'TEST SEED - Patrick', tags = 'test_seed', title = 'Senior Recruiter', company = 'Metro Associates' WHERE email = 'fiveer840@gmail.com'", args: [] },
+    { sql: "UPDATE contacts SET name = 'TEST SEED - Sender', tags = 'test_seed', title = 'Marketing Coordinator', company = 'Metro Associates' WHERE email = 'news@patricknovick.com'", args: [] },
   ], "write"))
   .catch(console.error);
 

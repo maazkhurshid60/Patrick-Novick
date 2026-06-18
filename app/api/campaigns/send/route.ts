@@ -6,6 +6,8 @@ interface ContactRow {
   id: number;
   email: string;
   name: string;
+  title?: string;
+  company?: string;
 }
 
 function personalize(template: string, contact: ContactRow): string {
@@ -17,7 +19,9 @@ function personalize(template: string, contact: ContactRow): string {
     .replace(/\{\{last_name\}\}/gi, lastName)
     .replace(/\{\{full_name\}\}/gi, fullName)
     .replace(/\{\{name\}\}/gi, fullName)
-    .replace(/\{\{email\}\}/gi, contact.email as string);
+    .replace(/\{\{email\}\}/gi, contact.email as string)
+    .replace(/\{\{title\}\}/gi, contact.title || "")
+    .replace(/\{\{company\}\}/gi, contact.company || "");
 }
 
 function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number): string {
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "Test email address is required" }, { status: 400 });
     }
     try {
-      const testContact = { id: 0, email: testEmail.trim(), name: "Test Recipient" };
+      const testContact = { id: 0, email: testEmail.trim(), name: "Test Recipient", title: "Senior Engineer", company: "Big Company" };
       const personalizedBody = personalize(body, testContact);
       const personalizedSubject = `[TEST] ${personalize(subject, testContact)}`;
       const wrappedHtml = wrapInHtmlTemplate(personalizedBody, testEmail.trim(), 0);
@@ -107,14 +111,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const args: (string | number)[] = [];
 
   if (listId) {
-    sql = `SELECT c.id, c.email, c.name
+    sql = `SELECT c.id, c.email, c.name, c.title, c.company
            FROM contacts c
            JOIN contact_list_members m ON c.id = m.contact_id
            WHERE m.list_id = ? AND c.status = 'active'
            AND c.email NOT IN (SELECT email FROM suppression_list)`;
     args.push(listId);
   } else {
-    sql = `SELECT id, email, name FROM contacts WHERE status = 'active'
+    sql = `SELECT id, email, name, title, company FROM contacts WHERE status = 'active'
            AND email NOT IN (SELECT email FROM suppression_list)`;
   }
 

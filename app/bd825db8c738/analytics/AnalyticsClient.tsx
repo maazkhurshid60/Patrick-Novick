@@ -7,6 +7,8 @@ interface ContactEngagement {
   email: string;
   name: string;
   status: string;
+  title: string;
+  company: string;
   sends: number;
   opens: number;
   last_sent: number | null;
@@ -222,7 +224,17 @@ export default function AnalyticsClient() {
                       style={{ borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
                       <td className="px-5 py-3.5">
                         <p className="text-sm font-medium text-white truncate max-w-[220px]">{c.name || c.email}</p>
-                        {c.name && <p className="text-xs truncate max-w-[220px]" style={{ color: "rgba(255,255,255,0.3)" }}>{c.email}</p>}
+                        <p className="text-xs truncate max-w-[220px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          {c.name ? c.email : ""}
+                          {(c.title || c.company) && (
+                            <>
+                              {c.name ? " • " : ""}
+                              {c.title}
+                              {c.title && c.company ? " at " : ""}
+                              {c.company}
+                            </>
+                          )}
+                        </p>
                       </td>
                       <td className="px-5 py-3.5 text-right text-sm font-semibold" style={{ color: c.sends > 0 ? "#fff" : "rgba(255,255,255,0.3)" }}>{c.sends}</td>
                       <td className="px-5 py-3.5 text-right text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>{c.opens}</td>

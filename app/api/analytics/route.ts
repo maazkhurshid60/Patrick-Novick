@@ -6,6 +6,8 @@ interface ContactEngagement {
   email: string;
   name: string;
   status: string;
+  title: string;
+  company: string;
   sends: number;       // how many campaigns this person has been emailed
   opens: number;       // how many of those they opened
   last_sent: number | null;
@@ -23,6 +25,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         c.email,
         c.name,
         c.status,
+        c.title,
+        c.company,
         COUNT(cr.campaign_id) AS sends,
         MAX(cr.sent_at) AS last_sent,
         (SELECT COUNT(DISTINCT eo.campaign_id) FROM email_opens eo WHERE eo.email = c.email) AS opens,
@@ -45,6 +49,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     email: c.email,
     name: c.name || "",
     status: c.status || "active",
+    title: c.title || "",
+    company: c.company || "",
     sends: Number(c.sends ?? 0),
     opens: Number(c.opens ?? 0),
     last_sent: c.last_sent ? Number(c.last_sent) : null,

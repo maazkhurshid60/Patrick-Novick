@@ -163,7 +163,9 @@ export default function TemplatesClient() {
             <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>No templates yet</p>
             <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.3)" }}>
               Use a starter or create your own. Plain text only — best for deliverability. Use{" "}
-              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>{" "}
+              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
+              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, or{" "}
+              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>{" "}
               for personalization.
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -205,11 +207,12 @@ export default function TemplatesClient() {
               <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
                 Body — plain text only. Use{" "}
                 <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{role}}"}</code>, etc.
+                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
+                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
               </p>
               <textarea
                 style={{ ...inputStyle, minHeight: "260px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
-                placeholder={"Hi {{first_name}},\n\nYour message here...\n\nBest,\nPatrick"}
+                placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
                 value={form.body}
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
                 required

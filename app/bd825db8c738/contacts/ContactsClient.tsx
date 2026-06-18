@@ -7,6 +7,8 @@ interface Contact {
   id: number;
   email: string;
   name: string;
+  title: string;
+  company: string;
   status: string;
   tags: string;
   campaigns_sent: number;
@@ -36,6 +38,8 @@ export default function ContactsClient() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [company, setCompany] = useState("");
   const [bulk, setBulk] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +50,8 @@ export default function ContactsClient() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editCompany, setEditCompany] = useState("");
 
   async function fetchContacts() {
     const res = await fetch("/api/contacts");
@@ -58,13 +64,15 @@ export default function ContactsClient() {
     setEditingId(c.id);
     setEditName(c.name);
     setEditEmail(c.email);
+    setEditTitle(c.title || "");
+    setEditCompany(c.company || "");
   }
 
   async function handleSaveEdit(id: number) {
     const res = await fetch("/api/contacts", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name: editName, email: editEmail }),
+      body: JSON.stringify({ id, name: editName, email: editEmail, title: editTitle, company: editCompany }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Update failed"); }
@@ -78,11 +86,11 @@ export default function ContactsClient() {
     const res = await fetch("/api/contacts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name }),
+      body: JSON.stringify({ email, name, title, company }),
     });
     const data = await res.json();
     if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Added ${data.added} contact`); setEmail(""); setName(""); fetchContacts(); }
+    else { setSuccess(`Added ${data.added} contact`); setEmail(""); setName(""); setTitle(""); setCompany(""); fetchContacts(); }
     setLoading(false);
   }
 
@@ -118,6 +126,8 @@ export default function ContactsClient() {
     const headers = lines[0].toLowerCase().split(",").map((h) => h.replace(/"/g, "").trim());
     const emailIdx = headers.findIndex((h) => h.includes("email"));
     const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("first") || h.includes("contact"));
+    const titleIdx = headers.findIndex((h) => h.includes("title") || h.includes("role") || h.includes("position"));
+    const companyIdx = headers.findIndex((h) => h.includes("company") || h.includes("firm") || h.includes("organization"));
 
     if (emailIdx === -1) {
       setError("No email column found in CSV. Make sure a column is named 'email'.");
@@ -131,6 +141,8 @@ export default function ContactsClient() {
       return {
         email: cols[emailIdx] ?? "",
         name: nameIdx >= 0 ? (cols[nameIdx] ?? "") : "",
+        title: titleIdx >= 0 ? (cols[titleIdx] ?? "") : "",
+        company: companyIdx >= 0 ? (cols[companyIdx] ?? "") : "",
       };
     }).filter((e) => e.email.includes("@"));
 
@@ -199,6 +211,8 @@ export default function ContactsClient() {
           <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Add Contact</p>
           <form onSubmit={handleAdd} className="flex flex-col gap-3">
             <input style={inputStyle} type="text" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+            <input style={inputStyle} type="text" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input style={inputStyle} type="text" placeholder="Company (optional)" value={company} onChange={(e) => setCompany(e.target.value)} />
             <input style={inputStyle} type="email" placeholder="Email address *" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <button
               type="submit" disabled={loading}
@@ -329,6 +343,18 @@ export default function ContactsClient() {
                       style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
                     />
                     <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Title"
+                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
+                    />
+                    <input
+                      value={editCompany}
+                      onChange={(e) => setEditCompany(e.target.value)}
+                      placeholder="Company"
+                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
+                    />
+                    <input
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="Email"
@@ -394,9 +420,17 @@ export default function ContactsClient() {
                             </span>
                           )}
                         </div>
-                        {c.name && (
-                          <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>
-                        )}
+                        <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {c.name ? c.email : ""}
+                          {(c.title || c.company) && (
+                            <>
+                              {c.name ? " • " : ""}
+                              <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.title}</span>
+                              {c.title && c.company ? " at " : ""}
+                              <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.company}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 ml-2">

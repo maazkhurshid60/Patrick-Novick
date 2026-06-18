@@ -342,11 +342,11 @@ export default function CampaignClient({
           {/* Body */}
           <div>
             <label style={{ ...labelStyle }}>
-              Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(plain text — use {"{{first_name}}"} etc.)</span>
+              Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(plain text — use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
             </label>
             <textarea
               style={{ ...inputStyle, minHeight: "240px", resize: "vertical", fontFamily: "monospace", fontSize: "0.8rem" }}
-              placeholder={"Hi {{first_name}},\n\nYour message here...\n\nBest,\nPatrick"}
+              placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               required

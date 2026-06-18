@@ -8,7 +8,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const filter = searchParams.get("filter") ?? "all";
 
-  let rows: { name: string; email: string; status: string; tags: string; created_at: string }[];
+  let rows: { name: string; email: string; title: string; company: string; status: string; tags: string; created_at: string }[];
 
   if (filter === "removed") {
     // Contacts removed via the Remove button — in suppression_list with reason='removed'
@@ -18,6 +18,8 @@ export async function GET(req: Request): Promise<NextResponse> {
         COALESCE(c.name, '') AS name,
         s.email,
         COALESCE(c.status, 'removed') AS status,
+        COALESCE(c.title, '') AS title,
+        COALESCE(c.company, '') AS company,
         s.reason,
         datetime(s.created_at, 'unixepoch') AS removed_at
       FROM suppression_list s
@@ -26,9 +28,9 @@ export async function GET(req: Request): Promise<NextResponse> {
     `);
     const date = new Date().toISOString().slice(0, 10);
     const lines = [
-      "name,email,status,reason,removed_at",
-      ...(result.rows as unknown as { name: string; email: string; status: string; reason: string; removed_at: string }[])
-        .map((r) => `"${r.name}","${r.email}","${r.status}","${r.reason}","${r.removed_at}"`),
+      "name,email,title,company,status,reason,removed_at",
+      ...(result.rows as unknown as { name: string; email: string; title: string; company: string; status: string; reason: string; removed_at: string }[])
+        .map((r) => `"${r.name}","${r.email}","${r.title}","${r.company}","${r.status}","${r.reason}","${r.removed_at}"`),
     ];
     return new NextResponse(lines.join("\r\n"), {
       headers: {
@@ -45,6 +47,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       name,
       email,
       COALESCE(status, 'active') AS status,
+      COALESCE(title, '') AS title,
+      COALESCE(company, '') AS company,
       COALESCE(tags, '') AS tags,
       datetime(created_at, 'unixepoch') AS created_at
     FROM contacts
@@ -54,8 +58,8 @@ export async function GET(req: Request): Promise<NextResponse> {
 
   const date = new Date().toISOString().slice(0, 10);
   const lines = [
-    "name,email,status,tags,created_at",
-    ...rows.map((r) => `"${r.name}","${r.email}","${r.status}","${r.tags}","${r.created_at}"`),
+    "name,email,title,company,status,tags,created_at",
+    ...rows.map((r) => `"${r.name}","${r.email}","${r.title}","${r.company}","${r.status}","${r.tags}","${r.created_at}"`),
   ];
 
   return new NextResponse(lines.join("\r\n"), {

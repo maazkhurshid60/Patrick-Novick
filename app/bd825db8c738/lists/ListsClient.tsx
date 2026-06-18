@@ -17,6 +17,8 @@ interface Contact {
   status: string;
   lists?: string | null;
   campaigns_sent?: number;
+  title: string;
+  company: string;
 }
 
 const inputStyle = {
@@ -274,7 +276,15 @@ export default function ListsClient() {
                               <div className="overflow-hidden">
                                 <p className="text-xs font-medium text-white truncate">{c.name || c.email}</p>
                                 <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                  {c.name && <span className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</span>}
+                                  {c.name ? <span className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</span> : null}
+                                  {(c.title || c.company) && (
+                                    <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                      {c.name ? " • " : ""}
+                                      {c.title}
+                                      {c.title && c.company ? " at " : ""}
+                                      {c.company}
+                                    </span>
+                                  )}
                                   {Number(c.campaigns_sent) > 0 && (
                                     <span className="text-[9px] px-1.5 py-0.2 rounded font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.15)" }}>
                                       sent ×{c.campaigns_sent}
@@ -342,7 +352,17 @@ export default function ListsClient() {
                           </span>
                         )}
                       </div>
-                      {c.name && <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</p>}
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {c.name ? c.email : ""}
+                        {(c.title || c.company) && (
+                          <>
+                            {c.name ? " • " : ""}
+                            {c.title}
+                            {c.title && c.company ? " at " : ""}
+                            {c.company}
+                          </>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <button

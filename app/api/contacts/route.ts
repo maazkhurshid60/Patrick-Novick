@@ -16,10 +16,9 @@ export async function GET(): Promise<NextResponse> {
   return NextResponse.json(result.rows);
 }
 
-// POST /api/contacts — add one or multiple contacts (skips suppressed emails)
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await req.json();
-  const entries: { email: string; name?: string }[] = Array.isArray(body) ? body : [body];
+  const entries: { email: string; name?: string; title?: string; company?: string }[] = Array.isArray(body) ? body : [body];
 
   const suppressedResult = await db.execute("SELECT email FROM suppression_list");
   const suppressed = new Set(suppressedResult.rows.map((r) => (r.email as string).toLowerCase()));
@@ -31,8 +30,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!email || !email.includes("@")) continue;
     if (suppressed.has(email)) { skipped++; continue; }
     const res = await db.execute({
-      sql: "INSERT OR IGNORE INTO contacts (email, name) VALUES (?, ?)",
-      args: [email, (row.name ?? "").trim()],
+      sql: "INSERT OR IGNORE INTO contacts (email, name, title, company) VALUES (?, ?, ?, ?)",
+      args: [email, (row.name ?? "").trim(), (row.title ?? "").trim(), (row.company ?? "").trim()],
     });
     added += res.rowsAffected;
   }
@@ -40,19 +39,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ added, skipped });
 }
 
-// PATCH /api/contacts — update name, email, and/or status
+// PATCH /api/contacts — update name, email, title, company, and/or status
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
-  const body = await req.json() as { id: number; status?: string; name?: string; email?: string };
-  const { id, status, name, email } = body;
+  const body = await req.json() as { id: number; status?: string; name?: string; email?: string; title?: string; company?: string };
+  const { id, status, name, email, title, company } = body;
 
-  // Handle name and/or email correction
-  if (name !== undefined || email !== undefined) {
+  // Handle corrections (name, email, title, company)
+  if (name !== undefined || email !== undefined || title !== undefined || company !== undefined) {
     const updates: string[] = [];
     const args: (string | number)[] = [];
 
     if (name !== undefined) {
       updates.push("name = ?");
       args.push(name.trim());
+    }
+    if (title !== undefined) {
+      updates.push("title = ?");
+      args.push(title.trim());
+    }
+    if (company !== undefined) {
+      updates.push("company = ?");
+      args.push(company.trim());
     }
     if (email !== undefined) {
       const normalized = email.trim().toLowerCase();
