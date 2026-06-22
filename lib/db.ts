@@ -77,6 +77,19 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN tags TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN title TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN company TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    // CRM expansion — new columns (safe: ignored if already exist)
+    db.execute("ALTER TABLE contacts ADD COLUMN first_name TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN last_name TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN phone TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN street_address TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN city TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN state TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN zip_code TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN country TEXT NOT NULL DEFAULT 'US'").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN notes TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN segments TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN custom_fields TEXT NOT NULL DEFAULT '{}'").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe

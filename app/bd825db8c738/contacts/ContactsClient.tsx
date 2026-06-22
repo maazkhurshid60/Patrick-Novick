@@ -1,14 +1,32 @@
 "use client";
 
-import { useState, useEffect, FormEvent, useRef } from "react";
-import { Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck, ShieldCheck, Pencil, Check, X, Download } from "lucide-react";
+import { useState, useEffect, FormEvent, useRef, useCallback } from "react";
+import {
+  Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck,
+  ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
+  ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2,
+} from "lucide-react";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Contact {
   id: number;
   email: string;
   name: string;
+  first_name: string;
+  last_name: string;
   title: string;
   company: string;
+  phone: string;
+  phone_2: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  country: string;
+  notes: string;
+  segments: string;
+  custom_fields: string;
   status: string;
   tags: string;
   campaigns_sent: number;
@@ -16,69 +34,155 @@ interface Contact {
   lists?: string | null;
 }
 
-const cardStyle = {
+interface ActivityEntry {
+  campaign_id: number;
+  subject: string;
+  sent_at: number;
+  opened: boolean;
+}
+
+// ─── Style tokens ─────────────────────────────────────────────────────────────
+
+const card = {
   background: "#1a1d23",
   border: "1px solid rgba(255,255,255,0.06)",
   borderRadius: "1rem",
   padding: "1.5rem",
-};
+} as const;
 
-const inputStyle = {
+const inp = {
   border: "1px solid rgba(255,255,255,0.08)",
   color: "#fff",
   background: "rgba(255,255,255,0.04)",
-  borderRadius: "0.75rem",
-  padding: "0.625rem 1rem",
-  fontSize: "0.875rem",
+  borderRadius: "0.625rem",
+  padding: "0.5rem 0.75rem",
+  fontSize: "0.8125rem",
   outline: "none",
   width: "100%",
+} as const;
+
+const label = {
+  display: "block",
+  fontSize: "0.6875rem",
+  fontWeight: 600,
+  color: "rgba(255,255,255,0.35)",
+  marginBottom: "0.3rem",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase" as const,
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function initials(c: Contact) {
+  const fn = c.first_name || c.name.split(" ")[0] || c.email[0];
+  const ln = c.last_name  || c.name.split(" ")[1] || "";
+  return (fn[0] + (ln[0] ?? "")).toUpperCase();
+}
+
+function displayName(c: Contact) {
+  if (c.first_name || c.last_name) return [c.first_name, c.last_name].filter(Boolean).join(" ");
+  return c.name || c.email;
+}
+
+function hasAddress(c: Contact) {
+  return !!(c.street_address && c.city && c.state);
+}
+
+// ─── Blank form state ─────────────────────────────────────────────────────────
+
+const BLANK = {
+  first_name: "", last_name: "", email: "", title: "", company: "",
+  phone: "", phone_2: "", street_address: "", city: "", state: "",
+  zip_code: "", country: "US", notes: "", segments: "",
+};
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionLabel({ icon: Icon, label: txt }: { icon: React.ElementType; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5 mb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
+      <Icon size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+      <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{txt}</span>
+    </div>
+  );
+}
+
+// ─── Field pair ───────────────────────────────────────────────────────────────
+
+function Field({ label: lbl, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label style={label}>{lbl}</label>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ContactsClient() {
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [bulk, setBulk] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]   = useState("");
   const [success, setSuccess] = useState("");
+
+  // Add modal
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ ...BLANK });
+
+  // Bulk import
+  const [bulk, setBulk] = useState("");
+
+  // Detail drawer
+  const [drawer, setDrawer] = useState<Contact | null>(null);
+  const [editForm, setEditForm] = useState({ ...BLANK, email: "" });
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [mailingCount, setMailingCount] = useState<number | null>(null);
+  const [segmentFilter, setSegmentFilter] = useState("");
+
   const csvRef = useRef<HTMLInputElement>(null);
 
-  // Inline edit state
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editTitle, setEditTitle] = useState("");
-  const [editCompany, setEditCompany] = useState("");
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  async function fetchContacts() {
+  const fetchContacts = useCallback(async () => {
     const res = await fetch("/api/contacts");
-    setContacts(await res.json());
-  }
-
-  useEffect(() => { fetchContacts(); }, []);
-
-  function startEdit(c: Contact) {
-    setEditingId(c.id);
-    setEditName(c.name);
-    setEditEmail(c.email);
-    setEditTitle(c.title || "");
-    setEditCompany(c.company || "");
-  }
-
-  async function handleSaveEdit(id: number) {
-    const res = await fetch("/api/contacts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name: editName, email: editEmail, title: editTitle, company: editCompany }),
-    });
     const data = await res.json();
-    if (!res.ok) { setError(data.error ?? "Update failed"); }
-    setEditingId(null);
-    fetchContacts();
+    setContacts(data);
+    setMailingCount(data.filter(hasAddress).length);
+  }, []);
+
+  useEffect(() => { fetchContacts(); }, [fetchContacts]);
+
+  // ── Activity history for a contact ────────────────────────────────────────
+
+  async function fetchActivity(email: string) {
+    const res = await fetch(`/api/contacts/activity?email=${encodeURIComponent(email)}`);
+    if (res.ok) setActivity(await res.json());
+    else setActivity([]);
   }
+
+  function openDrawer(c: Contact) {
+    setDrawer(c);
+    setEditForm({
+      first_name: c.first_name || c.name.split(" ")[0] || "",
+      last_name:  c.last_name  || c.name.split(" ").slice(1).join(" ") || "",
+      email:      c.email,
+      title:      c.title,
+      company:    c.company,
+      phone:      c.phone,
+      phone_2:    c.phone_2,
+      street_address: c.street_address,
+      city:       c.city,
+      state:      c.state,
+      zip_code:   c.zip_code,
+      country:    c.country || "US",
+      notes:      c.notes,
+      segments:   c.segments,
+    });
+    fetchActivity(c.email);
+  }
+
+  // ── Add contact ───────────────────────────────────────────────────────────
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -86,13 +190,20 @@ export default function ContactsClient() {
     const res = await fetch("/api/contacts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, name, title, company }),
+      body: JSON.stringify(form),
     });
     const data = await res.json();
     if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Added ${data.added} contact`); setEmail(""); setName(""); setTitle(""); setCompany(""); fetchContacts(); }
+    else {
+      setSuccess(`Added ${data.added} contact`);
+      setForm({ ...BLANK });
+      setShowAdd(false);
+      fetchContacts();
+    }
     setLoading(false);
   }
+
+  // ── Bulk import ───────────────────────────────────────────────────────────
 
   async function handleBulk(e: FormEvent) {
     e.preventDefault();
@@ -115,6 +226,8 @@ export default function ContactsClient() {
     setLoading(false);
   }
 
+  // ── CSV upload ────────────────────────────────────────────────────────────
+
   async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,36 +235,52 @@ export default function ContactsClient() {
 
     const text = await file.text();
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-
     const headers = lines[0].toLowerCase().split(",").map((h) => h.replace(/"/g, "").trim());
-    const emailIdx = headers.findIndex((h) => h.includes("email"));
-    const nameIdx = headers.findIndex((h) => h.includes("name") || h.includes("first") || h.includes("contact"));
-    const titleIdx = headers.findIndex((h) => h.includes("title") || h.includes("role") || h.includes("position"));
-    const companyIdx = headers.findIndex((h) => h.includes("company") || h.includes("firm") || h.includes("organization"));
 
-    if (emailIdx === -1) {
-      setError("No email column found in CSV. Make sure a column is named 'email'.");
-      setLoading(false);
-      if (csvRef.current) csvRef.current.value = "";
-      return;
-    }
+    const col = (keys: string[]) => keys.reduce<number>((found, k) => found >= 0 ? found : headers.findIndex((h) => h.includes(k)), -1);
+
+    const emailIdx   = col(["email"]);
+    if (emailIdx === -1) { setError("No email column found."); setLoading(false); if (csvRef.current) csvRef.current.value = ""; return; }
+
+    const firstIdx   = col(["first_name", "first"]);
+    const lastIdx    = col(["last_name", "last"]);
+    const nameIdx    = col(["name", "contact"]);
+    const titleIdx   = col(["title", "role", "position"]);
+    const companyIdx = col(["company", "firm", "organization", "org"]);
+    const phoneIdx   = col(["phone", "mobile", "cell", "tel"]);
+    const phone2Idx  = col(["phone_2", "phone2", "secondary"]);
+    const streetIdx  = col(["street_address", "street", "address"]);
+    const cityIdx    = col(["city"]);
+    const stateIdx   = col(["state", "province"]);
+    const zipIdx     = col(["zip_code", "zip", "postal"]);
+    const countryIdx = col(["country"]);
+    const notesIdx   = col(["notes", "note", "comment"]);
+    const segIdx     = col(["segment", "tag", "list"]);
+
+    const g = (cols: string[], idx: number) => idx >= 0 ? (cols[idx] ?? "") : "";
 
     const entries = lines.slice(1).map((line) => {
       const cols = line.split(",").map((c) => c.replace(/"/g, "").trim());
       return {
-        email: cols[emailIdx] ?? "",
-        name: nameIdx >= 0 ? (cols[nameIdx] ?? "") : "",
-        title: titleIdx >= 0 ? (cols[titleIdx] ?? "") : "",
-        company: companyIdx >= 0 ? (cols[companyIdx] ?? "") : "",
+        email:         g(cols, emailIdx),
+        first_name:    g(cols, firstIdx),
+        last_name:     g(cols, lastIdx),
+        name:          g(cols, nameIdx),
+        title:         g(cols, titleIdx),
+        company:       g(cols, companyIdx),
+        phone:         g(cols, phoneIdx),
+        phone_2:       g(cols, phone2Idx),
+        street_address: g(cols, streetIdx),
+        city:          g(cols, cityIdx),
+        state:         g(cols, stateIdx),
+        zip_code:      g(cols, zipIdx),
+        country:       g(cols, countryIdx),
+        notes:         g(cols, notesIdx),
+        segments:      g(cols, segIdx),
       };
     }).filter((e) => e.email.includes("@"));
 
-    if (entries.length === 0) {
-      setError("No valid email addresses found in CSV.");
-      setLoading(false);
-      if (csvRef.current) csvRef.current.value = "";
-      return;
-    }
+    if (entries.length === 0) { setError("No valid emails found."); setLoading(false); if (csvRef.current) csvRef.current.value = ""; return; }
 
     const res = await fetch("/api/contacts", {
       method: "POST",
@@ -160,29 +289,43 @@ export default function ContactsClient() {
     });
     const data = await res.json();
     if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Imported ${data.added} of ${entries.length} contacts from CSV${data.skipped ? `, ${data.skipped} suppressed skipped` : ""}`); fetchContacts(); }
+    else { setSuccess(`Imported ${data.added} of ${entries.length} contacts${data.skipped ? `, ${data.skipped} suppressed skipped` : ""}`); fetchContacts(); }
     setLoading(false);
     if (csvRef.current) csvRef.current.value = "";
   }
 
-  async function handleDelete(id: number) {
-    await fetch("/api/contacts", {
-      method: "DELETE",
+  // ── Save drawer edits ─────────────────────────────────────────────────────
+
+  async function handleSaveDrawer() {
+    if (!drawer) return;
+    setLoading(true);
+    const res = await fetch("/api/contacts", {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id: drawer.id, ...editForm }),
     });
+    const data = await res.json();
+    if (!res.ok) setError(data.error ?? "Update failed");
+    else { setSuccess("Contact updated"); fetchContacts(); setDrawer(null); }
+    setLoading(false);
+  }
+
+  // ── Delete / toggle ───────────────────────────────────────────────────────
+
+  async function handleDelete(id: number) {
+    await fetch("/api/contacts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setDrawer(null);
     fetchContacts();
   }
 
   async function handleToggleStatus(id: number, current: string) {
     const status = current === "unsubscribed" ? "active" : "unsubscribed";
-    await fetch("/api/contacts", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
+    await fetch("/api/contacts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
     fetchContacts();
+    if (drawer?.id === id) setDrawer((d) => d ? { ...d, status } : null);
   }
+
+  // ── Validate ──────────────────────────────────────────────────────────────
 
   async function handleValidate() {
     if (!confirm("Check all active contacts for valid email domains? This may take a minute.")) return;
@@ -190,287 +333,436 @@ export default function ContactsClient() {
     const res = await fetch("/api/contacts/validate", { method: "POST" });
     const data = await res.json();
     setSuccess(`Checked ${data.checked} contacts — ${data.valid} valid, ${data.invalid} marked invalid`);
-    fetchContacts();
-    setLoading(false);
+    fetchContacts(); setLoading(false);
   }
 
   function triggerDownload(url: string) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.click();
+    const a = document.createElement("a"); a.href = url; a.click();
   }
 
   const activeCount = contacts.filter((c) => c.status === "active" || !c.status).length;
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="grid grid-cols-3 gap-5">
-      {/* Left: forms */}
-      <div className="col-span-1 flex flex-col gap-4">
-        {/* Single */}
-        <div style={cardStyle}>
-          <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Add Contact</p>
-          <form onSubmit={handleAdd} className="flex flex-col gap-3">
-            <input style={inputStyle} type="text" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
-            <input style={inputStyle} type="text" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <input style={inputStyle} type="text" placeholder="Company (optional)" value={company} onChange={(e) => setCompany(e.target.value)} />
-            <input style={inputStyle} type="email" placeholder="Email address *" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            <button
-              type="submit" disabled={loading}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-              style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
-            >
-              <Plus size={14} /> Add Contact
-            </button>
-          </form>
-        </div>
-
-        {/* Bulk */}
-        <div style={cardStyle}>
-          <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Bulk Import</p>
-          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
-            One per line: <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>Name &lt;email&gt;</code> or just email
-          </p>
-          <form onSubmit={handleBulk} className="flex flex-col gap-3">
-            <textarea
-              style={{ ...inputStyle, minHeight: "110px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
-              placeholder={"John Smith <john@firm.com>\njane@firm.com"}
-              value={bulk}
-              onChange={(e) => setBulk(e.target.value)}
-            />
-            <button
-              type="submit" disabled={loading}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-              style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
-            >
-              <Upload size={14} /> Import All
-            </button>
-          </form>
-
-          {/* CSV Upload */}
-          <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
-              Or upload a <strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv</strong> file with <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>email</code> and optional <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>name</code> columns
-            </p>
-            <input ref={csvRef} type="file" accept=".csv" onChange={handleCsvUpload} disabled={loading} style={{ display: "none" }} />
-            <button
-              type="button" disabled={loading} onClick={() => csvRef.current?.click()}
-              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-              style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
-            >
-              <FileText size={14} /> Upload CSV
-            </button>
-          </div>
-        </div>
-
-        {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
-        {success && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>{success}</div>}
-
-        {/* Export downloads */}
-        <div style={cardStyle}>
-          <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Export Data</p>
-          <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
-            Download CSVs for use in outside systems or third-party tools.
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => triggerDownload("/api/export/contacts?filter=all")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
-            >
-              <Download size={13} /> All Contacts
-            </button>
-            <button
-              onClick={() => triggerDownload("/api/export/suppression")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-              style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)", fontFamily: "var(--font-heading)" }}
-            >
-              <Download size={13} /> Suppression List
-            </button>
-            <button
-              onClick={() => triggerDownload("/api/export/contacts?filter=removed")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-              style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.15)", fontFamily: "var(--font-heading)" }}
-            >
-              <Download size={13} /> Removed / Opted Out
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Right: list */}
-      <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
-          <div className="flex items-center gap-3">
-            <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
-              {activeCount} active / {contacts.length} total
-            </span>
-            <button
-              onClick={handleValidate}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-              style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
-              title="Check all emails for valid domains"
-            >
-              <ShieldCheck size={12} /> Validate Emails
-            </button>
-          </div>
-        </div>
-
-        {contacts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(230,57,70,0.1)" }}>
-              <Users size={20} style={{ color: "var(--color-red)" }} strokeWidth={1.5} />
+    <>
+      {/* ── Add Contact Modal ─────────────────────────────────────────────── */}
+      {showAdd && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAdd(false); }}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", padding: "2rem" }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Add Contact</p>
+              <button onClick={() => setShowAdd(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
             </div>
-            <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Add contacts using the form on the left.</p>
-          </div>
-        ) : (
-          <div>
-            {contacts.map((c, i) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between px-6 py-3 transition-colors hover:bg-white/2"
-                style={{ borderBottom: i < contacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
-              >
-                {editingId === c.id ? (
-                  /* ── Inline edit mode ── */
-                  <div className="flex items-center gap-2 flex-1 mr-2">
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Name"
-                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
-                    />
-                    <input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      placeholder="Title"
-                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
-                    />
-                    <input
-                      value={editCompany}
-                      onChange={(e) => setEditCompany(e.target.value)}
-                      placeholder="Company"
-                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
-                    />
-                    <input
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="Email"
-                      type="email"
-                      style={{ ...inputStyle, width: "auto", flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8rem" }}
-                    />
-                    <button
-                      onClick={() => handleSaveEdit(c.id)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-green-500/10"
-                      style={{ color: "#4ade80" }}
-                      title="Save"
-                    >
-                      <Check size={13} />
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                      style={{ color: "rgba(255,255,255,0.3)" }}
-                      title="Cancel"
-                    >
-                      <X size={13} />
-                    </button>
+
+            <form onSubmit={handleAdd} className="flex flex-col gap-5">
+
+              {/* Identity */}
+              <div>
+                <SectionLabel icon={User} label="Identity" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="First Name"><input style={inp} value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="John" /></Field>
+                  <Field label="Last Name"><input style={inp} value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder="Smith" /></Field>
+                  <Field label="Title / Role"><input style={inp} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="VP of Marketing" /></Field>
+                  <Field label="Company"><input style={inp} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} placeholder="Acme Corp" /></Field>
+                </div>
+              </div>
+
+              {/* Contact */}
+              <div>
+                <SectionLabel icon={Mail} label="Contact" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Email Address *"><input style={inp} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@acme.com" /></Field>
+                  <Field label="Phone"><input style={inp} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
+                  <Field label="Phone 2 / Mobile"><input style={inp} value={form.phone_2} onChange={(e) => setForm({ ...form, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <SectionLabel icon={MapPin} label="Mailing Address" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Field label="Street Address"><input style={inp} value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
-                ) : (
-                  /* ── Normal display mode ── */
-                  <>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                        style={{
-                          background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
-                          color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)",
-                        }}
-                      >
-                        {(c.name || c.email)[0].toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-medium truncate" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>
-                            {c.name || c.email}
-                          </p>
-                          {/* Status badges */}
-                          {c.status === "unsubscribed" && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsub</span>
-                          )}
-                          {c.status === "invalid" && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>
-                          )}
-                          {/* Test seed badge */}
-                          {c.tags?.includes("test_seed") && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>
-                          )}
-                          {/* Sent badge */}
-                          {Number(c.campaigns_sent) > 0 && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>
-                              sent ×{c.campaigns_sent}
-                            </span>
-                          )}
-                          {/* Lists badge */}
-                          {c.lists && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>
-                              lists: {c.lists}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
-                          {c.name ? c.email : ""}
-                          {(c.title || c.company) && (
-                            <>
-                              {c.name ? " • " : ""}
-                              <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.title}</span>
-                              {c.title && c.company ? " at " : ""}
-                              <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.company}</span>
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {/* Edit button */}
-                      <button
-                        onClick={() => startEdit(c)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                        style={{ color: "rgba(255,255,255,0.2)" }}
-                        title="Edit name / email"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      {/* Subscribe / Unsubscribe toggle */}
-                      {c.status !== "invalid" && (
-                        <button
-                          onClick={() => handleToggleStatus(c.id, c.status)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                          style={{ color: "rgba(255,255,255,0.2)" }}
-                          title={c.status === "unsubscribed" ? "Reactivate" : "Unsubscribe"}
-                        >
-                          {c.status === "unsubscribed" ? <UserCheck size={13} /> : <UserMinus size={13} />}
-                        </button>
-                      )}
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(c.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
-                        style={{ color: "rgba(255,255,255,0.2)" }}
-                        title="Delete and suppress"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </>
+                  <Field label="City"><input style={inp} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="New York" /></Field>
+                  <Field label="State"><input style={inp} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" /></Field>
+                  <Field label="ZIP Code"><input style={inp} value={form.zip_code} onChange={(e) => setForm({ ...form, zip_code: e.target.value })} placeholder="10001" /></Field>
+                  <Field label="Country"><input style={inp} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="US" /></Field>
+                </div>
+              </div>
+
+              {/* More */}
+              <div>
+                <SectionLabel icon={StickyNote} label="Notes & Segments" />
+                <div className="flex flex-col gap-3">
+                  <Field label="Marketing Segments (comma-separated)"><input style={inp} value={form.segments} onChange={(e) => setForm({ ...form, segments: e.target.value })} placeholder="Healthcare, Newsletter, VIP" /></Field>
+                  <Field label="Notes"><textarea style={{ ...inp, minHeight: "80px", resize: "vertical" }} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Any notes about this contact…" /></Field>
+                </div>
+              </div>
+
+              {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+                <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
+                  <Plus size={14} /> Add Contact
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Detail / Edit Drawer ──────────────────────────────────────────── */}
+      {drawer && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDrawer(null); }}
+        >
+          <div
+            className="h-full w-full max-w-lg overflow-y-auto flex flex-col"
+            style={{ background: "#16181e", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "rgba(230,57,70,0.15)", color: "#f87171" }}>
+                  {initials(drawer)}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{displayName(drawer)}</p>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{drawer.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setDrawer(null)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {(drawer.status === "active" || !drawer.status) && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>Active</span>}
+              {drawer.status === "unsubscribed" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>Unsubscribed</span>}
+              {drawer.status === "invalid" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>Invalid</span>}
+              {drawer.tags?.includes("test_seed") && <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>}
+              {Number(drawer.campaigns_sent) > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>Sent ×{drawer.campaigns_sent}</span>}
+              {drawer.lists && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>Lists: {drawer.lists}</span>}
+              <div className="ml-auto flex items-center gap-1.5">
+                {drawer.status !== "invalid" && (
+                  <button onClick={() => handleToggleStatus(drawer.id, drawer.status)} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {drawer.status === "unsubscribed" ? <><UserCheck size={10} className="inline mr-1" />Reactivate</> : <><UserMinus size={10} className="inline mr-1" />Unsubscribe</>}
+                  </button>
+                )}
+                <button onClick={() => { if (confirm("Delete this contact?")) handleDelete(drawer.id); }} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)" }}>
+                  <Trash2 size={10} className="inline mr-1" />Delete
+                </button>
+              </div>
+            </div>
+
+            {/* Edit form */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
+
+              <div>
+                <SectionLabel icon={User} label="Identity" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="First Name"><input style={inp} value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} /></Field>
+                  <Field label="Last Name"><input style={inp} value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} /></Field>
+                  <Field label="Title"><input style={inp} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></Field>
+                  <Field label="Company"><input style={inp} value={editForm.company} onChange={(e) => setEditForm({ ...editForm, company: e.target.value })} /></Field>
+                </div>
+              </div>
+
+              <div>
+                <SectionLabel icon={Mail} label="Contact" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Field label="Email Address"><input style={inp} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
+                  </div>
+                  <Field label="Phone"><input style={inp} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
+                  <Field label="Phone 2"><input style={inp} value={editForm.phone_2} onChange={(e) => setEditForm({ ...editForm, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                </div>
+              </div>
+
+              <div>
+                <SectionLabel icon={MapPin} label="Mailing Address" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Field label="Street Address"><input style={inp} value={editForm.street_address} onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })} placeholder="123 Main St" /></Field>
+                  </div>
+                  <Field label="City"><input style={inp} value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} /></Field>
+                  <Field label="State"><input style={inp} value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} /></Field>
+                  <Field label="ZIP Code"><input style={inp} value={editForm.zip_code} onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })} /></Field>
+                  <Field label="Country"><input style={inp} value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} /></Field>
+                </div>
+              </div>
+
+              {/* Mailing label preview */}
+              {(editForm.street_address && editForm.city && editForm.state) && (
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.75rem", padding: "1rem" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em" }}><MapPin size={10} className="inline mr-1" />Mailing Label Preview</p>
+                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)", fontFamily: "monospace", lineHeight: 1.6 }}>
+                    {[editForm.first_name, editForm.last_name].filter(Boolean).join(" ") || "—"}<br />
+                    {editForm.company && <>{editForm.company}<br /></>}
+                    {editForm.street_address}<br />
+                    {editForm.city}, {editForm.state} {editForm.zip_code}<br />
+                    {editForm.country !== "US" ? editForm.country : ""}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <SectionLabel icon={Tag} label="Marketing Segments" />
+                <Field label="Segments (comma-separated)">
+                  <input style={inp} value={editForm.segments} onChange={(e) => setEditForm({ ...editForm, segments: e.target.value })} placeholder="Healthcare, Newsletter, VIP" />
+                </Field>
+                {editForm.segments && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {editForm.segments.split(",").map((s) => s.trim()).filter(Boolean).map((seg) => (
+                      <span key={seg} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}>{seg}</span>
+                    ))}
+                  </div>
                 )}
               </div>
-            ))}
+
+              <div>
+                <SectionLabel icon={StickyNote} label="Notes" />
+                <textarea style={{ ...inp, minHeight: "90px", resize: "vertical" }} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes about this contact…" />
+              </div>
+
+              {/* Email Activity History */}
+              <div>
+                <SectionLabel icon={Send} label="Email Activity History" />
+                {activity.length === 0 ? (
+                  <p className="text-xs py-2" style={{ color: "rgba(255,255,255,0.25)" }}>No campaigns sent to this contact yet.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {activity.map((a) => (
+                      <div key={a.campaign_id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: a.opened ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.05)" }}>
+                          {a.opened ? <Eye size={12} style={{ color: "#4ade80" }} /> : <Send size={12} style={{ color: "rgba(255,255,255,0.3)" }} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.7)" }}>{a.subject}</p>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{new Date(a.sent_at * 1000).toLocaleDateString()}{a.opened ? " · Opened" : ""}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Save bar */}
+            <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <button onClick={() => setDrawer(null)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+              <button onClick={handleSaveDrawer} disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
+                Save Changes
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ── Main layout ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-5">
+
+        {/* Left: forms */}
+        <div className="col-span-1 flex flex-col gap-4">
+
+          {/* Add button */}
+          <button
+            onClick={() => { setShowAdd(true); setError(""); setSuccess(""); }}
+            className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
+            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.28)" }}
+          >
+            <Plus size={15} /> Add Contact
+          </button>
+
+          {/* Bulk */}
+          <div style={card}>
+            <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Bulk Import</p>
+            <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+              One per line: <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>Name &lt;email&gt;</code> or just email
+            </p>
+            <form onSubmit={handleBulk} className="flex flex-col gap-3">
+              <textarea
+                style={{ ...inp, minHeight: "110px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
+                placeholder={"John Smith <john@firm.com>\njane@firm.com"}
+                value={bulk}
+                onChange={(e) => setBulk(e.target.value)}
+              />
+              <button
+                type="submit" disabled={loading}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
+              >
+                <Upload size={14} /> Import All
+              </button>
+            </form>
+
+            {/* CSV Upload */}
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Or upload a <strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv</strong> — auto-detects email, name, phone, address, segments
+              </p>
+              <input ref={csvRef} type="file" accept=".csv" onChange={handleCsvUpload} disabled={loading} style={{ display: "none" }} />
+              <button
+                type="button" disabled={loading} onClick={() => csvRef.current?.click()}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+                style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
+              >
+                <FileText size={14} /> Upload CSV
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
+          {success && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>{success}</div>}
+
+          {/* Export */}
+          <div style={card}>
+            <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Export Data</p>
+            <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Download CSVs for external systems, mail houses, or third-party tools.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => triggerDownload("/api/export/contacts?filter=all")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
+              >
+                <Download size={13} /> All Contacts
+              </button>
+              {/* Mailing list export — new */}
+              <div className="flex flex-col gap-1.5" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: "0.75rem", padding: "0.75rem" }}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold" style={{ color: "#a5b4fc", fontFamily: "var(--font-heading)" }}><MapPin size={11} className="inline mr-1" />Mailing List (Direct Mail)</span>
+                  {mailingCount !== null && (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>{mailingCount} with address</span>
+                  )}
+                </div>
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>For postcard printers & mail houses. Includes address-complete contacts only.</p>
+                <div className="flex gap-1.5 mt-1">
+                  <input
+                    style={{ ...inp, flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.75rem" }}
+                    placeholder="Filter by segment (optional)"
+                    value={segmentFilter}
+                    onChange={(e) => setSegmentFilter(e.target.value)}
+                  />
+                  <button
+                    onClick={() => triggerDownload(`/api/export/mailing-list${segmentFilter ? `?segment=${encodeURIComponent(segmentFilter)}` : ""}`)}
+                    className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02]"
+                    style={{ background: "rgba(99,102,241,0.25)", color: "#a5b4fc", fontFamily: "var(--font-heading)" }}
+                  >
+                    <Download size={12} className="inline mr-1" />Download
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => triggerDownload("/api/export/suppression")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+                style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)", fontFamily: "var(--font-heading)" }}
+              >
+                <Download size={13} /> Suppression List
+              </button>
+              <button
+                onClick={() => triggerDownload("/api/export/contacts?filter=removed")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+                style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.15)", fontFamily: "var(--font-heading)" }}
+              >
+                <Download size={13} /> Removed / Opted Out
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: contact list */}
+        <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
+            <div className="flex items-center gap-3">
+              <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
+                {activeCount} active / {contacts.length} total
+              </span>
+              <button
+                onClick={handleValidate}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+                style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
+                title="Check all emails for valid domains"
+              >
+                <ShieldCheck size={12} /> Validate Emails
+              </button>
+            </div>
+          </div>
+
+          {contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(230,57,70,0.1)" }}>
+                <Users size={20} style={{ color: "var(--color-red)" }} strokeWidth={1.5} />
+              </div>
+              <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Click "Add Contact" to get started.</p>
+            </div>
+          ) : (
+            <div>
+              {contacts.map((c, i) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between px-6 py-3 transition-colors cursor-pointer hover:bg-white/[0.02]"
+                  style={{ borderBottom: i < contacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  onClick={() => openDrawer(c)}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{
+                        background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
+                        color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)",
+                      }}
+                    >
+                      {initials(c)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-medium truncate" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>
+                          {displayName(c)}
+                        </p>
+                        {c.status === "unsubscribed" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsub</span>}
+                        {c.status === "invalid" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>}
+                        {c.tags?.includes("test_seed") && <span className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>}
+                        {Number(c.campaigns_sent) > 0 && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>sent ×{c.campaigns_sent}</span>}
+                        {hasAddress(c) && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}><MapPin size={8} className="inline mr-0.5" />addr</span>}
+                      </div>
+                      <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {c.name !== displayName(c) ? c.email : ""}
+                        {(c.title || c.company) && (
+                          <>
+                            {c.name !== displayName(c) ? " · " : ""}
+                            <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.title}</span>
+                            {c.title && c.company ? " at " : ""}
+                            <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.company}</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

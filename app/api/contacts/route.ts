@@ -18,7 +18,24 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await req.json();
-  const entries: { email: string; name?: string; title?: string; company?: string }[] = Array.isArray(body) ? body : [body];
+  const entries: {
+    email: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    title?: string;
+    company?: string;
+    phone?: string;
+    phone_2?: string;
+    street_address?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+    country?: string;
+    notes?: string;
+    segments?: string;
+    custom_fields?: string;
+  }[] = Array.isArray(body) ? body : [body];
 
   const suppressedResult = await db.execute("SELECT email FROM suppression_list");
   const suppressed = new Set(suppressedResult.rows.map((r) => (r.email as string).toLowerCase()));
@@ -29,9 +46,42 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const email = (row.email ?? "").trim().toLowerCase();
     if (!email || !email.includes("@")) continue;
     if (suppressed.has(email)) { skipped++; continue; }
+
+    // Resolve first/last from split fields or from full name fallback
+    const firstName = (row.first_name ?? "").trim();
+    const lastName  = (row.last_name  ?? "").trim();
+    let fullName = (row.name ?? "").trim();
+    if (!fullName && (firstName || lastName)) {
+      fullName = [firstName, lastName].filter(Boolean).join(" ");
+    }
+    // Auto-split full name if first/last not provided
+    const derivedFirst = firstName || (fullName.split(" ")[0] ?? "");
+    const derivedLast  = lastName  || (fullName.split(" ").slice(1).join(" ") ?? "");
+
     const res = await db.execute({
-      sql: "INSERT OR IGNORE INTO contacts (email, name, title, company) VALUES (?, ?, ?, ?)",
-      args: [email, (row.name ?? "").trim(), (row.title ?? "").trim(), (row.company ?? "").trim()],
+      sql: `INSERT OR IGNORE INTO contacts
+        (email, name, first_name, last_name, title, company,
+         phone, phone_2, street_address, city, state, zip_code, country,
+         notes, segments, custom_fields)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        email,
+        fullName || derivedFirst + (derivedLast ? " " + derivedLast : ""),
+        derivedFirst,
+        derivedLast,
+        (row.title ?? "").trim(),
+        (row.company ?? "").trim(),
+        (row.phone ?? "").trim(),
+        (row.phone_2 ?? "").trim(),
+        (row.street_address ?? "").trim(),
+        (row.city ?? "").trim(),
+        (row.state ?? "").trim(),
+        (row.zip_code ?? "").trim(),
+        (row.country ?? "US").trim(),
+        (row.notes ?? "").trim(),
+        (row.segments ?? "").trim(),
+        (row.custom_fields ?? "{}").trim(),
+      ],
     });
     added += res.rowsAffected;
   }
@@ -39,31 +89,45 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ added, skipped });
 }
 
-// PATCH /api/contacts — update name, email, title, company, and/or status
+// PATCH /api/contacts — update any contact field
 export async function PATCH(req: NextRequest): Promise<NextResponse> {
-  const body = await req.json() as { id: number; status?: string; name?: string; email?: string; title?: string; company?: string };
-  const { id, status, name, email, title, company } = body;
+  const body = await req.json() as {
+    id: number;
+    status?: string;
+    name?: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    title?: string;
+    company?: string;
+    phone?: string;
+    phone_2?: string;
+    street_address?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+    country?: string;
+    notes?: string;
+    segments?: string;
+    custom_fields?: string;
+  };
+  const { id, status, ...fields } = body;
 
-  // Handle corrections (name, email, title, company)
-  if (name !== undefined || email !== undefined || title !== undefined || company !== undefined) {
-    const updates: string[] = [];
-    const args: (string | number)[] = [];
+  const scalarFields = [
+    "name", "email", "first_name", "last_name", "title", "company",
+    "phone", "phone_2", "street_address", "city", "state", "zip_code",
+    "country", "notes", "segments", "custom_fields",
+  ] as const;
 
-    if (name !== undefined) {
-      updates.push("name = ?");
-      args.push(name.trim());
-    }
-    if (title !== undefined) {
-      updates.push("title = ?");
-      args.push(title.trim());
-    }
-    if (company !== undefined) {
-      updates.push("company = ?");
-      args.push(company.trim());
-    }
-    if (email !== undefined) {
-      const normalized = email.trim().toLowerCase();
-      // Check uniqueness against other contacts
+  const updates: string[] = [];
+  const args: (string | number)[] = [];
+
+  for (const key of scalarFields) {
+    const val = (fields as Record<string, string | undefined>)[key];
+    if (val === undefined) continue;
+
+    if (key === "email") {
+      const normalized = val.trim().toLowerCase();
       const conflict = await db.execute({
         sql: "SELECT id FROM contacts WHERE email = ? AND id != ?",
         args: [normalized, id],
@@ -73,12 +137,29 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       }
       updates.push("email = ?");
       args.push(normalized);
+    } else {
+      updates.push(`${key} = ?`);
+      args.push(val.trim());
     }
+  }
 
-    if (updates.length > 0) {
-      args.push(id);
-      await db.execute({ sql: `UPDATE contacts SET ${updates.join(", ")} WHERE id = ?`, args });
+  // Keep name in sync when first/last change
+  const hasFirst = fields.first_name !== undefined;
+  const hasLast  = fields.last_name  !== undefined;
+  if ((hasFirst || hasLast) && fields.name === undefined) {
+    // Fetch current values to compute full name
+    const cur = await db.execute({ sql: "SELECT first_name, last_name FROM contacts WHERE id = ?", args: [id] });
+    if (cur.rows[0]) {
+      const fn = (fields.first_name ?? cur.rows[0].first_name ?? "") as string;
+      const ln = (fields.last_name  ?? cur.rows[0].last_name  ?? "") as string;
+      updates.push("name = ?");
+      args.push([fn, ln].filter(Boolean).join(" "));
     }
+  }
+
+  if (updates.length > 0) {
+    args.push(id);
+    await db.execute({ sql: `UPDATE contacts SET ${updates.join(", ")} WHERE id = ?`, args });
   }
 
   // Handle status change
