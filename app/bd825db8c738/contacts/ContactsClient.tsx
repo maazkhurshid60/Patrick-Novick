@@ -41,6 +41,13 @@ interface ActivityEntry {
   opened: boolean;
 }
 
+interface ContactList {
+  id: number;
+  name: string;
+  member_count: number;
+}
+
+
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 
 const card = {
@@ -197,6 +204,11 @@ export default function ContactsClient() {
   const [mappings, setMappings] = useState<Record<string, string>>({}); // header -> systemFieldKey
   const sheetRef = useRef<HTMLInputElement>(null);
 
+  // Import list association states
+  const [allLists, setAllLists] = useState<ContactList[]>([]);
+  const [selectedListId, setSelectedListId] = useState<number | "new" | "">("");
+  const [newListName, setNewListName] = useState("");
+
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchContacts = useCallback(async () => {
@@ -206,7 +218,18 @@ export default function ContactsClient() {
     setMailingCount(data.filter(hasAddress).length);
   }, []);
 
-  useEffect(() => { fetchContacts(); }, [fetchContacts]);
+  const fetchAllLists = useCallback(async () => {
+    const res = await fetch("/api/lists");
+    if (res.ok) {
+      setAllLists(await res.json());
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContacts();
+    fetchAllLists();
+  }, [fetchContacts, fetchAllLists]);
+
 
   // ── Activity history for a contact ────────────────────────────────────────
 
@@ -369,10 +392,15 @@ export default function ContactsClient() {
     }
 
     try {
+      const payload = {
+        contacts: mappedEntries,
+        listId: selectedListId && selectedListId !== "new" ? Number(selectedListId) : null,
+        newListName: selectedListId === "new" && newListName.trim() ? newListName.trim() : null,
+      };
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mappedEntries),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -380,12 +408,15 @@ export default function ContactsClient() {
       } else {
         setSuccess(`Successfully imported ${data.added} of ${mappedEntries.length} contacts!`);
         fetchContacts();
+        fetchAllLists();
       }
     } catch (err) {
       setError("Failed to transmit contact data.");
     } finally {
       setLoading(false);
       setShowMapping(false);
+      setSelectedListId("");
+      setNewListName("");
       if (sheetRef.current) sheetRef.current.value = "";
     }
   }
@@ -525,6 +556,45 @@ export default function ContactsClient() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* List Selection Section */}
+            <div className="mb-6 pt-4 border-t border-white/5">
+              <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3" style={{ fontFamily: "var(--font-heading)" }}>Add to Contact List (Optional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={label}>Select List</label>
+                  <select
+                    value={selectedListId}
+                    onChange={(e) => {
+                      setSelectedListId(e.target.value as any);
+                      if (e.target.value !== "new") setNewListName("");
+                    }}
+                    className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
+                    style={{ background: "rgba(255,255,255,0.04)" }}
+                  >
+                    <option value="" style={{ background: "#16181e" }}>— Do Not Add to List —</option>
+                    <option value="new" style={{ background: "#16181e" }}>[+ Create New List]</option>
+                    {allLists.map((l) => (
+                      <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name} ({l.member_count} members)</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedListId === "new" && (
+                  <div>
+                    <label style={label}>New List Name</label>
+                    <input
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      placeholder="e.g. Imported Contacts - Jun 23"
+                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      required
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { generateSignedState, COOKIE_NAME, MAX_AGE } from "@/lib/state-cookie";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+
 /**
  * GET /api/auth/connect
  * Generates a CSRF state, stores it in a signed httpOnly cookie,

@@ -1,5 +1,9 @@
 import Sidebar from "../Sidebar";
 import LogoutButton from "../LogoutButton";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import CampaignClient from "./CampaignClient";
 import db from "@/lib/db";
 

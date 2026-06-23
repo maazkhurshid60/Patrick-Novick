@@ -1,5 +1,9 @@
 import db from "@/lib/db";
 import LogoutButton from "./LogoutButton";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import Sidebar from "./Sidebar";
 import Link from "next/link";
 import { Send, Plus, Users, Layout, ArrowUpRight } from "lucide-react";

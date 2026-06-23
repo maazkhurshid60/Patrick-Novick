@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { getBrevoStats } from "@/lib/brevo";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+
 interface ContactEngagement {
   email: string;
   name: string;

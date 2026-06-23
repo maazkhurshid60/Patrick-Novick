@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+
 // GET /api/contacts — list all contacts with sent campaign count
 export async function GET(): Promise<NextResponse> {
   const result = await db.execute(`
@@ -18,7 +22,7 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const body = await req.json();
-  const entries: {
+  let entries: {
     email: string;
     name?: string;
     first_name?: string;
@@ -35,7 +39,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     notes?: string;
     segments?: string;
     custom_fields?: string;
-  }[] = Array.isArray(body) ? body : [body];
+  }[];
+  let listId: number | null = null;
+  let newListName: string | null = null;
+
+  if (body && !Array.isArray(body) && Array.isArray(body.contacts)) {
+    entries = body.contacts;
+    listId = body.listId ?? null;
+    newListName = body.newListName ?? null;
+  } else {
+    entries = Array.isArray(body) ? body : [body];
+  }
+
+  // Create list if newListName is provided
+  if (newListName && newListName.trim()) {
+    try {
+      const listNameClean = newListName.trim();
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO contact_lists (name) VALUES (?)",
+        args: [listNameClean],
+      });
+      const listFetch = await db.execute({
+        sql: "SELECT id FROM contact_lists WHERE name = ?",
+        args: [listNameClean],
+      });
+      if (listFetch.rows[0]) {
+        listId = Number(listFetch.rows[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to create list: ", err);
+    }
+  }
 
   const suppressedResult = await db.execute("SELECT email FROM suppression_list");
   const suppressed = new Set(suppressedResult.rows.map((r) => (r.email as string).toLowerCase()));
@@ -84,6 +118,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ],
     });
     added += res.rowsAffected;
+
+    // Link contact to list if listId is set
+    if (listId) {
+      try {
+        const contactFetch = await db.execute({
+          sql: "SELECT id FROM contacts WHERE email = ?",
+          args: [email],
+        });
+        const contactId = contactFetch.rows[0]?.id;
+        if (contactId) {
+          await db.execute({
+            sql: "INSERT OR IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)",
+            args: [listId, Number(contactId)],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to associate contact with list:", err);
+      }
+    }
   }
 
   return NextResponse.json({ added, skipped });

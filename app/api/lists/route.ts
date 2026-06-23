@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+
 export async function GET() {
   const result = await db.execute(`
     SELECT cl.id, cl.name, cl.created_at,

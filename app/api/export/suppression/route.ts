@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+
 // GET /api/export/suppression — download suppression list as CSV
 export async function GET(): Promise<NextResponse> {
   const result = await db.execute(
