@@ -162,9 +162,9 @@ export default function CampaignClient({
     if (!subject.trim() || !body.trim()) { setError("Subject and body are required"); return; }
     if (isTestSend && !testEmail.trim()) { setError("Test email is required"); return; }
     if (!isTestSend && recipientCount === 0) { setError("No contacts in selected list"); return; }
-    
-    const confirmMsg = isTestSend 
-      ? `Send test email to ${testEmail.trim()}?` 
+
+    const confirmMsg = isTestSend
+      ? `Send test email to ${testEmail.trim()}?`
       : `Send to up to ${sendCount} contacts?`;
     if (!confirm(confirmMsg)) return;
 

@@ -118,6 +118,56 @@ function Field({ label: lbl, children }: { label: string; children: React.ReactN
   );
 }
 
+const loadXLSX = (): Promise<any> => {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if ((window as any).XLSX) return Promise.resolve((window as any).XLSX);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    script.onload = () => resolve((window as any).XLSX);
+    script.onerror = (e) => reject(e);
+    document.head.appendChild(script);
+  });
+};
+
+const MAPPABLE_FIELDS = [
+  { key: "email", label: "Email Address *" },
+  { key: "first_name", label: "First Name" },
+  { key: "last_name", label: "Last Name" },
+  { key: "name", label: "Full Name" },
+  { key: "title", label: "Title / Role" },
+  { key: "company", label: "Company" },
+  { key: "phone", label: "Phone" },
+  { key: "phone_2", label: "Phone 2 / Mobile" },
+  { key: "street_address", label: "Street Address" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "zip_code", label: "ZIP Code" },
+  { key: "country", label: "Country" },
+  { key: "notes", label: "Notes" },
+  { key: "segments", label: "Segments" },
+];
+
+function autoMapHeader(header: string): string {
+  const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (h === "email" || h === "emailaddress" || h === "mail" || h === "workemail") return "email";
+  if (h === "firstname" || h === "first" || h === "givenname") return "first_name";
+  if (h === "lastname" || h === "last" || h === "surname") return "last_name";
+  if (h === "name" || h === "fullname" || h === "contact" || h === "contactname") return "name";
+  if (h === "title" || h === "role" || h === "position" || h === "jobtitle") return "title";
+  if (h === "company" || h === "firm" || h === "organization" || h === "org" || h === "companyname") return "company";
+  if (h === "phone" || h === "telephone" || h === "phone1" || h === "workphone" || h === "officephone") return "phone";
+  if (h === "phone2" || h === "mobile" || h === "cell" || h === "cellphone" || h === "mobilephone") return "phone_2";
+  if (h === "streetaddress" || h === "street" || h === "address" || h === "address1") return "street_address";
+  if (h === "city") return "city";
+  if (h === "state" || h === "province") return "state";
+  if (h === "zipcode" || h === "zip" || h === "postal" || h === "postalcode") return "zip_code";
+  if (h === "country") return "country";
+  if (h === "notes" || h === "note" || h === "comment" || h === "comments") return "notes";
+  if (h === "segments" || h === "segment" || h === "tag" || h === "tags" || h === "list") return "segments";
+  return "";
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ContactsClient() {
@@ -140,7 +190,12 @@ export default function ContactsClient() {
   const [mailingCount, setMailingCount] = useState<number | null>(null);
   const [segmentFilter, setSegmentFilter] = useState("");
 
-  const csvRef = useRef<HTMLInputElement>(null);
+  // Spreadsheet mapping states
+  const [showMapping, setShowMapping] = useState(false);
+  const [sheetHeaders, setSheetHeaders] = useState<string[]>([]);
+  const [sheetRows, setSheetRows] = useState<any[][]>([]);
+  const [mappings, setMappings] = useState<Record<string, string>>({}); // header -> systemFieldKey
+  const sheetRef = useRef<HTMLInputElement>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
@@ -226,72 +281,113 @@ export default function ContactsClient() {
     setLoading(false);
   }
 
-  // ── CSV upload ────────────────────────────────────────────────────────────
+  // ── Spreadsheet upload & mapping ──────────────────────────────────────────
 
-  async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleSpreadsheetSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(""); setSuccess(""); setLoading(true);
 
-    const text = await file.text();
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    const headers = lines[0].toLowerCase().split(",").map((h) => h.replace(/"/g, "").trim());
+    try {
+      const XLSX = await loadXLSX();
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const ab = evt.target?.result;
+          const workbook = XLSX.read(ab, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-    const col = (keys: string[]) => keys.reduce<number>((found, k) => found >= 0 ? found : headers.findIndex((h) => h.includes(k)), -1);
+          if (json.length === 0) {
+            setError("The spreadsheet appears to be empty.");
+            setLoading(false);
+            return;
+          }
 
-    const emailIdx   = col(["email"]);
-    if (emailIdx === -1) { setError("No email column found."); setLoading(false); if (csvRef.current) csvRef.current.value = ""; return; }
+          const rawHeaders = (json[0] ?? []).map((h) => (h ?? "").toString().trim());
+          if (rawHeaders.filter(Boolean).length === 0) {
+            setError("No valid columns found in the header row.");
+            setLoading(false);
+            return;
+          }
 
-    const firstIdx   = col(["first_name", "first"]);
-    const lastIdx    = col(["last_name", "last"]);
-    const nameIdx    = col(["name", "contact"]);
-    const titleIdx   = col(["title", "role", "position"]);
-    const companyIdx = col(["company", "firm", "organization", "org"]);
-    const phoneIdx   = col(["phone", "mobile", "cell", "tel"]);
-    const phone2Idx  = col(["phone_2", "phone2", "secondary"]);
-    const streetIdx  = col(["street_address", "street", "address"]);
-    const cityIdx    = col(["city"]);
-    const stateIdx   = col(["state", "province"]);
-    const zipIdx     = col(["zip_code", "zip", "postal"]);
-    const countryIdx = col(["country"]);
-    const notesIdx   = col(["notes", "note", "comment"]);
-    const segIdx     = col(["segment", "tag", "list"]);
+          const rows = json.slice(1);
+          setSheetHeaders(rawHeaders);
+          setSheetRows(rows);
 
-    const g = (cols: string[], idx: number) => idx >= 0 ? (cols[idx] ?? "") : "";
-
-    const entries = lines.slice(1).map((line) => {
-      const cols = line.split(",").map((c) => c.replace(/"/g, "").trim());
-      return {
-        email:         g(cols, emailIdx),
-        first_name:    g(cols, firstIdx),
-        last_name:     g(cols, lastIdx),
-        name:          g(cols, nameIdx),
-        title:         g(cols, titleIdx),
-        company:       g(cols, companyIdx),
-        phone:         g(cols, phoneIdx),
-        phone_2:       g(cols, phone2Idx),
-        street_address: g(cols, streetIdx),
-        city:          g(cols, cityIdx),
-        state:         g(cols, stateIdx),
-        zip_code:      g(cols, zipIdx),
-        country:       g(cols, countryIdx),
-        notes:         g(cols, notesIdx),
-        segments:      g(cols, segIdx),
+          const initialMappings: Record<string, string> = {};
+          rawHeaders.forEach((h) => {
+            if (h) {
+              const match = autoMapHeader(h);
+              if (match) initialMappings[h] = match;
+            }
+          });
+          setMappings(initialMappings);
+          setShowMapping(true);
+        } catch (err) {
+          setError("Failed to parse sheet data. Please check the file format.");
+        } finally {
+          setLoading(false);
+        }
       };
-    }).filter((e) => e.email.includes("@"));
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      setError("Failed to load spreadsheet parser library.");
+      setLoading(false);
+    }
+  }
 
-    if (entries.length === 0) { setError("No valid emails found."); setLoading(false); if (csvRef.current) csvRef.current.value = ""; return; }
+  async function handleImportSpreadsheet() {
+    const emailHeader = Object.keys(mappings).find((h) => mappings[h] === "email");
+    if (!emailHeader) {
+      alert("Please map at least one column to 'Email Address *'.");
+      return;
+    }
 
-    const res = await fetch("/api/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entries),
-    });
-    const data = await res.json();
-    if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Imported ${data.added} of ${entries.length} contacts${data.skipped ? `, ${data.skipped} suppressed skipped` : ""}`); fetchContacts(); }
-    setLoading(false);
-    if (csvRef.current) csvRef.current.value = "";
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    const mappedEntries = sheetRows.map((row) => {
+      const entry: Record<string, any> = {};
+      sheetHeaders.forEach((header, index) => {
+        const systemKey = mappings[header];
+        if (systemKey && systemKey !== "") {
+          const val = row[index];
+          entry[systemKey] = val !== undefined && val !== null ? val.toString().trim() : "";
+        }
+      });
+      return entry;
+    }).filter((entry) => entry.email && entry.email.includes("@"));
+
+    if (mappedEntries.length === 0) {
+      setError("No contacts with valid email addresses were found using the current mapping.");
+      setLoading(false);
+      setShowMapping(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mappedEntries),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to import contacts.");
+      } else {
+        setSuccess(`Successfully imported ${data.added} of ${mappedEntries.length} contacts!`);
+        fetchContacts();
+      }
+    } catch (err) {
+      setError("Failed to transmit contact data.");
+    } finally {
+      setLoading(false);
+      setShowMapping(false);
+      if (sheetRef.current) sheetRef.current.value = "";
+    }
   }
 
   // ── Save drawer edits ─────────────────────────────────────────────────────
@@ -348,6 +444,106 @@ export default function ContactsClient() {
 
   return (
     <>
+      {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
+      {showMapping && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowMapping(false); }}
+        >
+          <div
+            className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col"
+            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", padding: "2rem" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Field Mapping</p>
+                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Map the columns in your file to the system fields to start import.</p>
+              </div>
+              <button onClick={() => setShowMapping(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+            </div>
+
+            {/* Mapping Grid */}
+            <div className="grid grid-cols-2 gap-6 mb-6 overflow-y-auto pr-2" style={{ maxHeight: "40vh" }}>
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-bold text-white/50 uppercase tracking-wider" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Columns</p>
+                {sheetHeaders.map((header) => (
+                  <div key={header} className="flex items-center h-9 px-3 rounded-lg border border-white/5 text-xs text-white bg-white/[0.02] truncate" title={header}>
+                    {header || "(Empty Header)"}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-bold text-white/50 uppercase tracking-wider" style={{ fontFamily: "var(--font-heading)" }}>Map to Field</p>
+                {sheetHeaders.map((header) => (
+                  <select
+                    key={header}
+                    value={mappings[header] ?? ""}
+                    onChange={(e) => {
+                      const newMappings = { ...mappings };
+                      if (e.target.value) newMappings[header] = e.target.value;
+                      else delete newMappings[header];
+                      setMappings(newMappings);
+                    }}
+                    className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10"
+                    style={{ background: "rgba(255,255,255,0.04)" }}
+                  >
+                    <option value="" style={{ background: "#16181e" }}>— Skip Column —</option>
+                    {MAPPABLE_FIELDS.map((f) => (
+                      <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+            </div>
+
+            {/* Preview Section */}
+            <div className="mb-6 pt-4 border-t border-white/5">
+              <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3" style={{ fontFamily: "var(--font-heading)" }}>Import Preview (First 3 Rows)</p>
+              <div className="overflow-x-auto rounded-xl border border-white/5">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr style={{ background: "rgba(255,255,255,0.02)" }}>
+                      {MAPPABLE_FIELDS.filter(f => Object.values(mappings).includes(f.key)).map(f => (
+                        <th key={f.key} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white/40 border-b border-white/5">{f.label.replace(" *", "")}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sheetRows.slice(0, 3).map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-white/[0.01]">
+                        {MAPPABLE_FIELDS.filter(f => Object.values(mappings).includes(f.key)).map(f => {
+                          const hIdx = sheetHeaders.findIndex(h => mappings[h] === f.key);
+                          const val = hIdx >= 0 ? row[hIdx] : "";
+                          return (
+                            <td key={f.key} className="px-4 py-2 text-xs text-white/60 border-b border-white/5 truncate max-w-[150px]">{val !== undefined && val !== null ? val.toString() : ""}</td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setShowMapping(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+              <button
+                type="button"
+                onClick={handleImportSpreadsheet}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
+                style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+              >
+                Import Mapped Contacts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Add Contact Modal ─────────────────────────────────────────────── */}
       {showAdd && (
         <div
@@ -609,18 +805,18 @@ export default function ContactsClient() {
               </button>
             </form>
 
-            {/* CSV Upload */}
+            {/* Spreadsheet (CSV & Excel) Upload */}
             <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Or upload a <strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv</strong> — auto-detects email, name, phone, address, segments
+                Or upload a spreadsheet (<strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv, .xlsx, .xls</strong>) with column field mapping
               </p>
-              <input ref={csvRef} type="file" accept=".csv" onChange={handleCsvUpload} disabled={loading} style={{ display: "none" }} />
+              <input ref={sheetRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleSpreadsheetSelect} disabled={loading} style={{ display: "none" }} />
               <button
-                type="button" disabled={loading} onClick={() => csvRef.current?.click()}
+                type="button" disabled={loading} onClick={() => sheetRef.current?.click()}
                 className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
                 style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
               >
-                <FileText size={14} /> Upload CSV
+                <FileText size={14} /> Upload Spreadsheet
               </button>
             </div>
           </div>
