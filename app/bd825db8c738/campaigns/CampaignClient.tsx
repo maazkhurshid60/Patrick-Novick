@@ -69,6 +69,31 @@ export default function CampaignClient({
   const [success, setSuccess] = useState("");
   const [history, setHistory] = useState<Campaign[]>([]);
 
+  const [attachPostcard, setAttachPostcard] = useState(false);
+  const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds the 5MB limit.");
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = (reader.result as string).split(",")[1];
+      setCustomAttachment({
+        name: file.name,
+        content: base64String,
+        size: file.size,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   async function handleDeleteCampaign(id: number) {
     if (!confirm("Delete this campaign record from history?")) return;
     const res = await fetch("/api/campaigns/send", {
@@ -156,6 +181,8 @@ export default function CampaignClient({
         replyTo: replyTo.trim() || null,
         isTestSend,
         testEmail: isTestSend ? testEmail.trim() : null,
+        attachPostcard,
+        customAttachment: customAttachment ? { name: customAttachment.name, content: customAttachment.content } : null,
       }),
     });
     const data = await res.json();
@@ -164,6 +191,8 @@ export default function CampaignClient({
       setSuccess(isTestSend ? `Test email sent to ${testEmail.trim()}` : `Sent to ${data.recipients} recipients`);
       if (!isTestSend) {
         setSubject(""); setBody("");
+        setAttachPostcard(false);
+        setCustomAttachment(null);
         fetchHistory();
       }
     }
@@ -331,6 +360,56 @@ export default function CampaignClient({
                 />
               </div>
             )}
+          </div>
+
+          {/* Campaign Attachments block */}
+          <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-white">Campaign Attachments</span>
+              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a postcard or any document to this email campaign</span>
+            </div>
+
+            <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+              {/* Predefined Postcard Checkbox */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={attachPostcard}
+                  onChange={(e) => setAttachPostcard(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
+                />
+                <div className="flex flex-col">
+                  <span className="text-xs text-white/80">Attach standard postcard PDF</span>
+                  <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Includes the default company postcard.pdf</span>
+                </div>
+              </label>
+
+              {/* Custom File Upload */}
+              <div className="flex flex-col gap-2">
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Or attach a custom file</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="text-xs text-white/55 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer"
+                  />
+                  {customAttachment && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomAttachment(null)}
+                      className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {customAttachment && (
+                  <p className="text-[10px] text-emerald-400">
+                    Selected: {customAttachment.name} ({Math.round(customAttachment.size / 1024)} KB)
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Subject */}

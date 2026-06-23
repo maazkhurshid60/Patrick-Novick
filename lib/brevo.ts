@@ -13,11 +13,18 @@ export interface Recipient {
   personalizedSubject?: string;
 }
 
+export interface Attachment {
+  name: string;
+  content?: string; // base64 string
+  url?: string;
+}
+
 export interface SendEmailOptions {
   subject: string;
   htmlContent: string;
   recipients: Recipient[];
   replyTo?: string;
+  attachments?: Attachment[];
 }
 
 export interface SendResult {
@@ -94,6 +101,9 @@ export async function sendCampaignEmail(
       htmlContent: html,
     };
     if (replyToEmail) payload.replyTo = { email: replyToEmail };
+    if (opts.attachments && opts.attachments.length > 0) {
+      payload.attachment = opts.attachments;
+    }
 
     const res = await fetch(`${BREVO_API_URL}/smtp/email`, {
       method: "POST",

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 import { sendCampaignEmail } from "@/lib/brevo";
+import fs from "fs";
+import path from "path";
 
 interface ContactRow {
   id: number;
@@ -63,7 +65,18 @@ function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number)
 
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { subject, body, listId, excludeRecentDays, dailyLimit, replyTo, isTestSend, testEmail } = await req.json() as {
+  const {
+    subject,
+    body,
+    listId,
+    excludeRecentDays,
+    dailyLimit,
+    replyTo,
+    isTestSend,
+    testEmail,
+    attachPostcard,
+    customAttachment,
+  } = await req.json() as {
     subject: string;
     body: string;
     listId?: number | null;
@@ -72,11 +85,41 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     replyTo?: string | null;
     isTestSend?: boolean;
     testEmail?: string | null;
+    attachPostcard?: boolean;
+    customAttachment?: { name: string; content: string } | null;
   };
 
   if (!subject?.trim() || !body?.trim()) {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
   }
+
+  // Construct attachments array
+  const finalAttachments: { name: string; content?: string; url?: string }[] = [];
+
+  if (attachPostcard) {
+    try {
+      const postcardPath = path.join(process.cwd(), "public", "postcard.pdf");
+      if (fs.existsSync(postcardPath)) {
+        finalAttachments.push({
+          name: "postcard.pdf",
+          content: fs.readFileSync(postcardPath).toString("base64"),
+        });
+      } else {
+        console.warn("Postcard file not found in public directory:", postcardPath);
+      }
+    } catch (err) {
+      console.error("Failed to read postcard file:", err);
+    }
+  }
+
+  if (customAttachment?.content) {
+    finalAttachments.push({
+      name: customAttachment.name,
+      content: customAttachment.content,
+    });
+  }
+
+  const attachmentsOption = finalAttachments.length > 0 ? finalAttachments : undefined;
 
   // Handle Test Send logic (does not write to campaigns logs)
   if (isTestSend) {
@@ -93,6 +136,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         subject: personalizedSubject,
         htmlContent: wrappedHtml,
         replyTo: replyTo ?? undefined,
+        attachments: attachmentsOption,
         recipients: [{
           email: testEmail.trim(),
           name: "Test Recipient",
@@ -161,6 +205,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       subject,
       htmlContent: body,
       replyTo: replyTo ?? undefined,
+      attachments: attachmentsOption,
       recipients: contacts.map((c) => {
         const personalizedText = personalize(body, c);
         const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId);
