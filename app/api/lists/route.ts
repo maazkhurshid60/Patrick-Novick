@@ -39,3 +39,14 @@ export async function DELETE(req: NextRequest) {
   ], "write");
   return NextResponse.json({ success: true });
 }
+
+export async function PATCH(req: NextRequest) {
+  const { id, name } = await req.json() as { id: number; name: string };
+  if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  try {
+    await db.execute({ sql: "UPDATE contact_lists SET name = ? WHERE id = ?", args: [name.trim(), id] });
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "A list with that name already exists" }, { status: 400 });
+  }
+}

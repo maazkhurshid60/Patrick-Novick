@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, FormEvent, useRef, useCallback } from "react";
+import { useState, useEffect, FormEvent, useRef, useCallback, useMemo } from "react";
 import {
   Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck,
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
-  ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2,
+  ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -202,6 +202,10 @@ export default function ContactsClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState("");
   const [success, setSuccess] = useState("");
+
+  // Contact list search & filter
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactStatusFilter, setContactStatusFilter] = useState<"all" | "active" | "unsubscribed" | "invalid">("all");
 
   // Add modal
   const [showAdd, setShowAdd] = useState(false);
@@ -494,6 +498,28 @@ export default function ContactsClient() {
   }
 
   const activeCount = contacts.filter((c) => c.status === "active" || !c.status).length;
+
+  // Filtered contacts (client-side, instant)
+  const filteredContacts = useMemo(() => {
+    const q = contactSearch.toLowerCase().trim();
+    return contacts.filter((c) => {
+      if (contactStatusFilter === "active" && c.status !== "active" && c.status) return false;
+      if (contactStatusFilter === "unsubscribed" && c.status !== "unsubscribed") return false;
+      if (contactStatusFilter === "invalid" && c.status !== "invalid") return false;
+      if (!q) return true;
+      return (
+        c.email.toLowerCase().includes(q) ||
+        (c.name || "").toLowerCase().includes(q) ||
+        (c.first_name || "").toLowerCase().includes(q) ||
+        (c.last_name || "").toLowerCase().includes(q) ||
+        (c.company || "").toLowerCase().includes(q) ||
+        (c.title || "").toLowerCase().includes(q) ||
+        (c.city || "").toLowerCase().includes(q) ||
+        (c.zip_code || "").toLowerCase().includes(q) ||
+        (c.phone || "").toLowerCase().includes(q)
+      );
+    });
+  }, [contacts, contactSearch, contactStatusFilter]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1003,21 +1029,51 @@ export default function ContactsClient() {
 
         {/* Right: contact list */}
         <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
-            <div className="flex items-center gap-3">
-              <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
-                {activeCount} active / {contacts.length} total
-              </span>
-              <button
-                onClick={handleValidate}
-                disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-                style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
-                title="Check all emails for valid domains"
+          {/* List header */}
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
+                  {contactSearch || contactStatusFilter !== "all" ? `${filteredContacts.length} / ` : ""}{activeCount} active / {contacts.length} total
+                </span>
+                <button
+                  onClick={handleValidate}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+                  style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
+                  title="Check all emails for valid domains"
+                >
+                  <ShieldCheck size={12} /> Validate Emails
+                </button>
+              </div>
+            </div>
+            {/* Search + filter row */}
+            <div className="flex gap-2">
+              <div style={{ position: "relative", flex: 1 }}>
+                <Search size={13} style={{ position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                <input
+                  style={{ ...inp, paddingLeft: "2.1rem", borderRadius: "0.625rem" }}
+                  placeholder="Search name, email, company, city, phone…"
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                />
+                {contactSearch && (
+                  <button onClick={() => setContactSearch("")} style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              <select
+                value={contactStatusFilter}
+                onChange={(e) => setContactStatusFilter(e.target.value as typeof contactStatusFilter)}
+                style={{ ...inp, width: "auto", fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
               >
-                <ShieldCheck size={12} /> Validate Emails
-              </button>
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="unsubscribed">Unsubscribed</option>
+                <option value="invalid">Invalid</option>
+              </select>
             </div>
           </div>
 
@@ -1029,13 +1085,21 @@ export default function ContactsClient() {
               <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
               <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Click "Add Contact" to get started.</p>
             </div>
+          ) : filteredContacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-sm font-semibold text-white mb-1">No results</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                No contacts match <span style={{ color: "rgba(255,255,255,0.55)" }}>"{contactSearch}"</span>. Try a different search.
+              </p>
+              <button onClick={() => { setContactSearch(""); setContactStatusFilter("all"); }} className="mt-3 text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer" }}>Clear filters</button>
+            </div>
           ) : (
             <div>
-              {contacts.map((c, i) => (
+              {filteredContacts.map((c, i) => (
                 <div
                   key={c.id}
                   className="flex items-center justify-between px-6 py-3 transition-colors cursor-pointer hover:bg-white/[0.02]"
-                  style={{ borderBottom: i < contacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  style={{ borderBottom: i < filteredContacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
                   onClick={() => openDrawer(c)}
                 >
                   <div className="flex items-center gap-3 min-w-0">
