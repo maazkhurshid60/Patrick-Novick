@@ -39,6 +39,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     notes?: string;
     segments?: string;
     custom_fields?: string;
+    business_email?: string;
+    email_2?: string;
+    linkedin?: string;
+    website?: string;
+    county?: string;
+    region?: string;
   }[];
   let listId: number | null = null;
   let newListName: string | null = null;
@@ -96,8 +102,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       sql: `INSERT OR IGNORE INTO contacts
         (email, name, first_name, last_name, title, company,
          phone, phone_2, street_address, city, state, zip_code, country,
-         notes, segments, custom_fields)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         notes, segments, custom_fields,
+         business_email, email_2, linkedin, website, county, region)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         email,
         fullName || derivedFirst + (derivedLast ? " " + derivedLast : ""),
@@ -115,6 +122,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         (row.notes ?? "").trim(),
         (row.segments ?? "").trim(),
         (row.custom_fields ?? "{}").trim(),
+        (row.business_email ?? "").trim(),
+        (row.email_2 ?? "").trim(),
+        (row.linkedin ?? "").trim(),
+        (row.website ?? "").trim(),
+        (row.county ?? "").trim(),
+        (row.region ?? "").trim(),
       ],
     });
     added += res.rowsAffected;
@@ -163,6 +176,12 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     notes?: string;
     segments?: string;
     custom_fields?: string;
+    business_email?: string;
+    email_2?: string;
+    linkedin?: string;
+    website?: string;
+    county?: string;
+    region?: string;
   };
   const { id, status, ...fields } = body;
 
@@ -170,6 +189,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     "name", "email", "first_name", "last_name", "title", "company",
     "phone", "phone_2", "street_address", "city", "state", "zip_code",
     "country", "notes", "segments", "custom_fields",
+    "business_email", "email_2", "linkedin", "website", "county", "region",
   ] as const;
 
   const updates: string[] = [];

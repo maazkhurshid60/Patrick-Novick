@@ -90,6 +90,13 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN notes TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN segments TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN custom_fields TEXT NOT NULL DEFAULT '{}'").catch(() => {}),
+    // Extended fields — safe to re-run, ignored if already exist
+    db.execute("ALTER TABLE contacts ADD COLUMN business_email TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN email_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN linkedin TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN website TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN county TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN region TEXT NOT NULL DEFAULT ''").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe

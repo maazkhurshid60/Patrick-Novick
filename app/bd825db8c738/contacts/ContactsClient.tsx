@@ -19,10 +19,16 @@ interface Contact {
   company: string;
   phone: string;
   phone_2: string;
+  business_email: string;
+  email_2: string;
+  linkedin: string;
+  website: string;
   street_address: string;
   city: string;
   state: string;
   zip_code: string;
+  county: string;
+  region: string;
   country: string;
   notes: string;
   segments: string;
@@ -99,8 +105,10 @@ function hasAddress(c: Contact) {
 
 const BLANK = {
   first_name: "", last_name: "", email: "", title: "", company: "",
-  phone: "", phone_2: "", street_address: "", city: "", state: "",
-  zip_code: "", country: "US", notes: "", segments: "",
+  phone: "", phone_2: "", business_email: "", email_2: "",
+  linkedin: "", website: "",
+  street_address: "", city: "", state: "", zip_code: "", county: "", region: "",
+  country: "US", notes: "", segments: "",
 };
 
 // ─── Section header ───────────────────────────────────────────────────────────
@@ -146,10 +154,16 @@ const MAPPABLE_FIELDS = [
   { key: "company", label: "Company" },
   { key: "phone", label: "Phone" },
   { key: "phone_2", label: "Phone 2 / Mobile" },
+  { key: "business_email", label: "Business Email" },
+  { key: "email_2", label: "Other Email" },
+  { key: "linkedin", label: "LinkedIn URL" },
+  { key: "website", label: "Website" },
   { key: "street_address", label: "Street Address" },
   { key: "city", label: "City" },
-  { key: "state", label: "State" },
-  { key: "zip_code", label: "ZIP Code" },
+  { key: "state", label: "State / Province" },
+  { key: "zip_code", label: "ZIP / Postal Code" },
+  { key: "county", label: "County" },
+  { key: "region", label: "Region" },
   { key: "country", label: "Country" },
   { key: "notes", label: "Notes" },
   { key: "segments", label: "Segments" },
@@ -158,6 +172,8 @@ const MAPPABLE_FIELDS = [
 function autoMapHeader(header: string): string {
   const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
   if (h === "email" || h === "emailaddress" || h === "mail" || h === "workemail") return "email";
+  if (h === "businessemail" || h === "bizmail" || h === "corporateemail") return "business_email";
+  if (h === "email2" || h === "otheremail" || h === "alternativeemail" || h === "personalemail") return "email_2";
   if (h === "firstname" || h === "first" || h === "givenname") return "first_name";
   if (h === "lastname" || h === "last" || h === "surname") return "last_name";
   if (h === "name" || h === "fullname" || h === "contact" || h === "contactname") return "name";
@@ -165,10 +181,14 @@ function autoMapHeader(header: string): string {
   if (h === "company" || h === "firm" || h === "organization" || h === "org" || h === "companyname") return "company";
   if (h === "phone" || h === "telephone" || h === "phone1" || h === "workphone" || h === "officephone") return "phone";
   if (h === "phone2" || h === "mobile" || h === "cell" || h === "cellphone" || h === "mobilephone") return "phone_2";
+  if (h === "linkedin" || h === "linkedinurl" || h === "linkedinprofile") return "linkedin";
+  if (h === "website" || h === "url" || h === "companywebsite" || h === "homepage") return "website";
   if (h === "streetaddress" || h === "street" || h === "address" || h === "address1") return "street_address";
   if (h === "city") return "city";
   if (h === "state" || h === "province") return "state";
   if (h === "zipcode" || h === "zip" || h === "postal" || h === "postalcode") return "zip_code";
+  if (h === "county") return "county";
+  if (h === "region" || h === "territory" || h === "district") return "region";
   if (h === "country") return "country";
   if (h === "notes" || h === "note" || h === "comment" || h === "comments") return "notes";
   if (h === "segments" || h === "segment" || h === "tag" || h === "tags" || h === "list") return "segments";
@@ -249,10 +269,16 @@ export default function ContactsClient() {
       company:    c.company,
       phone:      c.phone,
       phone_2:    c.phone_2,
+      business_email: c.business_email || "",
+      email_2:    c.email_2 || "",
+      linkedin:   c.linkedin || "",
+      website:    c.website || "",
       street_address: c.street_address,
       city:       c.city,
       state:      c.state,
       zip_code:   c.zip_code,
+      county:     c.county || "",
+      region:     c.region || "",
       country:    c.country || "US",
       notes:      c.notes,
       segments:   c.segments,
@@ -648,8 +674,12 @@ export default function ContactsClient() {
                 <SectionLabel icon={Mail} label="Contact" />
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Email Address *"><input style={inp} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@acme.com" /></Field>
+                  <Field label="Business Email"><input style={inp} type="email" value={form.business_email} onChange={(e) => setForm({ ...form, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
+                  <Field label="Other Email"><input style={inp} type="email" value={form.email_2} onChange={(e) => setForm({ ...form, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
                   <Field label="Phone"><input style={inp} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
                   <Field label="Phone 2 / Mobile"><input style={inp} value={form.phone_2} onChange={(e) => setForm({ ...form, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="LinkedIn URL"><input style={inp} value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} placeholder="linkedin.com/in/jsmith" /></Field>
+                  <Field label="Website"><input style={inp} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://acme.com" /></Field>
                 </div>
               </div>
 
@@ -661,9 +691,11 @@ export default function ContactsClient() {
                     <Field label="Street Address"><input style={inp} value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="New York" /></Field>
-                  <Field label="State"><input style={inp} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" /></Field>
-                  <Field label="ZIP Code"><input style={inp} value={form.zip_code} onChange={(e) => setForm({ ...form, zip_code: e.target.value })} placeholder="10001" /></Field>
+                  <Field label="State / Province"><input style={inp} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" /></Field>
+                  <Field label="ZIP / Postal Code"><input style={inp} value={form.zip_code} onChange={(e) => setForm({ ...form, zip_code: e.target.value })} placeholder="10001" /></Field>
                   <Field label="Country"><input style={inp} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="US" /></Field>
+                  <Field label="County"><input style={inp} value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} placeholder="Kings County" /></Field>
+                  <Field label="Region"><input style={inp} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} placeholder="Northeast" /></Field>
                 </div>
               </div>
 
@@ -753,8 +785,12 @@ export default function ContactsClient() {
                   <div className="col-span-2">
                     <Field label="Email Address"><input style={inp} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
                   </div>
+                  <Field label="Business Email"><input style={inp} type="email" value={editForm.business_email} onChange={(e) => setEditForm({ ...editForm, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
+                  <Field label="Other Email"><input style={inp} type="email" value={editForm.email_2} onChange={(e) => setEditForm({ ...editForm, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
                   <Field label="Phone"><input style={inp} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
                   <Field label="Phone 2"><input style={inp} value={editForm.phone_2} onChange={(e) => setEditForm({ ...editForm, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="LinkedIn URL"><input style={inp} value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} placeholder="linkedin.com/in/jsmith" /></Field>
+                  <Field label="Website"><input style={inp} value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} placeholder="https://acme.com" /></Field>
                 </div>
               </div>
 
@@ -765,9 +801,11 @@ export default function ContactsClient() {
                     <Field label="Street Address"><input style={inp} value={editForm.street_address} onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} /></Field>
-                  <Field label="State"><input style={inp} value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} /></Field>
-                  <Field label="ZIP Code"><input style={inp} value={editForm.zip_code} onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })} /></Field>
+                  <Field label="State / Province"><input style={inp} value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} /></Field>
+                  <Field label="ZIP / Postal Code"><input style={inp} value={editForm.zip_code} onChange={(e) => setEditForm({ ...editForm, zip_code: e.target.value })} /></Field>
                   <Field label="Country"><input style={inp} value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} /></Field>
+                  <Field label="County"><input style={inp} value={editForm.county} onChange={(e) => setEditForm({ ...editForm, county: e.target.value })} placeholder="Kings County" /></Field>
+                  <Field label="Region"><input style={inp} value={editForm.region} onChange={(e) => setEditForm({ ...editForm, region: e.target.value })} placeholder="Northeast" /></Field>
                 </div>
               </div>
 
