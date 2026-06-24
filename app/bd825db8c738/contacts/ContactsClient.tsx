@@ -504,110 +504,116 @@ export default function ContactsClient() {
       {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
       {showMapping && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowMapping(false); }}
         >
           <div
-            className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col"
-            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", padding: "2rem" }}
+            className="relative w-full flex flex-col"
+            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", maxWidth: "1100px", height: "92vh", overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
+            {/* ── Modal header ── */}
+            <div className="flex items-center justify-between px-8 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
               <div>
                 <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Field Mapping</p>
-                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.35)" }}>Map the columns in your file to the system fields to start import.</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  {sheetHeaders.length} columns detected · {Object.keys(mappings).length} mapped · {sheetRows.length} rows to import
+                </p>
               </div>
               <button onClick={() => setShowMapping(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
             </div>
 
-            {/* Mapping Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-6 overflow-y-auto pr-2" style={{ maxHeight: "40vh" }}>
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-bold text-white/50 uppercase tracking-wider" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Columns</p>
-                {sheetHeaders.map((header) => (
-                  <div key={header} className="flex items-center h-9 px-3 rounded-lg border border-white/5 text-xs text-white bg-white/[0.02] truncate" title={header}>
-                    {header || "(Empty Header)"}
-                  </div>
-                ))}
-              </div>
+            {/* ── Scrollable body ── */}
+            <div className="flex-1 overflow-y-auto px-8 py-5" style={{ minHeight: 0 }}>
 
-              <div className="flex flex-col gap-3">
-                <p className="text-xs font-bold text-white/50 uppercase tracking-wider" style={{ fontFamily: "var(--font-heading)" }}>Map to Field</p>
-                {sheetHeaders.map((header) => (
-                  <select
-                    key={header}
-                    value={mappings[header] ?? ""}
-                    onChange={(e) => {
-                      const newMappings = { ...mappings };
-                      if (e.target.value) newMappings[header] = e.target.value;
-                      else delete newMappings[header];
-                      setMappings(newMappings);
-                    }}
-                    className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10"
-                    style={{ background: "rgba(255,255,255,0.04)" }}
-                  >
-                    <option value="" style={{ background: "#16181e" }}>— Skip Column —</option>
-                    {MAPPABLE_FIELDS.map((f) => (
-                      <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
-                    ))}
-                  </select>
-                ))}
-              </div>
-            </div>
-
-            {/* Preview Section */}
-            <div className="mb-6 pt-4 border-t border-white/5">
-              <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3" style={{ fontFamily: "var(--font-heading)" }}>Import Preview (First 3 Rows)</p>
-              <div className="overflow-x-auto rounded-xl border border-white/5">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr style={{ background: "rgba(255,255,255,0.02)" }}>
-                      {MAPPABLE_FIELDS.filter(f => Object.values(mappings).includes(f.key)).map(f => (
-                        <th key={f.key} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white/40 border-b border-white/5">{f.label.replace(" *", "")}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sheetRows.slice(0, 3).map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-white/[0.01]">
-                        {MAPPABLE_FIELDS.filter(f => Object.values(mappings).includes(f.key)).map(f => {
-                          const hIdx = sheetHeaders.findIndex(h => mappings[h] === f.key);
-                          const val = hIdx >= 0 ? row[hIdx] : "";
-                          return (
-                            <td key={f.key} className="px-4 py-2 text-xs text-white/60 border-b border-white/5 truncate max-w-[150px]">{val !== undefined && val !== null ? val.toString() : ""}</td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* List Selection Section */}
-            <div className="mb-6 pt-4 border-t border-white/5">
-              <p className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3" style={{ fontFamily: "var(--font-heading)" }}>Add to Contact List (Optional)</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label style={label}>Select List</label>
-                  <select
-                    value={selectedListId}
-                    onChange={(e) => {
-                      setSelectedListId(e.target.value as any);
-                      if (e.target.value !== "new") setNewListName("");
-                    }}
-                    className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
-                    style={{ background: "rgba(255,255,255,0.04)" }}
-                  >
-                    <option value="" style={{ background: "#16181e" }}>— Do Not Add to List —</option>
-                    <option value="new" style={{ background: "#16181e" }}>[+ Create New List]</option>
-                    {allLists.map((l) => (
-                      <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name} ({l.member_count} members)</option>
-                    ))}
-                  </select>
+              {/* Column mapping table */}
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+                {/* Sticky header row */}
+                <div className="grid gap-0" style={{ gridTemplateColumns: "2fr 1.4fr 2fr", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0.5rem 1rem" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Spreadsheet Column</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Sample Value</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Map to System Field</p>
                 </div>
-                {selectedListId === "new" && (
+
+                {sheetHeaders.map((header, hIdx) => {
+                  const sampleVal = sheetRows[0]?.[hIdx];
+                  const sample = sampleVal !== undefined && sampleVal !== null ? sampleVal.toString().trim() : "";
+                  const isMapped = !!mappings[header];
+                  return (
+                    <div
+                      key={header}
+                      className="grid gap-0 items-center"
+                      style={{
+                        gridTemplateColumns: "2fr 1.4fr 2fr",
+                        padding: "0.5rem 1rem",
+                        borderBottom: hIdx < sheetHeaders.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        background: isMapped ? "rgba(230,57,70,0.03)" : "transparent",
+                      }}
+                    >
+                      {/* Column name */}
+                      <div className="flex items-center gap-2 pr-4 min-w-0">
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: isMapped ? "#f87171" : "rgba(255,255,255,0.15)" }} />
+                        <span className="text-sm font-medium truncate" style={{ color: isMapped ? "#fff" : "rgba(255,255,255,0.55)" }} title={header}>
+                          {header || "(empty)"}
+                        </span>
+                      </div>
+
+                      {/* Sample value */}
+                      <div className="pr-4 min-w-0">
+                        <span className="text-xs truncate block" style={{ color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }} title={sample}>
+                          {sample || <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                        </span>
+                      </div>
+
+                      {/* Mapping dropdown */}
+                      <select
+                        value={mappings[header] ?? ""}
+                        onChange={(e) => {
+                          const newMappings = { ...mappings };
+                          if (e.target.value) newMappings[header] = e.target.value;
+                          else delete newMappings[header];
+                          setMappings(newMappings);
+                        }}
+                        className="w-full h-8 px-3 rounded-lg text-xs text-white outline-none"
+                        style={{
+                          background: isMapped ? "rgba(230,57,70,0.1)" : "rgba(255,255,255,0.04)",
+                          border: isMapped ? "1px solid rgba(230,57,70,0.25)" : "1px solid rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        <option value="" style={{ background: "#16181e" }}>— Skip Column —</option>
+                        {MAPPABLE_FIELDS.map((f) => (
+                          <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Add to list ── */}
+              <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-heading)" }}>Add to Contact List (Optional)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={label}>Select List</label>
+                    <select
+                      value={selectedListId}
+                      onChange={(e) => {
+                        setSelectedListId(e.target.value as any);
+                        if (e.target.value !== "new") setNewListName("");
+                      }}
+                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                    >
+                      <option value="" style={{ background: "#16181e" }}>— Do Not Add to List —</option>
+                      <option value="new" style={{ background: "#16181e" }}>[+ Create New List]</option>
+                      {allLists.map((l) => (
+                        <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name} ({l.member_count} members)</option>
+                      ))}
+                    </select>
+                  </div>
+                 {selectedListId === "new" && (
                   <div>
                     <label style={label}>New List Name</label>
                     <input
@@ -621,11 +627,17 @@ export default function ContactsClient() {
                     />
                   </div>
                 )}
-              </div>
-            </div>
+                </div>{/* end grid cols-2 */}
+              </div>{/* end add-to-list */}
+            </div>{/* end scrollable body */}
 
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowMapping(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+            {/* ── Sticky footer ── */}
+            <div className="flex gap-3 px-8 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", flexShrink: 0, background: "#16181e" }}>
+              <button type="button" onClick={() => setShowMapping(false)}
+                className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5"
+                style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={handleImportSpreadsheet}
