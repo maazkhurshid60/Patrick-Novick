@@ -17,12 +17,11 @@ function formatDate(unix: number) {
 }
 
 export default async function AdminPage() {
-  const [contactRes, campaignRes, templateRes, recentRes, sumRes] = await Promise.all([
+  const [contactRes, campaignRes, templateRes, recentRes] = await Promise.all([
     db.execute("SELECT COUNT(*) as count FROM contacts"),
     db.execute("SELECT COUNT(*) as count FROM campaigns WHERE status = 'sent' AND recipient_count > 0"),
     db.execute("SELECT COUNT(*) as count FROM email_templates"),
     db.execute("SELECT id, subject, recipient_count, status, sent_at FROM campaigns WHERE status = 'sent' AND recipient_count > 0 ORDER BY sent_at DESC LIMIT 8"),
-    db.execute("SELECT SUM(recipient_count) as s FROM campaigns WHERE status = 'sent' AND recipient_count > 0"),
   ]);
 
   const contactCount = Number(contactRes.rows[0]?.count ?? 0);
@@ -116,16 +115,11 @@ export default async function AdminPage() {
           </div>
 
           {/* Stat row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
             {[
               { label: "Total Contacts",    value: contactCount,  change: null,   color: "#e63946", dim: "rgba(230,57,70,0.12)" },
               { label: "Campaigns Sent",    value: campaignCount, change: null,   color: "#4ade80", dim: "rgba(74,222,128,0.1)" },
               { label: "Email Templates",   value: templateCount, change: null,   color: "#c4b5fd", dim: "rgba(196,181,253,0.1)" },
-              { label: "Avg. Recipients",
-                value: campaignCount > 0
-                  ? Math.round(Number(sumRes.rows[0]?.s ?? 0) / campaignCount)
-                  : 0,
-                change: null, color: "#7dd3fc", dim: "rgba(125,211,252,0.1)" },
             ].map(({ label, value, color, dim }) => (
               <div key={label} className="rounded-2xl px-5 py-5" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
                 <div className="flex items-center justify-between mb-4">

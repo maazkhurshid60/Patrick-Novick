@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Mail, Eye, AlertTriangle, Ban, UserMinus, Send, Users, TrendingUp, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { Search, Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 interface ContactEngagement {
   email: string;
@@ -161,15 +161,11 @@ export default function AnalyticsClient() {
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Mail} label="Delivered" value={b?.delivered ?? 0} sub={`${deliveryRate}% of ${b?.requests ?? 0} sent`} color="#4ade80" dim="rgba(74,222,128,0.1)" />
           <StatCard icon={Eye} label="Unique Opens" value={b?.uniqueOpens ?? 0} sub={`${openRate}% open rate`} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
           <StatCard icon={TrendingUp} label="Unique Clicks" value={b?.uniqueClicks ?? 0} color="#a5b4fc" dim="rgba(165,180,252,0.12)" />
           <StatCard icon={AlertTriangle} label="Bounces" value={bounces} sub={`${b?.hardBounces ?? 0} hard · ${b?.softBounces ?? 0} soft`} color="#fb923c" dim="rgba(251,146,60,0.12)" />
-          <StatCard icon={Ban} label="Blocked" value={b?.blocked ?? 0} color="#f87171" dim="rgba(248,113,113,0.12)" />
-          <StatCard icon={AlertTriangle} label="Spam Reports" value={b?.spamReports ?? 0} color="#f87171" dim="rgba(248,113,113,0.12)" />
-          <StatCard icon={Mail} label="Invalid Emails" value={b?.invalid ?? 0} color="#94a3b8" dim="rgba(148,163,184,0.12)" />
-          <StatCard icon={UserMinus} label="Unsubscribed" value={b?.unsubscribed ?? 0} color="#f87171" dim="rgba(248,113,113,0.12)" />
         </div>
         {b && b.requests === 0 && (
           <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>
