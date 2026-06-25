@@ -413,6 +413,16 @@ export default function ContactsClient() {
     }
   }
 
+  // Edit a single cell value in the Data Preview (committed on blur)
+  function updatePreviewCell(rowIdx: number, colIdx: number, value: string) {
+    setSheetRows((prev) => {
+      const next = prev.map((r) => r.slice());
+      while (next[rowIdx].length <= colIdx) next[rowIdx].push("");
+      next[rowIdx][colIdx] = value;
+      return next;
+    });
+  }
+
   async function handleImportSpreadsheet() {
     const emailHeader = Object.keys(mappings).find((h) => mappings[h] === "email");
     if (!emailHeader) {
@@ -607,11 +617,24 @@ export default function ContactsClient() {
                         <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: "0.6875rem" }}>#</th>
                         {sheetHeaders.map((h, i) => {
                           const mappedKey = mappings[h];
-                          const mappedLabel = MAPPABLE_FIELDS.find((f) => f.key === mappedKey)?.label;
                           return (
                             <th key={i} style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>
-                              <div className="text-xs font-semibold" style={{ color: mappedKey ? "#fff" : "rgba(255,255,255,0.45)" }}>{h || "(empty)"}</div>
-                              <div className="text-[10px]" style={{ color: mappedKey ? "#f87171" : "rgba(255,255,255,0.2)" }}>{mappedLabel ? `→ ${mappedLabel}` : "skipped"}</div>
+                              <div className="text-xs font-semibold mb-1" style={{ color: mappedKey ? "#fff" : "rgba(255,255,255,0.45)" }}>{h || "(empty)"}</div>
+                              <select
+                                value={mappedKey ?? ""}
+                                onChange={(e) => {
+                                  const nm = { ...mappings };
+                                  if (e.target.value) nm[h] = e.target.value; else delete nm[h];
+                                  setMappings(nm);
+                                }}
+                                className="h-6 px-1.5 rounded text-[10px] text-white outline-none"
+                                style={{ background: mappedKey ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.05)", border: mappedKey ? "1px solid rgba(230,57,70,0.3)" : "1px solid rgba(255,255,255,0.1)", maxWidth: 170 }}
+                              >
+                                <option value="" style={{ background: "#16181e" }}>— Skip —</option>
+                                {MAPPABLE_FIELDS.map((f) => (
+                                  <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
+                                ))}
+                              </select>
                             </th>
                           );
                         })}
@@ -620,12 +643,17 @@ export default function ContactsClient() {
                     <tbody>
                       {sheetRows.slice(0, 200).map((row, rIdx) => (
                         <tr key={rIdx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "0.4rem 0.75rem", color: "rgba(255,255,255,0.25)", fontSize: "0.7rem" }}>{rIdx + 1}</td>
+                          <td style={{ padding: "0.2rem 0.75rem", color: "rgba(255,255,255,0.25)", fontSize: "0.7rem" }}>{rIdx + 1}</td>
                           {sheetHeaders.map((_, cIdx) => {
                             const v = row[cIdx];
                             return (
-                              <td key={cIdx} style={{ padding: "0.4rem 0.75rem", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", whiteSpace: "nowrap", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }} title={v != null ? v.toString() : ""}>
-                                {v != null && v.toString().trim() !== "" ? v.toString() : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                              <td key={cIdx} style={{ padding: "0.15rem 0.3rem" }}>
+                                <input
+                                  defaultValue={v != null ? v.toString() : ""}
+                                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(230,57,70,0.45)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                                  onBlur={(e) => { updatePreviewCell(rIdx, cIdx, e.target.value); e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.background = "transparent"; }}
+                                  style={{ width: "100%", minWidth: 100, background: "transparent", border: "1px solid transparent", borderRadius: 6, color: "rgba(255,255,255,0.72)", fontSize: "0.75rem", padding: "0.3rem 0.45rem", outline: "none" }}
+                                />
                               </td>
                             );
                           })}
