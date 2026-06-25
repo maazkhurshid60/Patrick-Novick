@@ -33,7 +33,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         c.company,
         COUNT(cr.campaign_id) AS sends,
         MAX(cr.sent_at) AS last_sent,
-        (SELECT COUNT(DISTINCT eo.campaign_id) FROM email_opens eo WHERE eo.email = c.email) AS opens,
+        (SELECT COUNT(DISTINCT eo.campaign_id) FROM email_opens eo
+           WHERE eo.email = c.email
+             AND eo.campaign_id IN (SELECT cr2.campaign_id FROM campaign_recipients cr2 WHERE cr2.email = c.email)
+        ) AS opens,
         (SELECT COUNT(*) FROM suppression_list s WHERE s.email = c.email) AS suppressed
       FROM contacts c
       LEFT JOIN campaign_recipients cr ON cr.email = c.email
@@ -44,7 +47,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       SELECT
         (SELECT COUNT(*) FROM contacts) AS total_contacts,
         (SELECT COUNT(*) FROM campaign_recipients) AS total_sends,
-        (SELECT COUNT(*) FROM email_opens) AS total_opens,
+        (SELECT COUNT(*) FROM (
+           SELECT DISTINCT eo.campaign_id, eo.email FROM email_opens eo
+           WHERE eo.campaign_id IN (SELECT id FROM campaigns)
+        )) AS total_opens,
         (SELECT COUNT(*) FROM suppression_list) AS total_suppressed
     `),
   ]);

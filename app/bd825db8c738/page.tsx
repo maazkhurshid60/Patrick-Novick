@@ -35,10 +35,10 @@ export default async function AdminPage() {
     <div className="min-h-screen" style={{ background: "#0d0f12" }}>
       <Sidebar active="dashboard" />
 
-      <div className="ml-56">
+      <div className="lg:ml-56">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-20 flex items-center justify-between px-8 h-14"
+          className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14"
           style={{ background: "#0d0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
           <p className="text-sm font-semibold text-white/60">Dashboard</p>
@@ -53,10 +53,10 @@ export default async function AdminPage() {
           </div>
         </header>
 
-        <main className="px-8 py-7">
+        <main className="px-4 sm:px-6 lg:px-8 py-7">
 
           {/* Action cards row */}
-          <div className="grid grid-cols-3 gap-4 mb-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-7">
             {/* New Campaign */}
             <div className="relative rounded-2xl p-6 overflow-hidden" style={{ background: "linear-gradient(135deg, #1a1d23 0%, #12151a 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="absolute -right-4 -top-4 w-28 h-28 rounded-full opacity-10" style={{ background: "var(--color-red)", filter: "blur(20px)" }} />
@@ -116,7 +116,7 @@ export default async function AdminPage() {
           </div>
 
           {/* Stat row */}
-          <div className="grid grid-cols-4 gap-4 mb-7">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
             {[
               { label: "Total Contacts",    value: contactCount,  change: null,   color: "#e63946", dim: "rgba(230,57,70,0.12)" },
               { label: "Campaigns Sent",    value: campaignCount, change: null,   color: "#4ade80", dim: "rgba(74,222,128,0.1)" },
@@ -162,7 +162,8 @@ export default async function AdminPage() {
                 </Link>
               </div>
             ) : (
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px]">
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                     {["Name", "Status", "Recipients", "Date"].map((h) => (
@@ -202,6 +203,7 @@ export default async function AdminPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Mail, Eye, AlertTriangle, Ban, UserMinus, Send, Users, TrendingUp, ChevronUp, ChevronDown } from "lucide-react";
+import { Search, Mail, Eye, AlertTriangle, Ban, UserMinus, Send, Users, TrendingUp, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 interface ContactEngagement {
   email: string;
@@ -130,7 +130,7 @@ export default function AnalyticsClient() {
         <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>
           Your audience
         </p>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users} label="Total Contacts" value={data?.totals.total_contacts ?? 0} color="#7dd3fc" dim="rgba(125,211,252,0.1)" />
           <StatCard icon={Send} label="Emails Sent (all time)" value={data?.totals.total_sends ?? 0} color="#4ade80" dim="rgba(74,222,128,0.1)" />
           <StatCard icon={Eye} label="Total Opens" value={data?.totals.total_opens ?? 0} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
@@ -140,9 +140,10 @@ export default function AnalyticsClient() {
 
       {/* Deliverability (from Brevo) */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
             Deliverability <span style={{ color: "rgba(255,255,255,0.2)" }}>· via Brevo · {b?.range ?? `last ${days} days`}</span>
+            {loading && <Loader2 className="animate-spin" size={12} style={{ color: "rgba(255,255,255,0.35)" }} />}
           </p>
           <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)" }}>
             {[7, 30, 90].map((d) => (
@@ -160,7 +161,7 @@ export default function AnalyticsClient() {
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <StatCard icon={Mail} label="Delivered" value={b?.delivered ?? 0} sub={`${deliveryRate}% of ${b?.requests ?? 0} sent`} color="#4ade80" dim="rgba(74,222,128,0.1)" />
           <StatCard icon={Eye} label="Unique Opens" value={b?.uniqueOpens ?? 0} sub={`${openRate}% open rate`} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
           <StatCard icon={TrendingUp} label="Unique Clicks" value={b?.uniqueClicks ?? 0} color="#a5b4fc" dim="rgba(165,180,252,0.12)" />
@@ -179,7 +180,7 @@ export default function AnalyticsClient() {
 
       {/* Per-contact engagement table */}
       <div style={card} className="overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div>
             <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Contact Engagement</p>
             <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>How many times each person has been emailed, and how often they open.</p>

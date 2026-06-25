@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { Send, Clock, ChevronDown, Users, Trash2 } from "lucide-react";
+import { ToastProvider, toast, Spinner } from "../Toast";
 
 interface Campaign {
   id: number;
@@ -22,6 +23,20 @@ interface ContactList {
 
 function formatDate(unix: number) {
   return new Date(unix * 1000).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+// Turn raw API/network errors into something a person can act on.
+function friendlyError(raw?: string, status?: number): string {
+  if (!raw) {
+    if (status === 504 || status === 408) return "The send took too long. Some emails may have gone out — check Sent History before resending.";
+    return "Something went wrong while sending. Please try again.";
+  }
+  const r = raw.toLowerCase();
+  if (r.includes("no eligible") || r.includes("no contacts")) return "No eligible contacts to send to right now (they may all be suppressed or recently emailed).";
+  if (r.includes("subject") && r.includes("body")) return "Please add a subject and a message before sending.";
+  if (r.includes("api key") || r.includes("unauthor") || r.includes("smtp") || r.includes("401")) return "The email service isn't configured correctly. Please check the Brevo/SMTP settings.";
+  if (r.includes("fetch") || r.includes("network") || r.includes("timeout")) return "Couldn't reach the email service. Please check your connection and try again.";
+  return raw; // already a readable server message
 }
 
 const inputStyle = {
@@ -65,8 +80,6 @@ export default function CampaignClient({
   const [isTestSend, setIsTestSend] = useState(false);
   const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [history, setHistory] = useState<Campaign[]>([]);
 
   const [attachPostcard, setAttachPostcard] = useState(false);
@@ -96,16 +109,24 @@ export default function CampaignClient({
 
   async function handleDeleteCampaign(id: number) {
     if (!confirm("Delete this campaign record from history?")) return;
-    const res = await fetch("/api/campaigns/send", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
-      fetchHistory();
-    } else {
-      const data = await res.json();
-      setError(data.error ?? "Delete failed");
+    const loadId = toast.loading("Removing campaign…");
+    try {
+      const res = await fetch("/api/campaigns/send", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        await fetchHistory();
+        toast.success("Campaign removed from history");
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        toast.error(friendlyError(data.error, res.status));
+      }
+    } catch {
+      toast.error("Couldn't reach the server. Please check your connection and try again.");
+    } finally {
+      toast.dismiss(loadId);
     }
   }
 
@@ -158,10 +179,9 @@ export default function CampaignClient({
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();
-    setError(""); setSuccess("");
-    if (!subject.trim() || !body.trim()) { setError("Subject and body are required"); return; }
-    if (isTestSend && !testEmail.trim()) { setError("Test email is required"); return; }
-    if (!isTestSend && recipientCount === 0) { setError("No contacts in selected list"); return; }
+    if (!subject.trim() || !body.trim()) { toast.error("Subject and body are required"); return; }
+    if (isTestSend && !testEmail.trim()) { toast.error("Test email is required"); return; }
+    if (!isTestSend && recipientCount === 0) { toast.error("No contacts in selected list"); return; }
 
     const confirmMsg = isTestSend
       ? `Send test email to ${testEmail.trim()}?`
@@ -169,58 +189,61 @@ export default function CampaignClient({
     if (!confirm(confirmMsg)) return;
 
     setLoading(true);
-    const res = await fetch("/api/campaigns/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject,
-        body,
-        listId: listId ?? null,
-        dailyLimit,
-        excludeRecentDays: excludeRecent ? excludeDays : null,
-        replyTo: replyTo.trim() || null,
-        isTestSend,
-        testEmail: isTestSend ? testEmail.trim() : null,
-        attachPostcard,
-        customAttachment: customAttachment ? { name: customAttachment.name, content: customAttachment.content } : null,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error ?? "Send failed"); }
-    else {
-      setSuccess(isTestSend ? `Test email sent to ${testEmail.trim()}` : `Sent to ${data.recipients} recipients`);
-      if (!isTestSend) {
-        setSubject(""); setBody("");
-        setAttachPostcard(false);
-        setCustomAttachment(null);
-        fetchHistory();
+    const loadId = toast.loading(isTestSend ? "Sending test email…" : `Sending to ${sendCount} contacts…`);
+    try {
+      const res = await fetch("/api/campaigns/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject, body,
+          listId: listId ?? null,
+          dailyLimit,
+          excludeRecentDays: excludeRecent ? excludeDays : null,
+          replyTo: replyTo.trim() || null,
+          isTestSend,
+          testEmail: isTestSend ? testEmail.trim() : null,
+          attachPostcard,
+          customAttachment: customAttachment ? { name: customAttachment.name, content: customAttachment.content } : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; recipients?: number }));
+      if (!res.ok) {
+        toast.error(friendlyError(data.error, res.status));
+      } else {
+        const n = Number(data.recipients ?? 0);
+        toast.success(
+          isTestSend
+            ? `Test email sent to ${testEmail.trim()}`
+            : `✓ Campaign sent to ${n} recipient${n === 1 ? "" : "s"}`
+        );
+        if (!isTestSend) {
+          setSubject(""); setBody("");
+          setAttachPostcard(false);
+          setCustomAttachment(null);
+          fetchHistory();
+        }
       }
+    } catch {
+      toast.error("Couldn't reach the server. Please check your connection and try again.");
+    } finally {
+      toast.dismiss(loadId);
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
-    <div className="grid grid-cols-3 gap-5">
+    <>
+    <ToastProvider />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
-      <div className="col-span-2 rounded-2xl p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
         <div className="flex items-center justify-between mb-6">
           <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
         </div>
 
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
-            {success}
-          </div>
-        )}
-
         <form onSubmit={handleSend} className="flex flex-col gap-5">
           {/* Targeting row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Send to */}
             <div>
               <label style={labelStyle}>Send to</label>
@@ -356,7 +379,6 @@ export default function CampaignClient({
                   placeholder="e.g. patrick@metroassoc.com"
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
-                  required={isTestSend}
                 />
               </div>
             )}
@@ -415,7 +437,7 @@ export default function CampaignClient({
           {/* Subject */}
           <div>
             <label style={labelStyle}>Subject</label>
-            <input style={inputStyle} type="text" placeholder="Email subject line" value={subject} onChange={(e) => setSubject(e.target.value)} required />
+            <input style={inputStyle} type="text" placeholder="Email subject line" value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
 
           {/* Body */}
@@ -428,7 +450,6 @@ export default function CampaignClient({
               placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              required
             />
           </div>
 
@@ -437,7 +458,7 @@ export default function CampaignClient({
             className="self-start flex items-center gap-2 px-7 py-3 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
           >
-            <Send size={14} />
+            {loading ? <Spinner size={14} /> : <Send size={14} />}
             {loading ? "Sending…" : isTestSend ? "Send Test Email" : `Send to ${sendCount} contacts`}
           </button>
         </form>
@@ -497,5 +518,6 @@ export default function CampaignClient({
         )}
       </div>
     </div>
+    </>
   );
 }

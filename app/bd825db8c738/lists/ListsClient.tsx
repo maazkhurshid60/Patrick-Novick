@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback, FormEvent, useMemo, KeyboardE
 import {
   Plus, Trash2, X, Users, UserMinus, ChevronLeft, Check,
   Search, UploadCloud, CheckSquare, Square, RefreshCw,
-  Layers, List as ListIcon, ChevronDown, ChevronRight,
+  Layers, List as ListIcon, ChevronDown, ChevronRight, Pencil,
 } from "lucide-react";
+import { ToastProvider, toast, Spinner } from "../Toast";
 
 interface ContactList {
   id: number;
@@ -629,6 +630,11 @@ export default function ListsClient() {
   const [error, setError] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
 
+  // Inline list rename
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
   async function fetchLists() {
     const res = await fetch("/api/lists");
     setLists(await res.json());
@@ -651,8 +657,8 @@ export default function ListsClient() {
       body: JSON.stringify({ name: newListName.trim() }),
     });
     const data = await res.json();
-    if (!res.ok) { setError(data.error ?? "Failed"); }
-    else { setNewListName(""); fetchLists(); }
+    if (!res.ok) { toast.error(data.error ?? "Failed to create list"); }
+    else { setNewListName(""); fetchLists(); toast.success(`List "${newListName.trim()}" created`); }
     setLoading(false);
   }
 
@@ -664,6 +670,7 @@ export default function ListsClient() {
       body: JSON.stringify({ id }),
     });
     if (selected?.id === id) setSelected(null);
+    toast.success("List deleted");
     fetchLists();
   }
 
@@ -680,6 +687,7 @@ export default function ListsClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contactId }),
     });
+    toast.success("Removed from list");
     fetchMembers(selected.id);
     fetchLists();
   }
@@ -691,6 +699,27 @@ export default function ListsClient() {
       await fetchLists();
       setSelected((prev) => prev ? { ...prev } : null);
     }
+  }
+
+  async function handleRenameList(id: number, newName: string) {
+    const trimmed = newName.trim();
+    setRenamingId(null);
+    if (!trimmed) return;
+    const current = lists.find((l) => l.id === id);
+    if (current && current.name === trimmed) return;
+    const res = await fetch("/api/lists", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name: trimmed }),
+    });
+    if (res.ok) {
+      toast.success(`Renamed to "${trimmed}"`);
+    } else {
+      const d = await res.json();
+      toast.error(d.error ?? "Rename failed");
+    }
+    await fetchLists();
+    setSelected((prev) => prev?.id === id ? { ...prev, name: trimmed } : prev);
   }
 
   const memberIds = useMemo(() => new Set(members.map((m) => m.id)), [members]);
@@ -707,6 +736,7 @@ export default function ListsClient() {
 
   return (
     <>
+      <ToastProvider />
       {showModal && selected && (
         <AddContactsModal
           listId={selected.id}
@@ -728,7 +758,7 @@ export default function ListsClient() {
               <button type="submit" disabled={loading}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
                 style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
-                <Plus size={14} /> Create List
+                {loading ? <Spinner size={14} /> : <Plus size={14} />} Create List
               </button>
             </form>
           </div>
@@ -745,24 +775,49 @@ export default function ListsClient() {
               </div>
             ) : lists.map((list, i) => (
               <div key={list.id}
-                className="flex items-center justify-between px-5 py-3.5 cursor-pointer transition-colors"
+                className="flex items-center justify-between px-5 py-3.5 cursor-pointer transition-colors group"
                 style={{ borderBottom: i < lists.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: selected?.id === list.id ? "rgba(230,57,70,0.06)" : "transparent" }}
-                onClick={() => openList(list)}>
-                <div className="flex items-center gap-3 overflow-hidden">
+                onClick={() => renamingId !== list.id && openList(list)}>
+                <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: selected?.id === list.id ? "rgba(230,57,70,0.15)" : "rgba(255,255,255,0.05)" }}>
                     <Users size={13} style={{ color: selected?.id === list.id ? "#f87171" : "rgba(255,255,255,0.4)" }} />
                   </div>
-                  <div className="overflow-hidden">
-                    <p className="text-sm font-medium truncate" style={{ color: selected?.id === list.id ? "#fff" : "rgba(255,255,255,0.7)" }}>{list.name}</p>
+                  <div className="overflow-hidden flex-1 min-w-0">
+                    {renamingId === list.id ? (
+                      <input
+                        ref={renameInputRef}
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => handleRenameList(list.id, renameValue)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleRenameList(list.id, renameValue); }
+                          if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-sm font-medium w-full outline-none"
+                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(230,57,70,0.4)", borderRadius: "0.375rem", padding: "2px 6px", color: "#fff" }}
+                      />
+                    ) : (
+                      <p className="text-sm font-medium truncate" style={{ color: selected?.id === list.id ? "#fff" : "rgba(255,255,255,0.7)" }}>{list.name}</p>
+                    )}
                     <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{Number(list.member_count)} contacts</p>
                   </div>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); handleDeleteList(list.id); }}
-                  className="w-6 h-6 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10 shrink-0"
-                  style={{ color: "rgba(255,255,255,0.2)" }}>
-                  <Trash2 size={12} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setRenamingId(list.id); setRenameValue(list.name); }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center transition-all hover:bg-white/10 opacity-0 group-hover:opacity-100"
+                    style={{ color: "rgba(255,255,255,0.4)" }} title="Rename list">
+                    <Pencil size={11} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteList(list.id); }}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
+                    style={{ color: "rgba(255,255,255,0.2)" }}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -788,7 +843,30 @@ export default function ListsClient() {
                     <ChevronLeft size={15} />
                   </button>
                   <div>
-                    <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{selected.name}</p>
+                    {renamingId === selected.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => handleRenameList(selected.id, renameValue)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); handleRenameList(selected.id, renameValue); }
+                          if (e.key === "Escape") { e.preventDefault(); setRenamingId(null); }
+                        }}
+                        className="text-sm font-bold outline-none"
+                        style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(230,57,70,0.4)", borderRadius: "0.375rem", padding: "3px 8px", color: "#fff", fontFamily: "var(--font-heading)", minWidth: 180 }}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{selected.name}</p>
+                        <button
+                          onClick={() => { setRenamingId(selected.id); setRenameValue(selected.name); }}
+                          className="w-5 h-5 rounded flex items-center justify-center transition-all hover:bg-white/10"
+                          style={{ color: "rgba(255,255,255,0.3)" }} title="Rename list">
+                          <Pencil size={11} />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{members.length} contacts</p>
                   </div>
                 </div>
@@ -799,21 +877,19 @@ export default function ListsClient() {
                 </button>
               </div>
 
-              {/* Member search */}
-              {members.length > 5 && (
-                <div style={{ padding: "0.75rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <div style={{ position: "relative" }}>
-                    <Search size={13} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
-                    <input style={{ ...inputStyle, paddingLeft: "2.2rem", fontSize: "0.78rem", borderRadius: "0.625rem" }}
-                      placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-                    {memberSearch && (
-                      <button onClick={() => setMemberSearch("")} style={{ position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
+              {/* Member search — always visible */}
+              <div style={{ padding: "0.75rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div style={{ position: "relative" }}>
+                  <Search size={13} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                  <input style={{ ...inputStyle, paddingLeft: "2.2rem", fontSize: "0.78rem", borderRadius: "0.625rem" }}
+                    placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+                  {memberSearch && (
+                    <button onClick={() => setMemberSearch("")} style={{ position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
+                      <X size={12} />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Members */}
               {members.length === 0 ? (

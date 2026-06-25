@@ -1,11 +1,11 @@
 "use client";
-
 import { useState, useEffect, FormEvent, useRef, useCallback, useMemo } from "react";
 import {
   Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck,
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
   ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
 } from "lucide-react";
+import { ToastProvider, toast, Spinner } from "../Toast";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -294,16 +294,16 @@ export default function ContactsClient() {
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
-    setError(""); setSuccess(""); setLoading(true);
+    setLoading(true);
     const res = await fetch("/api/contacts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     const data = await res.json();
-    if (!res.ok) setError(data.error ?? "Failed");
+    if (!res.ok) toast.error(data.error ?? "Failed to add contact");
     else {
-      setSuccess(`Added ${data.added} contact`);
+      toast.success(`Contact added`);
       setForm({ ...BLANK });
       setShowAdd(false);
       fetchContacts();
@@ -315,7 +315,7 @@ export default function ContactsClient() {
 
   async function handleBulk(e: FormEvent) {
     e.preventDefault();
-    setError(""); setSuccess(""); setLoading(true);
+    setLoading(true);
     const entries = bulk.split("\n").map((line) => {
       line = line.trim();
       const match = line.match(/^(.+?)\s*<(.+?)>$/);
@@ -329,8 +329,11 @@ export default function ContactsClient() {
       body: JSON.stringify(entries),
     });
     const data = await res.json();
-    if (!res.ok) setError(data.error ?? "Failed");
-    else { setSuccess(`Added ${data.added} contacts${data.skipped ? `, skipped ${data.skipped} suppressed` : ""}`); setBulk(""); fetchContacts(); }
+    if (!res.ok) toast.error(data.error ?? "Failed");
+    else {
+      toast.success(`Added ${data.added} contacts${data.skipped ? `, skipped ${data.skipped} suppressed` : ""}`);
+      setBulk(""); fetchContacts();
+    }
     setLoading(false);
   }
 
@@ -434,14 +437,14 @@ export default function ContactsClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to import contacts.");
+        toast.error(data.error ?? "Failed to import contacts.");
       } else {
-        setSuccess(`Successfully imported ${data.added} of ${mappedEntries.length} contacts!`);
+        toast.success(`Imported ${data.added} of ${mappedEntries.length} contacts`);
         fetchContacts();
         fetchAllLists();
       }
     } catch (err) {
-      setError("Failed to transmit contact data.");
+      toast.error("Failed to transmit contact data.");
     } finally {
       setLoading(false);
       setShowMapping(false);
@@ -462,8 +465,8 @@ export default function ContactsClient() {
       body: JSON.stringify({ id: drawer.id, ...editForm }),
     });
     const data = await res.json();
-    if (!res.ok) setError(data.error ?? "Update failed");
-    else { setSuccess("Contact updated"); fetchContacts(); setDrawer(null); }
+    if (!res.ok) toast.error(data.error ?? "Update failed");
+    else { toast.success("Contact updated"); fetchContacts(); setDrawer(null); }
     setLoading(false);
   }
 
@@ -471,6 +474,7 @@ export default function ContactsClient() {
 
   async function handleDelete(id: number) {
     await fetch("/api/contacts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    toast.success("Contact deleted");
     setDrawer(null);
     fetchContacts();
   }
@@ -486,10 +490,11 @@ export default function ContactsClient() {
 
   async function handleValidate() {
     if (!confirm("Check all active contacts for valid email domains? This may take a minute.")) return;
-    setLoading(true); setError(""); setSuccess("");
+    setLoading(true);
+    const loadId = toast.loading("Validating email addresses…");
     const res = await fetch("/api/contacts/validate", { method: "POST" });
     const data = await res.json();
-    setSuccess(`Checked ${data.checked} contacts — ${data.valid} valid, ${data.invalid} marked invalid`);
+    toast.success(`Checked ${data.checked} — ${data.valid} valid, ${data.invalid} marked invalid`);
     fetchContacts(); setLoading(false);
   }
 
@@ -527,6 +532,7 @@ export default function ContactsClient() {
 
   return (
     <>
+      <ToastProvider />
       {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
       {showMapping && (
         <div
@@ -751,8 +757,8 @@ export default function ContactsClient() {
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
                 <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
-                  <Plus size={14} /> Add Contact
-                </button>
+                {loading ? <Spinner size={14} /> : <Plus size={14} />} Add Contact
+              </button>
               </div>
             </form>
           </div>
@@ -906,9 +912,9 @@ export default function ContactsClient() {
             {/* Save bar */}
             <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <button onClick={() => setDrawer(null)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
-              <button onClick={handleSaveDrawer} disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
-                Save Changes
-              </button>
+            <button onClick={handleSaveDrawer} disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
+              {loading ? <Spinner size={14} /> : null} Save Changes
+            </button>
             </div>
           </div>
         </div>
