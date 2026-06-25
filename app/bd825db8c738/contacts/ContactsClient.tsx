@@ -738,7 +738,7 @@ export default function ContactsClient() {
               {/* ── Add to list ── */}
               <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-heading)" }}>Add to Contact List (Optional)</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label style={label}>Select List</label>
                     <select
@@ -799,7 +799,7 @@ export default function ContactsClient() {
       {/* ── Add Contact Modal ─────────────────────────────────────────────── */}
       {showAdd && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowAdd(false); }}
         >
@@ -817,7 +817,7 @@ export default function ContactsClient() {
               {/* Identity */}
               <div>
                 <SectionLabel icon={User} label="Identity" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="First Name"><input style={inp} value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} placeholder="John" /></Field>
                   <Field label="Last Name"><input style={inp} value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} placeholder="Smith" /></Field>
                   <Field label="Title / Role"><input style={inp} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="VP of Marketing" /></Field>
@@ -828,7 +828,7 @@ export default function ContactsClient() {
               {/* Contact */}
               <div>
                 <SectionLabel icon={Mail} label="Contact" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Email Address (primary) *"><input style={inp} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@acme.com" /></Field>
                   <Field label="Business Email"><input style={inp} type="email" value={form.business_email} onChange={(e) => setForm({ ...form, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
                   <Field label="Personal Email 1"><input style={inp} type="email" value={form.email_2} onChange={(e) => setForm({ ...form, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
@@ -845,8 +845,8 @@ export default function ContactsClient() {
               {/* Address */}
               <div>
                 <SectionLabel icon={MapPin} label="Mailing Address" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
                     <Field label="Work Address"><input style={inp} value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="New York" /></Field>
@@ -930,7 +930,7 @@ export default function ContactsClient() {
 
               <div>
                 <SectionLabel icon={User} label="Identity" />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="First Name"><input style={inp} value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} /></Field>
                   <Field label="Last Name"><input style={inp} value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} /></Field>
                   <Field label="Title"><input style={inp} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></Field>
@@ -940,8 +940,8 @@ export default function ContactsClient() {
 
               <div>
                 <SectionLabel icon={Mail} label="Contact" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
                     <Field label="Email Address"><input style={inp} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
                   </div>
                   <Field label="Business Email"><input style={inp} type="email" value={editForm.business_email} onChange={(e) => setEditForm({ ...editForm, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
@@ -958,8 +958,8 @@ export default function ContactsClient() {
 
               <div>
                 <SectionLabel icon={MapPin} label="Mailing Address" />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
                     <Field label="Work Address"><input style={inp} value={editForm.street_address} onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} /></Field>
@@ -1039,10 +1039,10 @@ export default function ContactsClient() {
       )}
 
       {/* ── Main layout ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Left: forms */}
-        <div className="col-span-1 flex flex-col gap-4">
+        <div className="lg:col-span-1 flex flex-col gap-4">
 
           {/* Add button */}
           <button
@@ -1152,12 +1152,12 @@ export default function ContactsClient() {
         </div>
 
         {/* Right: contact list */}
-        <div className="col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
           {/* List header */}
           <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
               <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
                   {contactSearch || contactStatusFilter !== "all" ? `${filteredContacts.length} / ` : ""}{activeCount} active / {contacts.length} total
                 </span>

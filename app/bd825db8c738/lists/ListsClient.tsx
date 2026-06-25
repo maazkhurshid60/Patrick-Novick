@@ -747,9 +747,9 @@ export default function ListsClient() {
         />
       )}
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left */}
-        <div className="col-span-1 flex flex-col gap-4">
+        <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="rounded-2xl p-5" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>New List</p>
             <form onSubmit={handleCreateList} className="flex flex-col gap-3">
@@ -824,7 +824,7 @@ export default function ListsClient() {
         </div>
 
         {/* Right */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           {!selected ? (
             <div className="rounded-2xl flex flex-col items-center justify-center py-24 text-center"
               style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>

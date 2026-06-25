@@ -97,7 +97,7 @@ export default function OptOutsClient() {
   return (
     <div className="flex flex-col gap-6">
       {/* Metrics Row */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div style={cardStyle} className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>Total Opt-Outs / Suppressed</p>
@@ -110,7 +110,7 @@ export default function OptOutsClient() {
           </div>
         </div>
 
-        <div style={cardStyle} className="flex flex-col justify-center gap-1 col-span-2">
+        <div style={cardStyle} className="flex flex-col justify-center gap-1 sm:col-span-2">
           <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>Suppression List Purpose</p>
           <p className="text-xs mt-1 leading-relaxed" style={{ color: "rgba(255,255,255,0.3)" }}>
             Contacts are added to this list when they unsubscribe, bounce, or are marked invalid.

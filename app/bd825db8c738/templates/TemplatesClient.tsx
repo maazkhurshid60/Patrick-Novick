@@ -245,7 +245,7 @@ export default function TemplatesClient() {
       )}
 
       {/* Template grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {templates.map((t) => (
           <div key={t.id} className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-start justify-between gap-2">
