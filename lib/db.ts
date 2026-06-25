@@ -97,6 +97,10 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN website TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN county TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN region TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    // Extra phone / email slots (work & mobile secondary numbers, second personal email)
+    db.execute("ALTER TABLE contacts ADD COLUMN work_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN mobile_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    db.execute("ALTER TABLE contacts ADD COLUMN personal_email_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe

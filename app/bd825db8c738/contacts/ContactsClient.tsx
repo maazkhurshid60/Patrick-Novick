@@ -19,8 +19,11 @@ interface Contact {
   company: string;
   phone: string;
   phone_2: string;
+  work_phone_2: string;
+  mobile_phone_2: string;
   business_email: string;
   email_2: string;
+  personal_email_2: string;
   linkedin: string;
   website: string;
   street_address: string;
@@ -105,7 +108,8 @@ function hasAddress(c: Contact) {
 
 const BLANK = {
   first_name: "", last_name: "", email: "", title: "", company: "",
-  phone: "", phone_2: "", business_email: "", email_2: "",
+  phone: "", phone_2: "", work_phone_2: "", mobile_phone_2: "",
+  business_email: "", email_2: "", personal_email_2: "",
   linkedin: "", website: "",
   street_address: "", city: "", state: "", zip_code: "", county: "", region: "",
   country: "US", notes: "", segments: "",
@@ -146,19 +150,22 @@ const loadXLSX = (): Promise<any> => {
 };
 
 const MAPPABLE_FIELDS = [
-  { key: "email", label: "Email Address *" },
+  { key: "email", label: "Email Address (primary) *" },
   { key: "first_name", label: "First Name" },
   { key: "last_name", label: "Last Name" },
   { key: "name", label: "Full Name" },
   { key: "title", label: "Title / Role" },
   { key: "company", label: "Company" },
-  { key: "phone", label: "Phone" },
-  { key: "phone_2", label: "Phone 2 / Mobile" },
   { key: "business_email", label: "Business Email" },
-  { key: "email_2", label: "Other Email" },
+  { key: "email_2", label: "Personal Email 1" },
+  { key: "personal_email_2", label: "Personal Email 2" },
+  { key: "phone", label: "Work Phone 1" },
+  { key: "work_phone_2", label: "Work Phone 2" },
+  { key: "phone_2", label: "Mobile Phone 1" },
+  { key: "mobile_phone_2", label: "Mobile Phone 2" },
   { key: "linkedin", label: "LinkedIn URL" },
   { key: "website", label: "Website" },
-  { key: "street_address", label: "Street Address" },
+  { key: "street_address", label: "Work Address" },
   { key: "city", label: "City" },
   { key: "state", label: "State / Province" },
   { key: "zip_code", label: "ZIP / Postal Code" },
@@ -171,19 +178,26 @@ const MAPPABLE_FIELDS = [
 
 function autoMapHeader(header: string): string {
   const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
-  if (h === "email" || h === "emailaddress" || h === "mail" || h === "workemail") return "email";
-  if (h === "businessemail" || h === "bizmail" || h === "corporateemail") return "business_email";
-  if (h === "email2" || h === "otheremail" || h === "alternativeemail" || h === "personalemail") return "email_2";
+  // Primary email = business/work email (the campaign send target)
+  if (h === "email" || h === "emailaddress" || h === "mail" || h === "workemail" ||
+      h === "businessemail" || h === "bizmail" || h === "corporateemail" || h === "companyemail") return "email";
+  if (h === "businessemail2" || h === "workemail2") return "business_email";
+  // Personal emails
+  if (h === "email2" || h === "otheremail" || h === "alternativeemail" || h === "personalemail" || h === "personalemail1") return "email_2";
+  if (h === "personalemail2" || h === "otheremail2" || h === "email3") return "personal_email_2";
   if (h === "firstname" || h === "first" || h === "givenname") return "first_name";
   if (h === "lastname" || h === "last" || h === "surname") return "last_name";
   if (h === "name" || h === "fullname" || h === "contact" || h === "contactname") return "name";
   if (h === "title" || h === "role" || h === "position" || h === "jobtitle") return "title";
   if (h === "company" || h === "firm" || h === "organization" || h === "org" || h === "companyname") return "company";
-  if (h === "phone" || h === "telephone" || h === "phone1" || h === "workphone" || h === "officephone") return "phone";
-  if (h === "phone2" || h === "mobile" || h === "cell" || h === "cellphone" || h === "mobilephone") return "phone_2";
-  if (h === "linkedin" || h === "linkedinurl" || h === "linkedinprofile") return "linkedin";
+  // Phones — work 1/2 and mobile 1/2
+  if (h === "phone" || h === "telephone" || h === "phone1" || h === "workphone" || h === "workphone1" || h === "officephone" || h === "officephone1") return "phone";
+  if (h === "workphone2" || h === "officephone2" || h === "telephone2") return "work_phone_2";
+  if (h === "phone2" || h === "mobile" || h === "cell" || h === "cellphone" || h === "mobilephone" || h === "mobilephone1" || h === "cellphone1") return "phone_2";
+  if (h === "mobilephone2" || h === "cellphone2" || h === "mobile2" || h === "cell2") return "mobile_phone_2";
+  if (h === "linkedin" || h === "linkedinurl" || h === "linkedinprofile" || h === "linkedinlink") return "linkedin";
   if (h === "website" || h === "url" || h === "companywebsite" || h === "homepage") return "website";
-  if (h === "streetaddress" || h === "street" || h === "address" || h === "address1") return "street_address";
+  if (h === "streetaddress" || h === "street" || h === "address" || h === "address1" || h === "workaddress" || h === "businessaddress" || h === "officeaddress") return "street_address";
   if (h === "city") return "city";
   if (h === "state" || h === "province") return "state";
   if (h === "zipcode" || h === "zip" || h === "postal" || h === "postalcode") return "zip_code";
@@ -226,6 +240,7 @@ export default function ContactsClient() {
   const [sheetHeaders, setSheetHeaders] = useState<string[]>([]);
   const [sheetRows, setSheetRows] = useState<any[][]>([]);
   const [mappings, setMappings] = useState<Record<string, string>>({}); // header -> systemFieldKey
+  const [showPreview, setShowPreview] = useState(false); // mapping view vs full data preview
   const sheetRef = useRef<HTMLInputElement>(null);
 
   // Import list association states
@@ -273,8 +288,11 @@ export default function ContactsClient() {
       company:    c.company,
       phone:      c.phone,
       phone_2:    c.phone_2,
+      work_phone_2:   c.work_phone_2 || "",
+      mobile_phone_2: c.mobile_phone_2 || "",
       business_email: c.business_email || "",
       email_2:    c.email_2 || "",
+      personal_email_2: c.personal_email_2 || "",
       linkedin:   c.linkedin || "",
       website:    c.website || "",
       street_address: c.street_address,
@@ -380,6 +398,7 @@ export default function ContactsClient() {
             }
           });
           setMappings(initialMappings);
+          setShowPreview(false);
           setShowMapping(true);
         } catch (err) {
           setError("Failed to parse sheet data. Please check the file format.");
@@ -559,7 +578,71 @@ export default function ContactsClient() {
             {/* ── Scrollable body ── */}
             <div className="flex-1 overflow-y-auto px-8 py-5" style={{ minHeight: 0 }}>
 
+              {/* View toggle: field mapping vs full data preview */}
+              <div className="flex items-center gap-1 p-1 rounded-lg mb-4 w-max" style={{ background: "rgba(255,255,255,0.04)" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(false)}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                  style={{ background: !showPreview ? "rgba(230,57,70,0.15)" : "transparent", color: !showPreview ? "#f87171" : "rgba(255,255,255,0.45)" }}
+                >
+                  Field Mapping
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview(true)}
+                  className="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                  style={{ background: showPreview ? "rgba(230,57,70,0.15)" : "transparent", color: showPreview ? "#f87171" : "rgba(255,255,255,0.45)" }}
+                >
+                  Data Preview ({sheetRows.length})
+                </button>
+              </div>
+
+              {/* Full data preview — all columns, multiple rows */}
+              {showPreview && (
+                <div className="rounded-xl overflow-auto" style={{ border: "1px solid rgba(255,255,255,0.07)", maxHeight: "62vh" }}>
+                  <table style={{ borderCollapse: "collapse", width: "100%", minWidth: "max-content" }}>
+                    <thead>
+                      <tr style={{ position: "sticky", top: 0, background: "#1d2026", zIndex: 1 }}>
+                        <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: "0.6875rem" }}>#</th>
+                        {sheetHeaders.map((h, i) => {
+                          const mappedKey = mappings[h];
+                          const mappedLabel = MAPPABLE_FIELDS.find((f) => f.key === mappedKey)?.label;
+                          return (
+                            <th key={i} style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>
+                              <div className="text-xs font-semibold" style={{ color: mappedKey ? "#fff" : "rgba(255,255,255,0.45)" }}>{h || "(empty)"}</div>
+                              <div className="text-[10px]" style={{ color: mappedKey ? "#f87171" : "rgba(255,255,255,0.2)" }}>{mappedLabel ? `→ ${mappedLabel}` : "skipped"}</div>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheetRows.slice(0, 200).map((row, rIdx) => (
+                        <tr key={rIdx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                          <td style={{ padding: "0.4rem 0.75rem", color: "rgba(255,255,255,0.25)", fontSize: "0.7rem" }}>{rIdx + 1}</td>
+                          {sheetHeaders.map((_, cIdx) => {
+                            const v = row[cIdx];
+                            return (
+                              <td key={cIdx} style={{ padding: "0.4rem 0.75rem", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", whiteSpace: "nowrap", maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }} title={v != null ? v.toString() : ""}>
+                                {v != null && v.toString().trim() !== "" ? v.toString() : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {sheetRows.length > 200 && (
+                    <p className="px-3 py-2 text-xs" style={{ color: "rgba(255,255,255,0.3)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      Showing first 200 of {sheetRows.length} rows. All {sheetRows.length} will be imported.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Column mapping table */}
+              {!showPreview && (
               <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
                 {/* Sticky header row */}
                 <div className="grid gap-0" style={{ gridTemplateColumns: "2fr 1.4fr 2fr", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0.5rem 1rem" }}>
@@ -622,6 +705,7 @@ export default function ContactsClient() {
                   );
                 })}
               </div>
+              )}
 
               {/* ── Add to list ── */}
               <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -717,11 +801,14 @@ export default function ContactsClient() {
               <div>
                 <SectionLabel icon={Mail} label="Contact" />
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Email Address *"><input style={inp} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@acme.com" /></Field>
+                  <Field label="Email Address (primary) *"><input style={inp} type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="john@acme.com" /></Field>
                   <Field label="Business Email"><input style={inp} type="email" value={form.business_email} onChange={(e) => setForm({ ...form, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
-                  <Field label="Other Email"><input style={inp} type="email" value={form.email_2} onChange={(e) => setForm({ ...form, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
-                  <Field label="Phone"><input style={inp} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
-                  <Field label="Phone 2 / Mobile"><input style={inp} value={form.phone_2} onChange={(e) => setForm({ ...form, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="Personal Email 1"><input style={inp} type="email" value={form.email_2} onChange={(e) => setForm({ ...form, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
+                  <Field label="Personal Email 2"><input style={inp} type="email" value={form.personal_email_2} onChange={(e) => setForm({ ...form, personal_email_2: e.target.value })} placeholder="personal2@gmail.com" /></Field>
+                  <Field label="Work Phone 1"><input style={inp} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
+                  <Field label="Work Phone 2"><input style={inp} value={form.work_phone_2} onChange={(e) => setForm({ ...form, work_phone_2: e.target.value })} placeholder="+1 555-000-0002" /></Field>
+                  <Field label="Mobile Phone 1"><input style={inp} value={form.phone_2} onChange={(e) => setForm({ ...form, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="Mobile Phone 2"><input style={inp} value={form.mobile_phone_2} onChange={(e) => setForm({ ...form, mobile_phone_2: e.target.value })} placeholder="+1 555-000-0003" /></Field>
                   <Field label="LinkedIn URL"><input style={inp} value={form.linkedin} onChange={(e) => setForm({ ...form, linkedin: e.target.value })} placeholder="linkedin.com/in/jsmith" /></Field>
                   <Field label="Website"><input style={inp} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} placeholder="https://acme.com" /></Field>
                 </div>
@@ -732,7 +819,7 @@ export default function ContactsClient() {
                 <SectionLabel icon={MapPin} label="Mailing Address" />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <Field label="Street Address"><input style={inp} value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} placeholder="123 Main St" /></Field>
+                    <Field label="Work Address"><input style={inp} value={form.street_address} onChange={(e) => setForm({ ...form, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="New York" /></Field>
                   <Field label="State / Province"><input style={inp} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" /></Field>
@@ -830,9 +917,12 @@ export default function ContactsClient() {
                     <Field label="Email Address"><input style={inp} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
                   </div>
                   <Field label="Business Email"><input style={inp} type="email" value={editForm.business_email} onChange={(e) => setEditForm({ ...editForm, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
-                  <Field label="Other Email"><input style={inp} type="email" value={editForm.email_2} onChange={(e) => setEditForm({ ...editForm, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
-                  <Field label="Phone"><input style={inp} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
-                  <Field label="Phone 2"><input style={inp} value={editForm.phone_2} onChange={(e) => setEditForm({ ...editForm, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="Personal Email 1"><input style={inp} type="email" value={editForm.email_2} onChange={(e) => setEditForm({ ...editForm, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
+                  <Field label="Personal Email 2"><input style={inp} type="email" value={editForm.personal_email_2} onChange={(e) => setEditForm({ ...editForm, personal_email_2: e.target.value })} placeholder="personal2@gmail.com" /></Field>
+                  <Field label="Work Phone 1"><input style={inp} value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+1 555-000-0000" /></Field>
+                  <Field label="Work Phone 2"><input style={inp} value={editForm.work_phone_2} onChange={(e) => setEditForm({ ...editForm, work_phone_2: e.target.value })} placeholder="+1 555-000-0002" /></Field>
+                  <Field label="Mobile Phone 1"><input style={inp} value={editForm.phone_2} onChange={(e) => setEditForm({ ...editForm, phone_2: e.target.value })} placeholder="+1 555-000-0001" /></Field>
+                  <Field label="Mobile Phone 2"><input style={inp} value={editForm.mobile_phone_2} onChange={(e) => setEditForm({ ...editForm, mobile_phone_2: e.target.value })} placeholder="+1 555-000-0003" /></Field>
                   <Field label="LinkedIn URL"><input style={inp} value={editForm.linkedin} onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })} placeholder="linkedin.com/in/jsmith" /></Field>
                   <Field label="Website"><input style={inp} value={editForm.website} onChange={(e) => setEditForm({ ...editForm, website: e.target.value })} placeholder="https://acme.com" /></Field>
                 </div>
@@ -842,7 +932,7 @@ export default function ContactsClient() {
                 <SectionLabel icon={MapPin} label="Mailing Address" />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <Field label="Street Address"><input style={inp} value={editForm.street_address} onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })} placeholder="123 Main St" /></Field>
+                    <Field label="Work Address"><input style={inp} value={editForm.street_address} onChange={(e) => setEditForm({ ...editForm, street_address: e.target.value })} placeholder="123 Main St" /></Field>
                   </div>
                   <Field label="City"><input style={inp} value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} /></Field>
                   <Field label="State / Province"><input style={inp} value={editForm.state} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} /></Field>

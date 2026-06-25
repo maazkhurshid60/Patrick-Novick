@@ -41,6 +41,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     custom_fields?: string;
     business_email?: string;
     email_2?: string;
+    personal_email_2?: string;
+    work_phone_2?: string;
+    mobile_phone_2?: string;
     linkedin?: string;
     website?: string;
     county?: string;
@@ -103,8 +106,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         (email, name, first_name, last_name, title, company,
          phone, phone_2, street_address, city, state, zip_code, country,
          notes, segments, custom_fields,
-         business_email, email_2, linkedin, website, county, region)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         business_email, email_2, linkedin, website, county, region,
+         work_phone_2, mobile_phone_2, personal_email_2)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         email,
         fullName || derivedFirst + (derivedLast ? " " + derivedLast : ""),
@@ -128,6 +132,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         (row.website ?? "").trim(),
         (row.county ?? "").trim(),
         (row.region ?? "").trim(),
+        (row.work_phone_2 ?? "").trim(),
+        (row.mobile_phone_2 ?? "").trim(),
+        (row.personal_email_2 ?? "").trim(),
       ],
     });
     added += res.rowsAffected;
@@ -178,6 +185,9 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     custom_fields?: string;
     business_email?: string;
     email_2?: string;
+    personal_email_2?: string;
+    work_phone_2?: string;
+    mobile_phone_2?: string;
     linkedin?: string;
     website?: string;
     county?: string;
@@ -190,6 +200,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     "phone", "phone_2", "street_address", "city", "state", "zip_code",
     "country", "notes", "segments", "custom_fields",
     "business_email", "email_2", "linkedin", "website", "county", "region",
+    "work_phone_2", "mobile_phone_2", "personal_email_2",
   ] as const;
 
   const updates: string[] = [];
