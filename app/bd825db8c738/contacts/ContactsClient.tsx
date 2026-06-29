@@ -104,6 +104,16 @@ function hasAddress(c: Contact) {
   return !!(c.street_address && c.city && c.state);
 }
 
+// "City, ST" — only the parts that exist
+function cityState(c: { city?: string; state?: string }) {
+  return [c.city?.trim(), c.state?.trim()].filter(Boolean).join(", ");
+}
+
+// Parse a contact's comma-separated segments into display tags
+function contactTags(c: { segments?: string }): string[] {
+  return (c.segments || "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 // ─── Blank form state ─────────────────────────────────────────────────────────
 
 const BLANK = {
@@ -221,6 +231,8 @@ export default function ContactsClient() {
   // Contact list search & filter
   const [contactSearch, setContactSearch] = useState("");
   const [contactStatusFilter, setContactStatusFilter] = useState<"all" | "active" | "unsubscribed" | "invalid">("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [stateFilter, setStateFilter] = useState("all");
   const [contactPage, setContactPage] = useState(1);
   const CONTACTS_PER_PAGE = 30;
 
@@ -546,6 +558,18 @@ export default function ContactsClient() {
 
   const activeCount = contacts.filter((c) => c.status === "active" || !c.status).length;
 
+  // Distinct company + location (state) values for the filter dropdowns
+  const companyOptions = useMemo(() => {
+    const set = new Set<string>();
+    contacts.forEach((c) => { const v = (c.company || "").trim(); if (v) set.add(v); });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [contacts]);
+  const stateOptions = useMemo(() => {
+    const set = new Set<string>();
+    contacts.forEach((c) => { const v = (c.state || "").trim(); if (v) set.add(v); });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [contacts]);
+
   // Filtered contacts (client-side, instant)
   const filteredContacts = useMemo(() => {
     const q = contactSearch.toLowerCase().trim();
@@ -553,6 +577,8 @@ export default function ContactsClient() {
       if (contactStatusFilter === "active" && c.status !== "active" && c.status) return false;
       if (contactStatusFilter === "unsubscribed" && c.status !== "unsubscribed") return false;
       if (contactStatusFilter === "invalid" && c.status !== "invalid") return false;
+      if (companyFilter !== "all" && (c.company || "").trim() !== companyFilter) return false;
+      if (stateFilter !== "all" && (c.state || "").trim() !== stateFilter) return false;
       if (!q) return true;
       return (
         c.email.toLowerCase().includes(q) ||
@@ -566,7 +592,7 @@ export default function ContactsClient() {
         (c.phone || "").toLowerCase().includes(q)
       );
     });
-  }, [contacts, contactSearch, contactStatusFilter]);
+  }, [contacts, contactSearch, contactStatusFilter, companyFilter, stateFilter]);
 
   // Pagination — 30 contacts per page
   const totalContactPages = Math.max(1, Math.ceil(filteredContacts.length / CONTACTS_PER_PAGE));
@@ -575,8 +601,8 @@ export default function ContactsClient() {
     (currentContactPage - 1) * CONTACTS_PER_PAGE,
     currentContactPage * CONTACTS_PER_PAGE
   );
-  // Reset to page 1 when the search or status filter changes
-  useEffect(() => { setContactPage(1); }, [contactSearch, contactStatusFilter]);
+  // Reset to page 1 when any filter changes
+  useEffect(() => { setContactPage(1); }, [contactSearch, contactStatusFilter, companyFilter, stateFilter]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -1197,8 +1223,8 @@ export default function ContactsClient() {
               </div>
             </div>
             {/* Search + filter row */}
-            <div className="flex gap-2">
-              <div style={{ position: "relative", flex: 1 }}>
+            <div className="flex flex-wrap gap-2">
+              <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
                 <Search size={13} style={{ position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
                 <input
                   style={{ ...inp, paddingLeft: "2.1rem", borderRadius: "0.625rem" }}
@@ -1221,6 +1247,32 @@ export default function ContactsClient() {
                 <option value="active" style={{ background: "#16181e", color: "#fff" }}>Active</option>
                 <option value="unsubscribed" style={{ background: "#16181e", color: "#fff" }}>Unsubscribed</option>
                 <option value="invalid" style={{ background: "#16181e", color: "#fff" }}>Invalid</option>
+              </select>
+
+              {/* Company filter */}
+              <select
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                style={{ ...inp, width: "auto", maxWidth: 200, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
+                title="Filter by company"
+              >
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All companies</option>
+                {companyOptions.map((co) => (
+                  <option key={co} value={co} style={{ background: "#16181e", color: "#fff" }}>{co}</option>
+                ))}
+              </select>
+
+              {/* Location filter */}
+              <select
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
+                style={{ ...inp, width: "auto", maxWidth: 160, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
+                title="Filter by location (state)"
+              >
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All locations</option>
+                {stateOptions.map((st) => (
+                  <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -1270,6 +1322,12 @@ export default function ContactsClient() {
                         {c.tags?.includes("test_seed") && <span className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>}
                         {Number(c.campaigns_sent) > 0 && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>sent ×{c.campaigns_sent}</span>}
                         {hasAddress(c) && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}><MapPin size={8} className="inline mr-0.5" />addr</span>}
+                        {contactTags(c).slice(0, 3).map((t) => (
+                          <span key={t} className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(168,85,247,0.12)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>{t}</span>
+                        ))}
+                        {contactTags(c).length > 3 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>+{contactTags(c).length - 3}</span>
+                        )}
                       </div>
                       <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
                         {c.name !== displayName(c) ? c.email : ""}
@@ -1282,6 +1340,11 @@ export default function ContactsClient() {
                           </>
                         )}
                       </p>
+                      {cityState(c) && (
+                        <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          <MapPin size={9} style={{ flexShrink: 0 }} /> {cityState(c)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }} />
