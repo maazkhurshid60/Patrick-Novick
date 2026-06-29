@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { Send, Clock, ChevronDown, Users, Trash2 } from "lucide-react";
-import { ToastProvider, toast, Spinner } from "../Toast";
+import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
 
 interface Campaign {
   id: number;
@@ -189,7 +189,6 @@ export default function CampaignClient({
     if (!confirm(confirmMsg)) return;
 
     setLoading(true);
-    const loadId = toast.loading(isTestSend ? "Sending test email…" : `Sending to ${sendCount} contacts…`);
     try {
       const res = await fetch("/api/campaigns/send", {
         method: "POST",
@@ -226,7 +225,6 @@ export default function CampaignClient({
     } catch {
       toast.error("Couldn't reach the server. Please check your connection and try again.");
     } finally {
-      toast.dismiss(loadId);
       setLoading(false);
     }
   }
@@ -234,6 +232,7 @@ export default function CampaignClient({
   return (
     <>
     <ToastProvider />
+    <LoadingOverlay show={loading} message={isTestSend ? "Sending test email…" : "Sending campaign… this can take a moment"} />
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
       <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>

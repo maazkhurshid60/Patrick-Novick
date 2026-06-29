@@ -5,7 +5,7 @@ import {
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
   ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
 } from "lucide-react";
-import { ToastProvider, toast, Spinner } from "../Toast";
+import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -562,6 +562,7 @@ export default function ContactsClient() {
   return (
     <>
       <ToastProvider />
+      <LoadingOverlay show={showAdd && loading} message="Adding contact…" />
       {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
       {showMapping && (
         <div
@@ -1193,10 +1194,10 @@ export default function ContactsClient() {
                 onChange={(e) => setContactStatusFilter(e.target.value as typeof contactStatusFilter)}
                 style={{ ...inp, width: "auto", fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
               >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="unsubscribed">Unsubscribed</option>
-                <option value="invalid">Invalid</option>
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All statuses</option>
+                <option value="active" style={{ background: "#16181e", color: "#fff" }}>Active</option>
+                <option value="unsubscribed" style={{ background: "#16181e", color: "#fff" }}>Unsubscribed</option>
+                <option value="invalid" style={{ background: "#16181e", color: "#fff" }}>Invalid</option>
               </select>
             </div>
           </div>

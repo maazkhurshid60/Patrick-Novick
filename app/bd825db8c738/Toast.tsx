@@ -137,3 +137,46 @@ export function Spinner({ size = 14 }: { size?: number }) {
     />
   );
 }
+
+// ─── Full-screen blocking loader ───────────────────────────────────────────────
+// Fixed-position overlay — centered on any screen size, always on top.
+export function LoadingOverlay({ show, message }: { show: boolean; message?: string }) {
+  if (!show) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 10000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
+        background: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(3px)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "0.9rem",
+          padding: "1.75rem 2.25rem",
+          maxWidth: "90vw",
+          borderRadius: "1rem",
+          background: "#1a1d23",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+        }}
+      >
+        <Loader2 size={30} style={{ color: "var(--color-red)", animation: "spin 0.8s linear infinite" }} />
+        {message && (
+          <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
+            {message}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

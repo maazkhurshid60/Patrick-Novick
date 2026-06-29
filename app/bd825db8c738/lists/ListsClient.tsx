@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, FormEvent, useMemo, KeyboardE
 import {
   Plus, Trash2, X, Users, UserMinus, ChevronLeft, Check,
   Search, UploadCloud, CheckSquare, Square, RefreshCw,
-  Layers, List as ListIcon, ChevronDown, ChevronRight, Pencil,
+  Layers, List as ListIcon, ChevronDown, ChevronRight, Pencil, MapPin,
 } from "lucide-react";
 import { ToastProvider, toast, Spinner } from "../Toast";
 
@@ -24,6 +24,13 @@ interface Contact {
   campaigns_sent?: number;
   title: string;
   company: string;
+  city?: string;
+  state?: string;
+}
+
+// "City, ST" — only the parts that exist
+function locationOf(c: { city?: string; state?: string }): string {
+  return [c.city?.trim(), c.state?.trim()].filter(Boolean).join(", ");
 }
 
 const inputStyle: React.CSSProperties = {
@@ -332,17 +339,17 @@ function AddContactsModal({
               {/* Status */}
               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
                 style={{ ...inputStyle, width: "auto", fontSize: "0.76rem", borderRadius: "0.6rem", cursor: "pointer" }}>
-                <option value="all">All statuses</option>
-                <option value="active">Active only</option>
-                <option value="unsubscribed">Unsubscribed</option>
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All statuses</option>
+                <option value="active" style={{ background: "#16181e", color: "#fff" }}>Active only</option>
+                <option value="unsubscribed" style={{ background: "#16181e", color: "#fff" }}>Unsubscribed</option>
               </select>
 
               {/* Member filter */}
               <select value={memberFilter} onChange={(e) => { setMemberFilter(e.target.value as typeof memberFilter); setPage(1); }}
                 style={{ ...inputStyle, width: "auto", fontSize: "0.76rem", borderRadius: "0.6rem", cursor: "pointer" }}>
-                <option value="all">All contacts</option>
-                <option value="not-in-list">Not in this list</option>
-                <option value="no-list">In no lists</option>
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All contacts</option>
+                <option value="not-in-list" style={{ background: "#16181e", color: "#fff" }}>Not in this list</option>
+                <option value="no-list" style={{ background: "#16181e", color: "#fff" }}>In no lists</option>
               </select>
 
               {/* View toggle */}
@@ -571,6 +578,11 @@ function ContactRow({
           {c.name ? c.email : ""}
           {(c.title || c.company) && <span> · {c.title}{c.title && c.company ? " at " : ""}{c.company}</span>}
         </div>
+        {locationOf(c) && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.65rem", color: "rgba(255,255,255,0.32)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: "1px" }}>
+            <MapPin size={9} style={{ flexShrink: 0 }} /> {locationOf(c)}
+          </div>
+        )}
       </div>
       {c.lists && !alreadyIn && (
         <span style={{ fontSize: "0.62rem", padding: "2px 6px", borderRadius: 99, background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)", flexShrink: 0, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={c.lists}>
@@ -611,6 +623,7 @@ function GroupContactRow({ c, alreadyIn, selected, onToggle }: { c: Contact; alr
         <div style={{ fontSize: "0.67rem", color: "rgba(255,255,255,0.28)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {c.name ? c.email : ""}
           {c.title && <span> · {c.title}</span>}
+          {locationOf(c) && <span> · {locationOf(c)}</span>}
         </div>
       </div>
     </div>
@@ -629,6 +642,7 @@ export default function ListsClient() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
+  const [memberPage, setMemberPage] = useState(1);
 
   // Inline list rename
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -733,6 +747,18 @@ export default function ListsClient() {
       (c.company || "").toLowerCase().includes(q)
     );
   }, [members, memberSearch]);
+
+  // Pagination — 30 members per page
+  const MEMBERS_PER_PAGE = 30;
+  const totalMemberPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBERS_PER_PAGE));
+  const currentMemberPage = Math.min(memberPage, totalMemberPages);
+  const pagedMembers = filteredMembers.slice(
+    (currentMemberPage - 1) * MEMBERS_PER_PAGE,
+    currentMemberPage * MEMBERS_PER_PAGE
+  );
+
+  // Reset to first page when the search or selected list changes
+  useEffect(() => { setMemberPage(1); }, [memberSearch, selected?.id]);
 
   return (
     <>
@@ -901,35 +927,72 @@ export default function ListsClient() {
                 <div className="py-12 text-center">
                   <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No members match your search.</p>
                 </div>
-              ) : filteredMembers.map((c, i) => (
-                <div key={c.id}
-                  className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/[0.02]"
-                  style={{ borderBottom: i < filteredMembers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
-                      {(c.name || c.email)[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-white">{c.name || c.email}</p>
-                        {c.status === "unsubscribed" && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>unsubscribed</span>
-                        )}
+              ) : (
+                <>
+                  {pagedMembers.map((c, i) => (
+                    <div key={c.id}
+                      className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/[0.02]"
+                      style={{ borderBottom: i < pagedMembers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                          {(c.name || c.email)[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-white">{c.name || c.email}</p>
+                            {c.status === "unsubscribed" && (
+                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>unsubscribed</span>
+                            )}
+                          </div>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                            {c.name ? c.email : ""}
+                            {(c.title || c.company) && <>{c.name ? " · " : ""}{c.title}{c.title && c.company ? " at " : ""}{c.company}</>}
+                          </p>
+                          {locationOf(c) && (
+                            <p className="text-xs flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                              <MapPin size={10} style={{ flexShrink: 0 }} /> {locationOf(c)}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                        {c.name ? c.email : ""}
-                        {(c.title || c.company) && <>{c.name ? " · " : ""}{c.title}{c.title && c.company ? " at " : ""}{c.company}</>}
-                      </p>
+                      <button onClick={() => handleRemoveMember(c.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/5"
+                        style={{ color: "rgba(255,255,255,0.3)" }} title="Remove from list">
+                        <UserMinus size={12} /> Remove
+                      </button>
                     </div>
-                  </div>
-                  <button onClick={() => handleRemoveMember(c.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/5"
-                    style={{ color: "rgba(255,255,255,0.3)" }} title="Remove from list">
-                    <UserMinus size={12} /> Remove
-                  </button>
-                </div>
-              ))}
+                  ))}
+
+                  {/* Pagination footer */}
+                  {totalMemberPages > 1 && (
+                    <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {(currentMemberPage - 1) * MEMBERS_PER_PAGE + 1}–{Math.min(currentMemberPage * MEMBERS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                          disabled={currentMemberPage <= 1}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <ChevronLeft size={13} /> Prev
+                        </button>
+                        <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>
+                          Page {currentMemberPage} of {totalMemberPages}
+                        </span>
+                        <button
+                          onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
+                          disabled={currentMemberPage >= totalMemberPages}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                          Next <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
