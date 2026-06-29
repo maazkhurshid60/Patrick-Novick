@@ -4,6 +4,12 @@ import db from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// A real single email address — no spaces/tabs, exactly one @, and a dotted domain.
+// Rejects whole spreadsheet rows accidentally pasted into the email field.
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 
 // GET /api/contacts — list all contacts with sent campaign count
 export async function GET(): Promise<NextResponse> {
@@ -85,9 +91,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let added = 0;
   let skipped = 0;
+  let invalid = 0;
   for (const row of entries) {
     const email = (row.email ?? "").trim().toLowerCase();
-    if (!email || !email.includes("@")) continue;
+    if (!isValidEmail(email)) { invalid++; continue; }
     if (suppressed.has(email)) { skipped++; continue; }
 
     // Resolve first/last from split fields or from full name fallback
@@ -159,7 +166,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ added, skipped });
+  return NextResponse.json({ added, skipped, invalid });
 }
 
 // PATCH /api/contacts — update any contact field
@@ -270,16 +277,19 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ success: true });
 }
 
-// DELETE /api/contacts — delete by id and add to suppression list
+// DELETE /api/contacts — delete a contact by id.
+// By default this only deletes; it does NOT suppress (so routine cleanups don't
+// pollute the opt-out list or silently block re-importing the same person).
+// Pass { suppress: true } to also block the email from future imports/sends.
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const { id } = await req.json() as { id: number };
+  const { id, suppress } = await req.json() as { id: number; suppress?: boolean };
 
   const emailResult = await db.execute({ sql: "SELECT email FROM contacts WHERE id = ?", args: [id] });
   const email = emailResult.rows[0]?.email as string | undefined;
 
   await db.execute({ sql: "DELETE FROM contacts WHERE id = ?", args: [id] });
 
-  if (email) {
+  if (suppress && email) {
     await db.execute({
       sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, 'removed')",
       args: [email],

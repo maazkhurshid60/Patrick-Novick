@@ -355,26 +355,36 @@ export default function ContactsClient() {
 
   async function handleBulk(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     const entries = bulk.split("\n").map((line) => {
       line = line.trim();
       const match = line.match(/^(.+?)\s*<(.+?)>$/);
       if (match) return { name: match[1].trim(), email: match[2].trim() };
       return { email: line, name: "" };
-    }).filter((e) => e.email.includes("@"));
+    }).filter((e) => e.email.length > 0);
 
-    const res = await fetch("/api/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entries),
-    });
-    const data = await res.json();
-    if (!res.ok) toast.error(data.error ?? "Failed");
-    else {
-      toast.success(`Added ${data.added} contacts${data.skipped ? `, skipped ${data.skipped} suppressed` : ""}`);
+    if (entries.length === 0) { toast.error("Paste at least one email (one per line)."); return; }
+
+    setLoading(true);
+    setOverlayMsg("Importing contacts…");
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entries),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string; added?: number; skipped?: number; invalid?: number }));
+      if (!res.ok) { toast.error(data.error ?? "Failed"); return; }
+      const parts = [`Added ${data.added ?? 0} contacts`];
+      if (data.skipped) parts.push(`${data.skipped} suppressed`);
+      if (data.invalid) parts.push(`${data.invalid} ignored (not a valid email)`);
+      toast.success(parts.join(" · "));
       setBulk(""); fetchContacts();
+    } catch {
+      toast.error("Couldn't reach the server. Please try again.");
+    } finally {
+      setLoading(false);
+      setOverlayMsg(null);
     }
-    setLoading(false);
   }
 
   // ── Spreadsheet upload & mapping ──────────────────────────────────────────
@@ -390,10 +400,14 @@ export default function ContactsClient() {
       reader.onload = (evt) => {
         try {
           const ab = evt.target?.result;
-          const workbook = XLSX.read(ab, { type: "array" });
+          const workbook = XLSX.read(ab, { type: "array", cellText: true, cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          // raw:false → use the displayed/formatted text (keeps phone numbers, ZIP
+          // codes and dates as shown instead of coercing to numbers / scientific
+          // notation). defval:"" → every row has a cell per column, so values stay
+          // aligned to their header even when interior cells are blank.
+          const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "", blankrows: false }) as any[][];
 
           if (json.length === 0) {
             setError("The spreadsheet appears to be empty.");
@@ -408,16 +422,26 @@ export default function ContactsClient() {
             return;
           }
 
+          // Make every header key unique and non-blank so duplicate or empty
+          // column names can be mapped independently (mappings are keyed by header).
+          const seen: Record<string, number> = {};
+          const uniqueHeaders = rawHeaders.map((h, i) => {
+            const base = h || `Column ${i + 1}`;
+            if (seen[base] === undefined) { seen[base] = 0; return base; }
+            seen[base] += 1;
+            return `${base} (${seen[base] + 1})`;
+          });
+
           const rows = json.slice(1);
-          setSheetHeaders(rawHeaders);
+          setSheetHeaders(uniqueHeaders);
           setSheetRows(rows);
 
+          // Auto-map from the ORIGINAL header text, but key the mapping by the
+          // unique header so each column is independent.
           const initialMappings: Record<string, string> = {};
-          rawHeaders.forEach((h) => {
-            if (h) {
-              const match = autoMapHeader(h);
-              if (match) initialMappings[h] = match;
-            }
+          uniqueHeaders.forEach((label, i) => {
+            const match = autoMapHeader(rawHeaders[i]);
+            if (match) initialMappings[label] = match;
           });
           setMappings(initialMappings);
           setShowPreview(false);
@@ -457,6 +481,7 @@ export default function ContactsClient() {
     setError("");
     setSuccess("");
 
+    const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
     const mappedEntries = sheetRows.map((row) => {
       const entry: Record<string, any> = {};
       sheetHeaders.forEach((header, index) => {
@@ -467,7 +492,7 @@ export default function ContactsClient() {
         }
       });
       return entry;
-    }).filter((entry) => entry.email && entry.email.includes("@"));
+    }).filter((entry) => isValidEmail((entry.email || "").trim()));
 
     if (mappedEntries.length === 0) {
       setError("No contacts with valid email addresses were found using the current mapping.");
@@ -488,11 +513,14 @@ export default function ContactsClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as { error?: string; added?: number; skipped?: number; invalid?: number }));
       if (!res.ok) {
         toast.error(data.error ?? "Failed to import contacts.");
       } else {
-        toast.success(`Imported ${data.added} of ${mappedEntries.length} contacts`);
+        const parts = [`Imported ${data.added ?? 0} of ${mappedEntries.length}`];
+        if (data.skipped) parts.push(`${data.skipped} suppressed`);
+        if (data.invalid) parts.push(`${data.invalid} invalid`);
+        toast.success(parts.join(" · "));
         fetchContacts();
         fetchAllLists();
       }
