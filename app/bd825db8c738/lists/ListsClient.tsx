@@ -81,6 +81,7 @@ function AddContactsModal({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "unsubscribed">("all");
   const [memberFilter, setMemberFilter] = useState<"all" | "no-list" | "not-in-list">("not-in-list");
+  const [locationFilter, setLocationFilter] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [adding, setAdding] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grouped">("list");
@@ -107,21 +108,31 @@ function AddContactsModal({
   }, []);
 
   // ── filtered flat list ──────────────────────
+  // Distinct location (state) values for the filter dropdown
+  const stateOptions = useMemo(() => {
+    const set = new Set<string>();
+    allContacts.forEach((c) => { const v = (c.state || "").trim(); if (v) set.add(v); });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [allContacts]);
+
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return allContacts.filter((c) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
       if (memberFilter === "no-list" && c.lists) return false;
       if (memberFilter === "not-in-list" && memberIds.has(c.id)) return false;
+      if (locationFilter !== "all" && (c.state || "").trim() !== locationFilter) return false;
       if (!q) return true;
       return (
         c.email.toLowerCase().includes(q) ||
         (c.name || "").toLowerCase().includes(q) ||
         (c.company || "").toLowerCase().includes(q) ||
-        (c.title || "").toLowerCase().includes(q)
+        (c.title || "").toLowerCase().includes(q) ||
+        (c.city || "").toLowerCase().includes(q) ||
+        (c.state || "").toLowerCase().includes(q)
       );
     });
-  }, [allContacts, query, statusFilter, memberFilter, memberIds]);
+  }, [allContacts, query, statusFilter, memberFilter, locationFilter, memberIds]);
 
   // eligible = not yet in list
   const eligible = useMemo(() => filtered.filter((c) => !memberIds.has(c.id)), [filtered, memberIds]);
@@ -350,6 +361,16 @@ function AddContactsModal({
                 <option value="all" style={{ background: "#16181e", color: "#fff" }}>All contacts</option>
                 <option value="not-in-list" style={{ background: "#16181e", color: "#fff" }}>Not in this list</option>
                 <option value="no-list" style={{ background: "#16181e", color: "#fff" }}>In no lists</option>
+              </select>
+
+              {/* Location filter */}
+              <select value={locationFilter} onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}
+                style={{ ...inputStyle, width: "auto", maxWidth: 160, fontSize: "0.76rem", borderRadius: "0.6rem", cursor: "pointer" }}
+                title="Filter by location (state)">
+                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All locations</option>
+                {stateOptions.map((st) => (
+                  <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
+                ))}
               </select>
 
               {/* View toggle */}
