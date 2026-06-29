@@ -5,7 +5,7 @@ import {
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
   ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
 } from "lucide-react";
-import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
+import { ToastProvider, toast, Spinner, LoadingOverlay, Pagination } from "../Toast";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -214,12 +214,15 @@ function autoMapHeader(header: string): string {
 export default function ContactsClient() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(false);
+  const [overlayMsg, setOverlayMsg] = useState<string | null>(null); // full-screen loader message
   const [error, setError]   = useState("");
   const [success, setSuccess] = useState("");
 
   // Contact list search & filter
   const [contactSearch, setContactSearch] = useState("");
   const [contactStatusFilter, setContactStatusFilter] = useState<"all" | "active" | "unsubscribed" | "invalid">("all");
+  const [contactPage, setContactPage] = useState(1);
+  const CONTACTS_PER_PAGE = 30;
 
   // Add modal
   const [showAdd, setShowAdd] = useState(false);
@@ -313,20 +316,27 @@ export default function ContactsClient() {
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await fetch("/api/contacts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (!res.ok) toast.error(data.error ?? "Failed to add contact");
-    else {
-      toast.success(`Contact added`);
-      setForm({ ...BLANK });
-      setShowAdd(false);
-      fetchContacts();
+    setOverlayMsg("Adding contact…");
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) toast.error(data.error ?? "Failed to add contact");
+      else {
+        toast.success(`Contact added`);
+        setForm({ ...BLANK });
+        setShowAdd(false);
+        fetchContacts();
+      }
+    } catch {
+      toast.error("Couldn't reach the server. Please try again.");
+    } finally {
+      setLoading(false);
+      setOverlayMsg(null);
     }
-    setLoading(false);
   }
 
   // ── Bulk import ───────────────────────────────────────────────────────────
@@ -360,7 +370,7 @@ export default function ContactsClient() {
   async function handleSpreadsheetSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setError(""); setSuccess(""); setLoading(true);
+    setError(""); setSuccess(""); setLoading(true); setOverlayMsg("Reading spreadsheet…");
 
     try {
       const XLSX = await loadXLSX();
@@ -375,14 +385,14 @@ export default function ContactsClient() {
 
           if (json.length === 0) {
             setError("The spreadsheet appears to be empty.");
-            setLoading(false);
+            setLoading(false); setOverlayMsg(null);
             return;
           }
 
           const rawHeaders = (json[0] ?? []).map((h) => (h ?? "").toString().trim());
           if (rawHeaders.filter(Boolean).length === 0) {
             setError("No valid columns found in the header row.");
-            setLoading(false);
+            setLoading(false); setOverlayMsg(null);
             return;
           }
 
@@ -403,13 +413,13 @@ export default function ContactsClient() {
         } catch (err) {
           setError("Failed to parse sheet data. Please check the file format.");
         } finally {
-          setLoading(false);
+          setLoading(false); setOverlayMsg(null);
         }
       };
       reader.readAsArrayBuffer(file);
     } catch (err) {
       setError("Failed to load spreadsheet parser library.");
-      setLoading(false);
+      setLoading(false); setOverlayMsg(null);
     }
   }
 
@@ -431,6 +441,7 @@ export default function ContactsClient() {
     }
 
     setLoading(true);
+    setOverlayMsg("Importing contacts…");
     setError("");
     setSuccess("");
 
@@ -449,6 +460,7 @@ export default function ContactsClient() {
     if (mappedEntries.length === 0) {
       setError("No contacts with valid email addresses were found using the current mapping.");
       setLoading(false);
+      setOverlayMsg(null);
       setShowMapping(false);
       return;
     }
@@ -476,6 +488,7 @@ export default function ContactsClient() {
       toast.error("Failed to transmit contact data.");
     } finally {
       setLoading(false);
+      setOverlayMsg(null);
       setShowMapping(false);
       setSelectedListId("");
       setNewListName("");
@@ -555,6 +568,16 @@ export default function ContactsClient() {
     });
   }, [contacts, contactSearch, contactStatusFilter]);
 
+  // Pagination — 30 contacts per page
+  const totalContactPages = Math.max(1, Math.ceil(filteredContacts.length / CONTACTS_PER_PAGE));
+  const currentContactPage = Math.min(contactPage, totalContactPages);
+  const pagedContacts = filteredContacts.slice(
+    (currentContactPage - 1) * CONTACTS_PER_PAGE,
+    currentContactPage * CONTACTS_PER_PAGE
+  );
+  // Reset to page 1 when the search or status filter changes
+  useEffect(() => { setContactPage(1); }, [contactSearch, contactStatusFilter]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
@@ -562,7 +585,7 @@ export default function ContactsClient() {
   return (
     <>
       <ToastProvider />
-      <LoadingOverlay show={showAdd && loading} message="Adding contact…" />
+      <LoadingOverlay show={!!overlayMsg} message={overlayMsg ?? ""} />
       {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
       {showMapping && (
         <div
@@ -1220,11 +1243,11 @@ export default function ContactsClient() {
             </div>
           ) : (
             <div>
-              {filteredContacts.map((c, i) => (
+              {pagedContacts.map((c, i) => (
                 <div
                   key={c.id}
                   className="flex items-center justify-between px-6 py-3 transition-colors cursor-pointer hover:bg-white/[0.02]"
-                  style={{ borderBottom: i < filteredContacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  style={{ borderBottom: i < pagedContacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
                   onClick={() => openDrawer(c)}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -1264,6 +1287,12 @@ export default function ContactsClient() {
                   <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }} />
                 </div>
               ))}
+              <Pagination
+                page={currentContactPage}
+                total={filteredContacts.length}
+                perPage={CONTACTS_PER_PAGE}
+                onPage={setContactPage}
+              />
             </div>
           )}
         </div>

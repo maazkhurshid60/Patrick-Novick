@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Search, UserCheck, AlertOctagon, RefreshCw, Download } from "lucide-react";
+import { Pagination } from "../Toast";
 
 interface SuppressedContact {
   email: string;
@@ -43,6 +44,8 @@ export default function OptOutsClient() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 30;
 
   async function fetchOptouts() {
     try {
@@ -87,6 +90,12 @@ export default function OptOutsClient() {
       (o) => o.email.toLowerCase().includes(q) || o.reason.toLowerCase().includes(q)
     );
   }, [optouts, search]);
+
+  // Pagination — 30 per page
+  const totalPages = Math.max(1, Math.ceil(filteredOptouts.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedOptouts = filteredOptouts.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  useEffect(() => { setPage(1); }, [search]);
 
   function triggerDownload() {
     const a = document.createElement("a");
@@ -184,13 +193,13 @@ export default function OptOutsClient() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOptouts.map((o, i) => {
+                {pagedOptouts.map((o, i) => {
                   const isBounceOrInvalid = o.reason.includes("invalid") || o.reason.includes("bounce");
                   return (
                     <tr
                       key={o.email}
                       className="transition-colors hover:bg-white/[0.01]"
-                      style={{ borderBottom: i < filteredOptouts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                      style={{ borderBottom: i < pagedOptouts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
                     >
                       <td className="px-6 py-4">
                         <span className="text-sm font-semibold text-white">{o.email}</span>
@@ -225,6 +234,7 @@ export default function OptOutsClient() {
                 })}
               </tbody>
             </table>
+            <Pagination page={currentPage} total={filteredOptouts.length} perPage={PER_PAGE} onPage={setPage} />
           </div>
         )}
       </div>

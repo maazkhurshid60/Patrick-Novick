@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { CheckCircle, XCircle, AlertCircle, X, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "loading";
 
@@ -135,6 +135,40 @@ export function Spinner({ size = 14 }: { size?: number }) {
       size={size}
       style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}
     />
+  );
+}
+
+// ─── Reusable pagination footer ────────────────────────────────────────────────
+export function Pagination({ page, total, perPage, onPage }: {
+  page: number; total: number; perPage: number; onPage: (p: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (totalPages <= 1) return null;
+  const start = (page - 1) * perPage + 1;
+  const end = Math.min(page * perPage, total);
+  const btn: React.CSSProperties = {
+    display: "flex", alignItems: "center", gap: "0.25rem",
+    padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+    fontSize: "0.72rem", fontWeight: 600, color: "rgba(255,255,255,0.6)",
+    border: "1px solid rgba(255,255,255,0.08)", background: "transparent", cursor: "pointer",
+  };
+  return (
+    <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.35)" }}>{start}–{end} of {total}</p>
+      <div className="flex items-center gap-2">
+        <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page <= 1}
+          style={{ ...btn, opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? "not-allowed" : "pointer" }}>
+          <ChevronLeft size={13} /> Prev
+        </button>
+        <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
+          Page {page} of {totalPages}
+        </span>
+        <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}
+          style={{ ...btn, opacity: page >= totalPages ? 0.4 : 1, cursor: page >= totalPages ? "not-allowed" : "pointer" }}>
+          Next <ChevronRight size={13} />
+        </button>
+      </div>
+    </div>
   );
 }
 
