@@ -89,13 +89,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const suppressedResult = await db.execute("SELECT email FROM suppression_list");
   const suppressed = new Set(suppressedResult.rows.map((r) => (r.email as string).toLowerCase()));
 
+  const existingResult = await db.execute("SELECT email FROM contacts");
+  const existing = new Set(existingResult.rows.map((r) => (r.email as string).toLowerCase()));
+
   let added = 0;
+  let updated = 0;
   let skipped = 0;
   let invalid = 0;
   for (const row of entries) {
     const email = (row.email ?? "").trim().toLowerCase();
     if (!isValidEmail(email)) { invalid++; continue; }
     if (suppressed.has(email)) { skipped++; continue; }
+    const wasExisting = existing.has(email);
 
     // Resolve first/last from split fields or from full name fallback
     const firstName = (row.first_name ?? "").trim();
@@ -108,14 +113,41 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const derivedFirst = firstName || (fullName.split(" ")[0] ?? "");
     const derivedLast  = lastName  || (fullName.split(" ").slice(1).join(" ") ?? "");
 
-    const res = await db.execute({
-      sql: `INSERT OR IGNORE INTO contacts
+    // Upsert: insert new contacts, and for existing ones (matched by email) fill
+    // in / refresh fields — the incoming value wins when it's non-empty, otherwise
+    // the existing value is kept (so we never blank out data already on file).
+    // status, custom_fields, country and created_at are intentionally left as-is.
+    await db.execute({
+      sql: `INSERT INTO contacts
         (email, name, first_name, last_name, title, company,
          phone, phone_2, street_address, city, state, zip_code, country,
          notes, segments, custom_fields,
          business_email, email_2, linkedin, website, county, region,
          work_phone_2, mobile_phone_2, personal_email_2)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(email) DO UPDATE SET
+          name           = COALESCE(NULLIF(TRIM(excluded.name),''),           contacts.name),
+          first_name     = COALESCE(NULLIF(TRIM(excluded.first_name),''),     contacts.first_name),
+          last_name      = COALESCE(NULLIF(TRIM(excluded.last_name),''),      contacts.last_name),
+          title          = COALESCE(NULLIF(TRIM(excluded.title),''),          contacts.title),
+          company        = COALESCE(NULLIF(TRIM(excluded.company),''),        contacts.company),
+          phone          = COALESCE(NULLIF(TRIM(excluded.phone),''),          contacts.phone),
+          phone_2        = COALESCE(NULLIF(TRIM(excluded.phone_2),''),        contacts.phone_2),
+          street_address = COALESCE(NULLIF(TRIM(excluded.street_address),''), contacts.street_address),
+          city           = COALESCE(NULLIF(TRIM(excluded.city),''),           contacts.city),
+          state          = COALESCE(NULLIF(TRIM(excluded.state),''),          contacts.state),
+          zip_code       = COALESCE(NULLIF(TRIM(excluded.zip_code),''),       contacts.zip_code),
+          notes          = COALESCE(NULLIF(TRIM(excluded.notes),''),          contacts.notes),
+          segments       = COALESCE(NULLIF(TRIM(excluded.segments),''),       contacts.segments),
+          business_email = COALESCE(NULLIF(TRIM(excluded.business_email),''), contacts.business_email),
+          email_2        = COALESCE(NULLIF(TRIM(excluded.email_2),''),        contacts.email_2),
+          linkedin       = COALESCE(NULLIF(TRIM(excluded.linkedin),''),       contacts.linkedin),
+          website        = COALESCE(NULLIF(TRIM(excluded.website),''),        contacts.website),
+          county         = COALESCE(NULLIF(TRIM(excluded.county),''),         contacts.county),
+          region         = COALESCE(NULLIF(TRIM(excluded.region),''),         contacts.region),
+          work_phone_2     = COALESCE(NULLIF(TRIM(excluded.work_phone_2),''),     contacts.work_phone_2),
+          mobile_phone_2   = COALESCE(NULLIF(TRIM(excluded.mobile_phone_2),''),   contacts.mobile_phone_2),
+          personal_email_2 = COALESCE(NULLIF(TRIM(excluded.personal_email_2),''), contacts.personal_email_2)`,
       args: [
         email,
         fullName || derivedFirst + (derivedLast ? " " + derivedLast : ""),
@@ -144,7 +176,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         (row.personal_email_2 ?? "").trim(),
       ],
     });
-    added += res.rowsAffected;
+    if (wasExisting) { updated++; } else { added++; existing.add(email); }
 
     // Link contact to list if listId is set
     if (listId) {
@@ -166,7 +198,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  return NextResponse.json({ added, skipped, invalid });
+  return NextResponse.json({ added, updated, skipped, invalid });
 }
 
 // PATCH /api/contacts — update any contact field

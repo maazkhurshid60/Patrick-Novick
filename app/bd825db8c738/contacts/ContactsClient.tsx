@@ -372,9 +372,10 @@ export default function ContactsClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entries),
       });
-      const data = await res.json().catch(() => ({} as { error?: string; added?: number; skipped?: number; invalid?: number }));
+      const data = await res.json().catch(() => ({} as { error?: string; added?: number; updated?: number; skipped?: number; invalid?: number }));
       if (!res.ok) { toast.error(data.error ?? "Failed"); return; }
-      const parts = [`Added ${data.added ?? 0} contacts`];
+      const parts = [`${data.added ?? 0} added`];
+      if (data.updated) parts.push(`${data.updated} updated`);
       if (data.skipped) parts.push(`${data.skipped} suppressed`);
       if (data.invalid) parts.push(`${data.invalid} ignored (not a valid email)`);
       toast.success(parts.join(" · "));
@@ -513,11 +514,12 @@ export default function ContactsClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json().catch(() => ({} as { error?: string; added?: number; skipped?: number; invalid?: number }));
+      const data = await res.json().catch(() => ({} as { error?: string; added?: number; updated?: number; skipped?: number; invalid?: number }));
       if (!res.ok) {
         toast.error(data.error ?? "Failed to import contacts.");
       } else {
-        const parts = [`Imported ${data.added ?? 0} of ${mappedEntries.length}`];
+        const parts = [`${data.added ?? 0} added`];
+        if (data.updated) parts.push(`${data.updated} updated`);
         if (data.skipped) parts.push(`${data.skipped} suppressed`);
         if (data.invalid) parts.push(`${data.invalid} invalid`);
         toast.success(parts.join(" · "));
