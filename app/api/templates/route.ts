@@ -20,22 +20,22 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { name, subject, body } = await req.json();
+  const { name, subject, body, list_id } = await req.json();
   if (!name?.trim() || !subject?.trim() || !body?.trim()) {
     return NextResponse.json({ error: "Name, subject and body required" }, { status: 400 });
   }
   const result = await db.execute({
-    sql: "INSERT INTO email_templates (name, subject, body) VALUES (?, ?, ?)",
-    args: [name.trim(), subject.trim(), body.trim()],
+    sql: "INSERT INTO email_templates (name, subject, body, list_id) VALUES (?, ?, ?, ?)",
+    args: [name.trim(), subject.trim(), body.trim(), list_id ?? null],
   });
   return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
-  const { id, name, subject, body } = await req.json();
+  const { id, name, subject, body, list_id } = await req.json();
   await db.execute({
-    sql: "UPDATE email_templates SET name=?, subject=?, body=?, updated_at=unixepoch() WHERE id=?",
-    args: [name, subject, body, id],
+    sql: "UPDATE email_templates SET name=?, subject=?, body=?, list_id=?, updated_at=unixepoch() WHERE id=?",
+    args: [name, subject, body, list_id ?? null, id],
   });
   return NextResponse.json({ success: true });
 }

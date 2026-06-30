@@ -10,6 +10,12 @@ interface Template {
   subject: string;
   body: string;
   updated_at: number;
+  list_id: number | null;
+}
+
+interface ContactList {
+  id: number;
+  name: string;
 }
 
 const SIGNATURE = `
@@ -78,9 +84,11 @@ const inputStyle = {
 export default function TemplatesClient() {
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [listFilter, setListFilter] = useState<number | "all">("all");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Template | null>(null);
-  const [form, setForm] = useState({ name: "", subject: "", body: "" });
+  const [form, setForm] = useState<{ name: string; subject: string; body: string; list_id: number | null }>({ name: "", subject: "", body: "", list_id: null });
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Template | null>(null);
@@ -90,7 +98,15 @@ export default function TemplatesClient() {
     setTemplates(await res.json());
   }
 
-  useEffect(() => { fetchTemplates(); }, []);
+  async function fetchLists() {
+    const res = await fetch("/api/lists");
+    if (res.ok) setLists(await res.json());
+  }
+
+  useEffect(() => { fetchTemplates(); fetchLists(); }, []);
+
+  const listName = (id: number | null) => (id == null ? null : lists.find((l) => l.id === id)?.name ?? null);
+  const shownTemplates = listFilter === "all" ? templates : templates.filter((t) => t.list_id === listFilter);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -108,7 +124,7 @@ export default function TemplatesClient() {
         body: JSON.stringify(form),
       });
     }
-    setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "" });
+    setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "", list_id: null });
     fetchTemplates();
     setLoading(false);
   }
@@ -136,7 +152,7 @@ export default function TemplatesClient() {
 
   function startEdit(t: Template) {
     setEditing(t);
-    setForm({ name: t.name, subject: t.subject, body: t.body });
+    setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null });
     setCreating(true);
   }
 
@@ -193,7 +209,7 @@ export default function TemplatesClient() {
               {editing ? "Edit Template" : "New Template"}
             </p>
             <button
-              onClick={() => { setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "" }); }}
+              onClick={() => { setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "", list_id: null }); }}
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
@@ -203,6 +219,19 @@ export default function TemplatesClient() {
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <input style={inputStyle} placeholder="Template name (e.g. Job Outreach)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <input style={inputStyle} placeholder="Email subject line" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
+            <div>
+              <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional — which list this template is for)</span></p>
+              <select
+                style={{ ...inputStyle, cursor: "pointer" }}
+                value={form.list_id ?? ""}
+                onChange={(e) => setForm({ ...form, list_id: e.target.value ? Number(e.target.value) : null })}
+              >
+                <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
+                {lists.map((l) => (
+                  <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
                 Body — plain text only. Use{" "}
@@ -230,10 +259,24 @@ export default function TemplatesClient() {
           </form>
         </div>
       ) : (
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {templates.length} template{templates.length !== 1 ? "s" : ""}
-          </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
+            </p>
+            <select
+              value={listFilter}
+              onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+              style={{ ...inputStyle, width: "auto", fontSize: "0.78rem", padding: "0.4rem 0.7rem", borderRadius: "0.625rem", cursor: "pointer" }}
+              title="Filter templates by list"
+            >
+              <option value="all" style={{ background: "#16181e" }}>All lists</option>
+              <option value="" disabled style={{ background: "#16181e" }}>──────</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
+          </div>
           <button
             onClick={() => setCreating(true)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
@@ -246,12 +289,17 @@ export default function TemplatesClient() {
 
       {/* Template grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {templates.map((t) => (
+        {shownTemplates.map((t) => (
           <div key={t.id} className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
             <div className="flex items-start justify-between gap-2">
-              <div className="overflow-hidden">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-white mb-0.5 truncate" style={{ fontFamily: "var(--font-heading)" }}>{t.name}</p>
                 <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{t.subject}</p>
+                {listName(t.list_id) && (
+                  <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(124,58,237,0.15)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.3)" }}>
+                    {listName(t.list_id)}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button

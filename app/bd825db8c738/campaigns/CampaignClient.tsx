@@ -10,6 +10,7 @@ interface Campaign {
   recipient_count: number;
   status: string;
   target_list: string | null;
+  list_id: number | null;
   sent_at: number;
   total_opens: number;
   unique_opens: number;
@@ -81,6 +82,7 @@ export default function CampaignClient({
   const [testEmail, setTestEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<Campaign[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<number | "all">("all");
 
   const [attachPostcard, setAttachPostcard] = useState(false);
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
@@ -153,15 +155,18 @@ export default function CampaignClient({
     }
   }
 
-  async function fetchHistory() {
-    const res = await fetch("/api/campaigns/send");
+  async function fetchHistory(filter: number | "all" = historyFilter) {
+    const url = filter === "all" ? "/api/campaigns/send" : `/api/campaigns/send?listId=${filter}`;
+    const res = await fetch(url);
     setHistory(await res.json());
   }
+
+  // Refetch history whenever the list filter changes (covers initial load too)
+  useEffect(() => { fetchHistory(historyFilter); }, [historyFilter]);
 
   useEffect(() => {
     fetchLists();
     fetchContactCount();
-    fetchHistory();
     const draft = localStorage.getItem("campaign_draft");
     if (draft) {
       try {
@@ -465,9 +470,21 @@ export default function CampaignClient({
 
       {/* History */}
       <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center gap-2 px-5 py-4 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <Clock size={14} style={{ color: "rgba(255,255,255,0.3)" }} />
           <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Sent History</p>
+          <select
+            value={historyFilter}
+            onChange={(e) => setHistoryFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            className="ml-auto"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", color: "#fff", fontSize: "0.72rem", padding: "0.25rem 0.5rem", outline: "none", cursor: "pointer", maxWidth: 160 }}
+            title="Filter sent history by list"
+          >
+            <option value="all" style={{ background: "#1a1d23" }}>All lists</option>
+            {lists.map((l) => (
+              <option key={l.id} value={l.id} style={{ background: "#1a1d23" }}>{l.name}</option>
+            ))}
+          </select>
         </div>
 
         {history.length === 0 ? (

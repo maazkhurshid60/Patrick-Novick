@@ -105,23 +105,34 @@ function StatCard({ icon: Icon, label, value, sub, color, dim }: {
   );
 }
 
+interface ContactList { id: number; name: string }
+
 export default function AnalyticsClient() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [listFilter, setListFilter] = useState<number | "all">("all");
   const [eventPage, setEventPage] = useState(1);
   const EVENTS_PER_PAGE = 20;
+
+  useEffect(() => {
+    fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setEventPage(1);
-    fetch(`/api/analytics?days=${days}`)
+    const url = listFilter === "all" ? `/api/analytics?days=${days}` : `/api/analytics?days=${days}&listId=${listFilter}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d: AnalyticsData) => { if (active) { setData(d); setLoading(false); } })
       .catch(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [days]);
+  }, [days, listFilter]);
+
+  const selectedListName = listFilter === "all" ? null : lists.find((l) => l.id === listFilter)?.name ?? null;
 
   const b = data?.brevo;
   const allEvents = data?.events ?? [];
@@ -134,6 +145,24 @@ export default function AnalyticsClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* List scope selector */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+          {selectedListName ? <>Showing analytics for <span className="font-semibold" style={{ color: "#f87171" }}>{selectedListName}</span></> : "Showing analytics across all contacts"}
+        </p>
+        <select
+          value={listFilter}
+          onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.78rem", padding: "0.45rem 0.75rem", outline: "none", cursor: "pointer", maxWidth: 220 }}
+          title="Scope analytics to a list"
+        >
+          <option value="all" style={{ background: "#16181e" }}>All lists</option>
+          {lists.map((l) => (
+            <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Engagement totals (from your own send logs) */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>

@@ -97,6 +97,9 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN website TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN county TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN region TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    // List scoping — tie campaigns & templates to a contact list (null = all / general)
+    db.execute("ALTER TABLE campaigns ADD COLUMN list_id INTEGER").catch(() => {}),
+    db.execute("ALTER TABLE email_templates ADD COLUMN list_id INTEGER").catch(() => {}),
     // Extra phone / email slots (work & mobile secondary numbers, second personal email)
     db.execute("ALTER TABLE contacts ADD COLUMN work_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN mobile_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
