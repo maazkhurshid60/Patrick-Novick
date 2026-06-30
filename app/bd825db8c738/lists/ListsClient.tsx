@@ -22,6 +22,7 @@ interface Contact {
   status: string;
   lists?: string | null;
   campaigns_sent?: number;
+  send_count?: number;
   title: string;
   company: string;
   city?: string;
@@ -987,6 +988,15 @@ export default function ListsClient() {
                             <p className="text-sm font-medium text-white">{c.name || c.email}</p>
                             {c.status === "unsubscribed" && (
                               <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>unsubscribed</span>
+                            )}
+                            {(c.send_count ?? 0) > 0 && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
+                                title={`Emailed ${c.send_count} time${c.send_count === 1 ? "" : "s"} across all campaigns`}
+                              >
+                                sent {c.send_count}×
+                              </span>
                             )}
                           </div>
                           <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>

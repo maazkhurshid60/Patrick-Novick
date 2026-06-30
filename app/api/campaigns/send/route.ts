@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { sendCampaignEmail } from "@/lib/brevo";
+import { sendCampaignEmail, getBouncedEmails } from "@/lib/brevo";
 import fs from "fs";
 import path from "path";
 
@@ -152,6 +152,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const message = err instanceof Error ? err.message : "Test send failed";
       return NextResponse.json({ error: message }, { status: 500 });
     }
+  }
+
+  // Feedback loop: before targeting, pull every address Brevo has marked as a
+  // hard bounce / block / invalid and add it to our suppression list. The
+  // targeting query below excludes suppression_list, so these bad addresses are
+  // skipped automatically — this is what keeps the bounce rate near zero over time.
+  try {
+    const bounced = await getBouncedEmails(90);
+    if (bounced.size > 0) {
+      await db.batch(
+        [...bounced].map((email) => ({
+          sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, 'bounced')",
+          args: [email],
+        })),
+        "write"
+      );
+    }
+  } catch {
+    // a failed sync must never block a send — worst case we skip a few bad addresses this round
   }
 
   // Build targeting query

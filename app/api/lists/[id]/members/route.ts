@@ -5,7 +5,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const listId = parseInt(id);
   const result = await db.execute({
-    sql: `SELECT c.id, c.email, c.name, c.status, c.title, c.company, c.city, c.state
+    sql: `SELECT c.id, c.email, c.name, c.status, c.title, c.company, c.city, c.state,
+                 (SELECT COUNT(*) FROM campaign_recipients cr WHERE cr.email = c.email) AS send_count
           FROM contacts c
           JOIN contact_list_members m ON c.id = m.contact_id
           WHERE m.list_id = ?

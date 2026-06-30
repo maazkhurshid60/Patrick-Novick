@@ -106,6 +106,34 @@ export async function getBrevoEvents(days = 30, limit = 100): Promise<BrevoEvent
 }
 
 /**
+ * Pulls every address Brevo has recorded as a hard bounce, block, or invalid
+ * over the last `days` and returns them as a lowercased Set. These are addresses
+ * that physically can't receive mail (dead mailbox, bad domain, blocklisted) —
+ * we feed them into our suppression list so we never email them again, which is
+ * what keeps the bounce rate down. Returns an empty Set if Brevo can't be reached.
+ */
+export async function getBouncedEmails(days = 90): Promise<Set<string>> {
+  const types = ["hardBounces", "blocked", "invalid"];
+  const out = new Set<string>();
+  for (const t of types) {
+    try {
+      const res = await fetch(
+        `${BREVO_API_URL}/smtp/statistics/events?event=${t}&days=${days}&limit=2500&sort=desc`,
+        { headers: { "api-key": getApiKey(), Accept: "application/json" }, cache: "no-store" }
+      );
+      if (!res.ok) continue;
+      const data = (await res.json()) as { events?: { email?: string }[] };
+      for (const e of data.events ?? []) {
+        if (e.email) out.add(String(e.email).toLowerCase());
+      }
+    } catch {
+      // ignore — a failed sync just means we skip this batch, send still proceeds
+    }
+  }
+  return out;
+}
+
+/**
  * Sends a transactional email to multiple recipients via Brevo API.
  * Each recipient gets an individual email (BCC-safe — no address leaking).
  */
