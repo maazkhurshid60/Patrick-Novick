@@ -77,6 +77,34 @@ export async function getBrevoStats(days = 30): Promise<BrevoStats> {
 }
 
 
+export interface BrevoEvent {
+  email: string;
+  date: string;          // ISO timestamp
+  subject: string;
+  event: string;         // delivered | opened | clicks | hardBounces | softBounces | deferred | blocked | spam | unsubscribed | requests | invalid | error | loadedByProxy
+  reason?: string;       // populated for bounces / deferrals / blocks
+  messageId?: string;
+}
+
+/**
+ * Fetches the most recent transactional-email events (per recipient) from Brevo —
+ * the same feed shown on Brevo's Logs page. Sorted newest-first. Returns [] if the
+ * API can't be reached so the dashboard still renders.
+ */
+export async function getBrevoEvents(days = 30, limit = 100): Promise<BrevoEvent[]> {
+  try {
+    const res = await fetch(
+      `${BREVO_API_URL}/smtp/statistics/events?limit=${limit}&offset=0&days=${days}&sort=desc`,
+      { headers: { "api-key": getApiKey(), Accept: "application/json" }, cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { events?: BrevoEvent[] };
+    return data.events ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Sends a transactional email to multiple recipients via Brevo API.
  * Each recipient gets an individual email (BCC-safe — no address leaking).

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { getBrevoStats } from "@/lib/brevo";
+import { getBrevoStats, getBrevoEvents } from "@/lib/brevo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,8 +22,9 @@ interface ContactEngagement {
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const days = Math.max(1, Math.min(90, Number(req.nextUrl.searchParams.get("days")) || 30));
 
-  const [brevo, contactsRes, totalsRes] = await Promise.all([
+  const [brevo, events, contactsRes, totalsRes] = await Promise.all([
     getBrevoStats(days),
+    getBrevoEvents(days, 100),
     db.execute(`
       SELECT
         c.email,
@@ -75,5 +76,5 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     total_suppressed: Number(t.total_suppressed ?? 0),
   };
 
-  return NextResponse.json({ brevo, contacts, totals });
+  return NextResponse.json({ brevo, events, contacts, totals });
 }

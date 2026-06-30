@@ -38,10 +38,47 @@ interface Totals {
   total_suppressed: number;
 }
 
+interface BrevoEvent {
+  email: string;
+  date: string;
+  subject: string;
+  event: string;
+  reason?: string;
+}
+
 interface AnalyticsData {
   brevo: BrevoStats;
+  events: BrevoEvent[];
   contacts: ContactEngagement[];
   totals: Totals;
+}
+
+// Map a Brevo event type to a readable label + colors
+function eventStyle(ev: string): { label: string; color: string; bg: string } {
+  switch (ev) {
+    case "delivered":    return { label: "Delivered",    color: "#4ade80", bg: "rgba(74,222,128,0.12)" };
+    case "requests":     return { label: "Sent",         color: "#93c5fd", bg: "rgba(147,197,253,0.12)" };
+    case "opened":
+    case "uniqueOpened": return { label: "Opened",       color: "#fbbf24", bg: "rgba(251,191,36,0.14)" };
+    case "clicks":
+    case "uniqueClicks": return { label: "Clicked",      color: "#a5b4fc", bg: "rgba(165,180,252,0.14)" };
+    case "loadedByProxy":return { label: "Proxy open",   color: "#fcd34d", bg: "rgba(252,211,77,0.10)" };
+    case "softBounces":  return { label: "Soft bounce",  color: "#fb923c", bg: "rgba(251,146,60,0.14)" };
+    case "hardBounces":  return { label: "Hard bounce",  color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "deferred":     return { label: "Deferred",     color: "#fdba74", bg: "rgba(253,186,116,0.10)" };
+    case "blocked":      return { label: "Blocked",      color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "spam":         return { label: "Spam",         color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "invalid":      return { label: "Invalid",      color: "#94a3b8", bg: "rgba(148,163,184,0.14)" };
+    case "unsubscribed": return { label: "Unsubscribed", color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "error":        return { label: "Error",        color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    default:             return { label: ev,             color: "rgba(255,255,255,0.6)", bg: "rgba(255,255,255,0.06)" };
+  }
+}
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-US", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 type SortKey = "name" | "sends" | "opens" | "rate" | "last_sent";
@@ -171,6 +208,56 @@ export default function AnalyticsClient() {
           <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>
             No Brevo activity in this window yet (or the API couldn&apos;t be reached). Your send-log numbers above are always accurate.
           </p>
+        )}
+      </div>
+
+      {/* Recent email activity (live event log from Brevo, newest first) */}
+      <div style={card} className="overflow-hidden">
+        <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
+          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            Latest send events — delivered, opened, clicked, bounced — newest first · via Brevo · {b?.range ?? `last ${days} days`}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
+        ) : !data?.events || data.events.length === 0 ? (
+          <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+            No email activity in this window (or Brevo couldn&apos;t be reached).
+          </div>
+        ) : (
+          <div className="overflow-x-auto" style={{ maxHeight: "26rem", overflowY: "auto" }}>
+            <table className="w-full" style={{ minWidth: 560 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", position: "sticky", top: 0, background: "#1a1d23" }}>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Event</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Recipient</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Subject</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.events.map((ev, i) => {
+                  const s = eventStyle(ev.event);
+                  return (
+                    <tr key={`${ev.email}-${ev.date}-${i}`} style={{ borderBottom: i < data.events.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <td className="px-5 py-3">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }} title={ev.reason || s.label}>{s.label}</span>
+                      </td>
+                      <td className="px-5 py-3 text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                        <span className="truncate inline-block max-w-[220px] align-middle">{ev.email}</span>
+                      </td>
+                      <td className="px-5 py-3 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <span className="truncate inline-block max-w-[260px] align-middle" title={ev.subject}>{ev.subject || "—"}</span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtDateTime(ev.date)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
