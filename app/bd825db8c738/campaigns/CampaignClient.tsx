@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { Send, Clock, ChevronDown, Users, Trash2 } from "lucide-react";
+import { Send, Clock, ChevronDown, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2 } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
 
 interface Campaign {
@@ -87,6 +87,7 @@ export default function CampaignClient({
 
   const [attachPostcard, setAttachPostcard] = useState(false);
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,17 +186,30 @@ export default function CampaignClient({
   const remainingAfterSkip = Math.max(0, recipientCount - sendOffset);
   const sendCount = Math.min(remainingAfterSkip, dailyLimit);
 
+  // Names of attachments that will ride along with this send
+  const attachmentNames = [
+    ...(attachPostcard ? ["postcard.pdf"] : []),
+    ...(customAttachment ? [customAttachment.name] : []),
+  ];
+  const hasAttachment = attachmentNames.length > 0;
+
   async function handleSend(e: FormEvent) {
     e.preventDefault();
     if (!subject.trim() || !body.trim()) { toast.error("Subject and body are required"); return; }
     if (isTestSend && !testEmail.trim()) { toast.error("Test email is required"); return; }
     if (!isTestSend && recipientCount === 0) { toast.error("No contacts in selected list"); return; }
 
-    const confirmMsg = isTestSend
-      ? `Send test email to ${testEmail.trim()}?`
-      : `Send to up to ${sendCount} contacts?`;
-    if (!confirm(confirmMsg)) return;
+    // Test sends stay quick; real campaigns go through the pre-send checklist.
+    if (isTestSend) {
+      if (!confirm(`Send test email to ${testEmail.trim()}?`)) return;
+      doSend();
+    } else {
+      setShowConfirm(true);
+    }
+  }
 
+  async function doSend() {
+    setShowConfirm(false);
     setLoading(true);
     try {
       const res = await fetch("/api/campaigns/send", {
@@ -242,6 +256,96 @@ export default function CampaignClient({
     <>
     <ToastProvider />
     <LoadingOverlay show={loading} message={isTestSend ? "Sending test email…" : "Sending campaign… this can take a moment"} />
+
+    {/* Pre-send checklist — a last-look before a real campaign goes out */}
+    {showConfirm && (
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}
+      >
+        <div style={{ background: "#151821", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1.25rem", width: "100%", maxWidth: 460, padding: "1.75rem", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(230,57,70,0.12)" }}>
+              <Send size={17} style={{ color: "#f87171" }} />
+            </div>
+            <div>
+              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Ready to send?</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Quick check before this goes out.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 mb-5">
+            {/* Recipients */}
+            <div className="flex items-start gap-2.5">
+              <Users size={15} className="mt-0.5 shrink-0" style={{ color: "#7dd3fc" }} />
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+                Sending to <strong className="text-white">{sendCount}</strong> {sendCount === 1 ? "contact" : "contacts"}
+                <span style={{ color: "rgba(255,255,255,0.4)" }}> (#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount} · {listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"})</span>
+              </p>
+            </div>
+            {/* Subject */}
+            <div className="flex items-start gap-2.5">
+              <Mail size={15} className="mt-0.5 shrink-0" style={{ color: "#4ade80" }} />
+              <p className="text-sm truncate" style={{ color: "rgba(255,255,255,0.75)" }} title={subject}>
+                Subject: <span className="text-white">{subject.trim() || "—"}</span>
+              </p>
+            </div>
+            {/* Reply-to */}
+            <div className="flex items-start gap-2.5">
+              <Reply size={15} className="mt-0.5 shrink-0" style={{ color: "#a5b4fc" }} />
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
+                Replies go to <span className="text-white">{replyTo.trim() || "patrick@metroassoc.com"}</span>
+              </p>
+            </div>
+            {/* Attachment — highlighted when missing */}
+            <div
+              className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
+              style={ hasAttachment
+                ? { background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.15)" }
+                : { background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)" } }
+            >
+              {hasAttachment
+                ? <CheckCircle2 size={15} className="mt-0.5 shrink-0" style={{ color: "#4ade80" }} />
+                : <AlertTriangle size={15} className="mt-0.5 shrink-0" style={{ color: "#fbbf24" }} />}
+              <div className="min-w-0">
+                {hasAttachment ? (
+                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>
+                    <Paperclip size={12} className="inline mb-0.5" /> Attaching: <span className="text-white">{attachmentNames.join(", ")}</span>
+                  </p>
+                ) : (
+                  <p className="text-sm" style={{ color: "#fbbf24" }}>
+                    No attachment added — send without one?
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Skip-recent reminder */}
+            {excludeRecent && (
+              <p className="text-xs pl-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Skipping anyone emailed in the last {excludeDays} day{excludeDays === 1 ? "" : "s"}.
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5"
+              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              Back
+            </button>
+            <button
+              onClick={doSend}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
+              style={{ background: "#e63946" }}
+            >
+              <Send size={14} /> Send now
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
       <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -298,25 +402,52 @@ export default function CampaignClient({
               <div>
                 <label style={labelStyle}>Batch size (send)</label>
                 <input
-                  type="number"
-                  min={1}
-                  max={500}
+                  type="text"
+                  inputMode="numeric"
                   style={inputStyle}
                   value={dailyLimit}
-                  onChange={(e) => setDailyLimit(Math.max(1, Math.min(500, Number(e.target.value))))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, "");
+                    setDailyLimit(digits === "" ? 0 : Math.min(500, Number(digits)));
+                  }}
+                  onBlur={() => setDailyLimit((v) => Math.max(1, Math.min(500, v || 1)))}
+                  title="How many to send this run (1–500)."
                 />
               </div>
               <div>
                 <label style={labelStyle}>Skip first</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={dailyLimit}
-                  style={inputStyle}
-                  value={sendOffset}
-                  onChange={(e) => setSendOffset(Math.max(0, Number(e.target.value) || 0))}
-                  title="Skip this many recipients from the top of the list, then send the next batch. E.g. set 25 to start after the first 25."
-                />
+                <div className="flex items-stretch gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSendOffset((o) => Math.max(0, o - (dailyLimit || 1)))}
+                    disabled={sendOffset === 0}
+                    className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                    title="Back one batch"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    style={{ ...inputStyle, textAlign: "center" }}
+                    value={sendOffset}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, "");
+                      setSendOffset(digits === "" ? 0 : Number(digits));
+                    }}
+                    title="Skip this many recipients from the top, then send the next batch. Use − / + to jump one batch at a time."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSendOffset((o) => o + (dailyLimit || 1))}
+                    className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10"
+                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                    title="Forward one batch"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -352,13 +483,16 @@ export default function CampaignClient({
                 <span className="flex items-center gap-1 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
                   in last
                   <input
-                    type="number"
-                    min={1}
-                    max={90}
+                    type="text"
+                    inputMode="numeric"
                     value={excludeDays}
-                    onChange={(e) => setExcludeDays(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, "");
+                      setExcludeDays(digits === "" ? 0 : Math.min(90, Number(digits)));
+                    }}
+                    onBlur={() => setExcludeDays((v) => Math.max(1, Math.min(90, v || 1)))}
                     onClick={(e) => e.stopPropagation()}
-                    style={{ width: "42px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#fff", padding: "1px 6px", fontSize: "0.75rem", outline: "none" }}
+                    style={{ width: "42px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#fff", padding: "1px 6px", fontSize: "0.75rem", outline: "none", textAlign: "center" }}
                   />
                   days
                 </span>

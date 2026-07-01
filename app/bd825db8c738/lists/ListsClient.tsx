@@ -660,6 +660,8 @@ export default function ListsClient() {
   const [selected, setSelected] = useState<ContactList | null>(null);
   const [members, setMembers] = useState<Contact[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<Contact | null>(null);
+  const [removing, setRemoving] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -718,16 +720,22 @@ export default function ListsClient() {
     await fetchMembers(list.id);
   }
 
-  async function handleRemoveMember(contactId: number) {
-    if (!selected) return;
-    await fetch(`/api/lists/${selected.id}/members`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId }),
-    });
-    toast.success("Removed from list");
-    fetchMembers(selected.id);
-    fetchLists();
+  async function confirmRemoveMember() {
+    if (!selected || !removeTarget) return;
+    try {
+      setRemoving(true);
+      await fetch(`/api/lists/${selected.id}/members`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactId: removeTarget.id }),
+      });
+      toast.success("Removed from list");
+      setRemoveTarget(null);
+      fetchMembers(selected.id);
+      fetchLists();
+    } finally {
+      setRemoving(false);
+    }
   }
 
   async function handleModalDone() {
@@ -815,6 +823,47 @@ export default function ListsClient() {
           onClose={() => setShowModal(false)}
           onDone={handleModalDone}
         />
+      )}
+
+      {/* Confirm remove-from-list */}
+      {removeTarget && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+          onClick={(e) => { if (e.target === e.currentTarget && !removing) setRemoveTarget(null); }}
+        >
+          <div style={{ background: "#151821", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1.25rem", width: "100%", maxWidth: 420, padding: "1.75rem", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(230,57,70,0.12)" }}>
+                <UserMinus size={18} style={{ color: "#f87171" }} />
+              </div>
+              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Remove from list?</p>
+            </div>
+            <p className="text-sm mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>
+              Remove <span className="font-semibold text-white">{removeTarget.name || removeTarget.email}</span> from <span className="font-semibold text-white">{selected?.name}</span>?
+            </p>
+            <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              This only takes them off this list — the contact itself is not deleted and stays in your other lists.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setRemoveTarget(null)}
+                disabled={removing}
+                className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5 disabled:opacity-50"
+                style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveMember}
+                disabled={removing}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-60"
+                style={{ background: "#e63946" }}
+              >
+                <UserMinus size={14} /> {removing ? "Removing…" : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -1024,7 +1073,7 @@ export default function ListsClient() {
                           )}
                         </div>
                       </div>
-                      <button onClick={() => handleRemoveMember(c.id)}
+                      <button onClick={() => setRemoveTarget(c)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/5"
                         style={{ color: "rgba(255,255,255,0.3)" }} title="Remove from list">
                         <UserMinus size={12} /> Remove
