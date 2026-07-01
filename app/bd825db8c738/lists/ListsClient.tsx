@@ -665,6 +665,7 @@ export default function ListsClient() {
   const [error, setError] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const [memberLocationFilter, setMemberLocationFilter] = useState("all");
+  const [memberSentFilter, setMemberSentFilter] = useState<"all" | "sent" | "unsent">("all");
   const [memberPage, setMemberPage] = useState(1);
 
   // Inline list rename
@@ -770,8 +771,11 @@ export default function ListsClient() {
 
   const filteredMembers = useMemo(() => {
     const q = memberSearch.toLowerCase().trim();
-    return members.filter((c) => {
+    const out = members.filter((c) => {
       if (memberLocationFilter !== "all" && (c.state || "").trim() !== memberLocationFilter) return false;
+      const sent = (c.send_count ?? 0) > 0;
+      if (memberSentFilter === "sent" && !sent) return false;
+      if (memberSentFilter === "unsent" && sent) return false;
       if (!q) return true;
       return (
         c.email.toLowerCase().includes(q) ||
@@ -781,7 +785,10 @@ export default function ListsClient() {
         (c.state || "").toLowerCase().includes(q)
       );
     });
-  }, [members, memberSearch, memberLocationFilter]);
+    // Show people we've already emailed first (most-emailed at the top).
+    // Array.sort is stable, so ties keep the API's created_at DESC order.
+    return out.sort((a, b) => (b.send_count ?? 0) - (a.send_count ?? 0));
+  }, [members, memberSearch, memberLocationFilter, memberSentFilter]);
 
   // Pagination — 30 members per page
   const MEMBERS_PER_PAGE = 30;
@@ -792,10 +799,10 @@ export default function ListsClient() {
     currentMemberPage * MEMBERS_PER_PAGE
   );
 
-  // Reset to first page when the search, location filter, or selected list changes
-  useEffect(() => { setMemberPage(1); }, [memberSearch, memberLocationFilter, selected?.id]);
-  // Clear the location filter when switching lists
-  useEffect(() => { setMemberLocationFilter("all"); }, [selected?.id]);
+  // Reset to first page when the search, filters, or selected list changes
+  useEffect(() => { setMemberPage(1); }, [memberSearch, memberLocationFilter, memberSentFilter, selected?.id]);
+  // Clear the filters when switching lists
+  useEffect(() => { setMemberLocationFilter("all"); setMemberSentFilter("all"); }, [selected?.id]);
 
   return (
     <>
@@ -959,6 +966,13 @@ export default function ListsClient() {
                   {memberStateOptions.map((st) => (
                     <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
                   ))}
+                </select>
+                <select value={memberSentFilter} onChange={(e) => setMemberSentFilter(e.target.value as "all" | "sent" | "unsent")}
+                  style={{ ...inputStyle, width: "auto", maxWidth: 170, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
+                  title="Filter by whether we've emailed them">
+                  <option value="all" style={{ background: "#16181e", color: "#fff" }}>Everyone</option>
+                  <option value="sent" style={{ background: "#16181e", color: "#fff" }}>Emailed only</option>
+                  <option value="unsent" style={{ background: "#16181e", color: "#fff" }}>Not emailed yet</option>
                 </select>
               </div>
 
