@@ -5,6 +5,17 @@ const SESSION_MAX_AGE = 60 * 60 * 8; // 8 hours
 
 const PROTECTED = ["/bd825db8c738", "/connect"];
 
+// API endpoints that must stay reachable without an admin session:
+// - login (you can't be authed yet), OAuth callback (external redirect)
+// - the tracking pixel and unsubscribe link (hit by recipients' mail clients)
+const PUBLIC_API = [
+  "/api/auth/login",
+  "/api/auth/callback",
+  "/api/auth/logout",
+  "/api/track/open",
+  "/api/unsubscribe",
+];
+
 function hexToBytes(hex: string): ArrayBuffer {
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
@@ -55,6 +66,21 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return new NextResponse(null, { status: 404 });
   }
 
+  // Protect all API routes except the explicitly public ones. Unauthenticated
+  // API calls get a 401 (not a redirect — these are fetch/XHR, not navigations).
+  if (pathname.startsWith("/api/")) {
+    const isPublic = PUBLIC_API.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (isPublic) return NextResponse.next();
+
+    const token = req.cookies.get(SESSION_COOKIE)?.value;
+    if (token && (await verifyToken(token))) return NextResponse.next();
+
+    return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const isProtected = PROTECTED.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
@@ -72,5 +98,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/admin", "/bd825db8c738/:path*", "/connect/:path*", "/connect", "/feb58da15ece"],
+  matcher: ["/admin/:path*", "/admin", "/bd825db8c738/:path*", "/connect/:path*", "/connect", "/feb58da15ece", "/api/:path*"],
 };

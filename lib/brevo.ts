@@ -29,6 +29,8 @@ export interface SendEmailOptions {
 
 export interface SendResult {
   messageId?: string;
+  sent: string[];                              // emails that were accepted by Brevo
+  failed: { email: string; error: string }[]; // per-recipient non-fatal failures
 }
 
 export interface BrevoStats {
@@ -101,13 +103,13 @@ export interface BrevoEvent {
  * the same feed shown on Brevo's Logs page. Sorted newest-first. Returns [] if the
  * API can't be reached so the dashboard still renders.
  */
-export async function getBrevoEvents(days = 30, limit = 100, range?: DateRange): Promise<BrevoEvent[]> {
+export async function getBrevoEvents(days = 30, limit = 100, range?: DateRange, offset = 0): Promise<BrevoEvent[]> {
   const window = range
     ? `startDate=${range.startDate}&endDate=${range.endDate}`
     : `days=${days}`;
   try {
     const res = await fetch(
-      `${BREVO_API_URL}/smtp/statistics/events?limit=${limit}&offset=0&${window}&sort=desc`,
+      `${BREVO_API_URL}/smtp/statistics/events?limit=${limit}&offset=${offset}&${window}&sort=desc`,
       { headers: { "api-key": getApiKey(), Accept: "application/json" }, cache: "no-store" }
     );
     if (!res.ok) return [];
@@ -159,8 +161,15 @@ export async function sendCampaignEmail(
 
   if (!senderEmail) throw new Error("BREVO_SENDER_EMAIL is not set");
 
-  // Send individually so each recipient gets personalized content
+  // Send individually so each recipient gets personalized content. A single bad
+  // recipient (transient 4xx/5xx, network blip) must NOT abort the whole run and
+  // lose the record of everyone already sent — we collect per-recipient results.
+  // The one exception is a 401 (bad key / IP block): that fails for everyone, so
+  // we abort immediately rather than hammering the API 500 times.
+  const sent: string[] = [];
+  const failed: { email: string; error: string }[] = [];
   let lastMessageId: string | undefined;
+
   for (const recipient of opts.recipients) {
     const html = recipient.personalizedHtml ?? opts.htmlContent;
     const payload: Record<string, unknown> = {
@@ -174,19 +183,26 @@ export async function sendCampaignEmail(
       payload.attachment = opts.attachments;
     }
 
-    const res = await fetch(`${BREVO_API_URL}/smtp/email`, {
-      method: "POST",
-      headers: {
-        "api-key": getApiKey(),
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${BREVO_API_URL}/smtp/email`, {
+        method: "POST",
+        headers: {
+          "api-key": getApiKey(),
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+    } catch {
+      failed.push({ email: recipient.email, error: "Network error reaching Brevo" });
+      continue;
+    }
 
     if (!res.ok) {
       const errText = await res.text();
+      // 401 is fatal for the whole batch — surface a clear message and stop.
       if (res.status === 401) {
         let msg = "Brevo authentication failed.";
         try {
@@ -199,13 +215,16 @@ export async function sendCampaignEmail(
         } catch { /* ignore */ }
         throw new Error(msg);
       }
-      throw new Error(`Email send failed (${res.status}). Please try again.`);
+      // Everything else is per-recipient: record and keep going.
+      failed.push({ email: recipient.email, error: `Brevo ${res.status}` });
+      continue;
     }
 
     const data = await res.json() as { messageId?: string };
     lastMessageId = data.messageId;
+    sent.push(recipient.email);
   }
 
-  return { messageId: lastMessageId };
+  return { messageId: lastMessageId, sent, failed };
 }
 

@@ -75,15 +75,19 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     memberEmails = new Set(m.rows.map((r) => String(r.e)));
   }
 
-  // Brevo events — fetch more when scoping so the filtered/derived numbers are meaningful
-  const rawEvents = await getBrevoEvents(days, listId ? 1000 : 100, brevoRange);
-  const events = memberEmails
-    ? rawEvents.filter((e) => memberEmails!.has((e.email || "").toLowerCase()))
-    : rawEvents;
-
   // Deliverability: account-wide aggregated report normally; derived from the
-  // list's events when a list is selected.
-  const brevo = listId ? deriveBrevoFromEvents(events, label) : await getBrevoStats(days, brevoRange);
+  // list's events when a list is selected. (The recent-activity feed is served
+  // separately by /api/analytics/events with proper offset pagination.)
+  let brevo: BrevoStats;
+  if (listId) {
+    const rawEvents = await getBrevoEvents(days, 2500, brevoRange);
+    const events = memberEmails
+      ? rawEvents.filter((e) => memberEmails!.has((e.email || "").toLowerCase()))
+      : rawEvents;
+    brevo = deriveBrevoFromEvents(events, label);
+  } else {
+    brevo = await getBrevoStats(days, brevoRange);
+  }
 
   // Audience totals from our own send logs. Sends & opens honour the date range
   // (half-open [start, endExclusive) so the whole end day counts); contacts &
@@ -134,5 +138,5 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     total_suppressed: Number(t.total_suppressed ?? 0),
   };
 
-  return NextResponse.json({ brevo, events, contacts: [] as ContactEngagement[], totals });
+  return NextResponse.json({ brevo, events: [] as BrevoEvent[], contacts: [] as ContactEngagement[], totals });
 }

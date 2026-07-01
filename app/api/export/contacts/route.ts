@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
+import { csvRow } from "@/lib/csv";
 
 // GET /api/export/contacts — download full contact list as CSV
 // ?filter=removed  → only contacts in suppression_list with reason='removed'
@@ -30,7 +31,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     const lines = [
       "name,email,title,company,status,reason,removed_at",
       ...(result.rows as unknown as { name: string; email: string; title: string; company: string; status: string; reason: string; removed_at: string }[])
-        .map((r) => `"${r.name}","${r.email}","${r.title}","${r.company}","${r.status}","${r.reason}","${r.removed_at}"`),
+        .map((r) => csvRow([r.name, r.email, r.title, r.company, r.status, r.reason, r.removed_at])),
     ];
     return new NextResponse(lines.join("\r\n"), {
       headers: {
@@ -59,7 +60,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   const date = new Date().toISOString().slice(0, 10);
   const lines = [
     "name,email,title,company,status,tags,created_at",
-    ...rows.map((r) => `"${r.name}","${r.email}","${r.title}","${r.company}","${r.status}","${r.tags}","${r.created_at}"`),
+    ...rows.map((r) => csvRow([r.name, r.email, r.title, r.company, r.status, r.tags, r.created_at])),
   ];
 
   return new NextResponse(lines.join("\r\n"), {

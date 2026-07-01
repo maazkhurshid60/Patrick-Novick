@@ -6,11 +6,14 @@ export const revalidate = 0;
 
 
 export async function GET() {
+  // Count only memberships whose contact still exists, so a past delete that left
+  // an orphan membership row can't inflate the number shown.
   const result = await db.execute(`
     SELECT cl.id, cl.name, cl.created_at,
-           COUNT(clm.contact_id) as member_count
+           COUNT(c.id) as member_count
     FROM contact_lists cl
     LEFT JOIN contact_list_members clm ON cl.id = clm.list_id
+    LEFT JOIN contacts c ON c.id = clm.contact_id
     GROUP BY cl.id
     ORDER BY cl.created_at DESC
   `);

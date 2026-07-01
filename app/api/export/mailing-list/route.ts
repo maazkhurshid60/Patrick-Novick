@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
+import { csvRow } from "@/lib/csv";
 
 // GET /api/export/mailing-list
 // Returns a CSV formatted for postcard / direct mail campaigns.
@@ -50,30 +51,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     rows = rows.filter((r) => segEmails.has(r.email.toLowerCase()));
   }
 
-  function esc(val: string | null | undefined): string {
-    const s = (val ?? "").toString().trim();
-    return s.includes(",") || s.includes('"') || s.includes("\n")
-      ? `"${s.replace(/"/g, '""')}"`
-      : s;
-  }
-
   const header = "First Name,Last Name,Company,Title,Street Address,City,State,ZIP Code,Country,Email\r\n";
   const lines = rows.map((r) => {
     // Derive first/last from name if split fields are empty
-    const fn = r.first_name || r.name.split(" ")[0] || "";
-    const ln = r.last_name  || r.name.split(" ").slice(1).join(" ") || "";
-    return [
-      esc(fn),
-      esc(ln),
-      esc(r.company),
-      esc(r.title),
-      esc(r.street_address),
-      esc(r.city),
-      esc(r.state),
-      esc(r.zip_code),
-      esc(r.country || "US"),
-      esc(r.email),
-    ].join(",");
+    const fn = (r.first_name || r.name.split(" ")[0] || "").trim();
+    const ln = (r.last_name  || r.name.split(" ").slice(1).join(" ") || "").trim();
+    return csvRow([
+      fn, ln, r.company, r.title, r.street_address,
+      r.city, r.state, r.zip_code, r.country || "US", r.email,
+    ]);
   });
 
   const csv = header + lines.join("\r\n");

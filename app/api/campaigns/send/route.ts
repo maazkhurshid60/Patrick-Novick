@@ -30,8 +30,9 @@ function personalize(template: string, contact: ContactRow): string {
     .replace(/\{\{company\}\}/gi, contact.company || "");
 }
 
-function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number): string {
-  const formattedBody = bodyText.trim().replace(/\n/g, "<br />");
+function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number, isHtml = false): string {
+  // Plain text: convert newlines to <br>. HTML: use the author's markup verbatim.
+  const formattedBody = isHtml ? bodyText : bodyText.trim().replace(/\n/g, "<br />");
   const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
   // base64-encode email for tracking pixel — decoded server-side on open
   const eid = encodeURIComponent(Buffer.from(email.toLowerCase()).toString("base64"));
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const {
     subject,
     body,
+    isHtml,
     listId,
     excludeRecentDays,
     dailyLimit,
@@ -84,6 +86,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } = await req.json() as {
     subject: string;
     body: string;
+    isHtml?: boolean;
     listId?: number | null;
     excludeRecentDays?: number | null;
     dailyLimit?: number | null;
@@ -136,7 +139,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const testContact = { id: 0, email: testEmail.trim(), name: "Test Recipient", title: "Senior Engineer", company: "Big Company" };
       const personalizedBody = personalize(body, testContact);
       const personalizedSubject = `[TEST] ${personalize(subject, testContact)}`;
-      const wrappedHtml = wrapInHtmlTemplate(personalizedBody, testEmail.trim(), 0);
+      const wrappedHtml = wrapInHtmlTemplate(personalizedBody, testEmail.trim(), 0, !!isHtml);
 
       const result = await sendCampaignEmail({
         subject: personalizedSubject,
@@ -149,6 +152,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           personalizedHtml: wrappedHtml
         }]
       });
+      if (result.sent.length === 0) {
+        const reason = result.failed[0]?.error ?? "Send failed";
+        return NextResponse.json({ error: `Test send failed: ${reason}` }, { status: 500 });
+      }
       return NextResponse.json({ success: true, isTest: true, recipients: 1, messageId: result.messageId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Test send failed";
@@ -243,7 +250,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       attachments: attachmentsOption,
       recipients: contacts.map((c) => {
         const personalizedText = personalize(body, c);
-        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId);
+        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId, !!isHtml);
         return {
           email: c.email as string,
           name: (c.name as string) || undefined,
@@ -258,22 +265,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // Mark campaign sent with final recipient count
+  // If nothing actually sent, mark the campaign failed and report why.
+  if (result.sent.length === 0) {
+    await db.execute({ sql: "UPDATE campaigns SET status = 'failed' WHERE id = ?", args: [campaignId] });
+    const reason = result.failed[0]?.error ?? "no emails were accepted";
+    return NextResponse.json({ error: `Send failed — ${reason}` }, { status: 500 });
+  }
+
+  // Mark campaign sent with the ACTUAL number delivered to Brevo (not the target
+  // count) so a partial send is recorded accurately.
   await db.execute({
     sql: "UPDATE campaigns SET status = 'sent', recipient_count = ?, brevo_msg_id = ? WHERE id = ?",
-    args: [contacts.length, result.messageId ?? null, campaignId],
+    args: [result.sent.length, result.messageId ?? null, campaignId],
   });
 
-  // Track recipients for future exclude-recent logic
+  // Track ONLY the recipients that were actually sent — so a mid-batch failure
+  // can be safely retried without duplicating the ones already emailed.
   await db.batch(
-    contacts.map((c) => ({
+    result.sent.map((email) => ({
       sql: "INSERT OR IGNORE INTO campaign_recipients (campaign_id, email) VALUES (?, ?)",
-      args: [campaignId, c.email as string],
+      args: [campaignId, email],
     })),
     "write"
   );
 
-  return NextResponse.json({ success: true, recipients: contacts.length, campaignId, messageId: result.messageId });
+  return NextResponse.json({
+    success: true,
+    recipients: result.sent.length,
+    failed: result.failed.length,
+    campaignId,
+    messageId: result.messageId,
+  });
 }
 
 // GET /api/campaigns/send — campaign history with open counts.

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2 } from "lucide-react";
-import { Pagination } from "../Toast";
+import { useEffect, useState, useCallback } from "react";
+import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ContactEngagement {
   email: string;
@@ -121,6 +120,35 @@ export default function AnalyticsClient() {
   const [activitySearch, setActivitySearch] = useState("");
   const EVENTS_PER_PAGE = 20;
 
+  // Recent-activity feed — offset-paginated from Brevo via /api/analytics/events.
+  // We keep a growing pool of loaded events and page through it 20 at a time;
+  // "Load more" pulls the next block from Brevo so we can go arbitrarily deep.
+  const [feed, setFeed] = useState<BrevoEvent[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedOffset, setFeedOffset] = useState(0); // next raw Brevo offset to request
+
+  const fetchFeed = useCallback(async (reset: boolean, offset: number) => {
+    setFeedLoading(true);
+    const params = new URLSearchParams();
+    if (from && to) { params.set("from", from); params.set("to", to); }
+    else params.set("days", String(days));
+    if (listFilter !== "all") params.set("listId", String(listFilter));
+    params.set("offset", String(offset));
+    try {
+      const r = await fetch(`/api/analytics/events?${params.toString()}`);
+      const d = await r.json() as { events: BrevoEvent[]; hasMore: boolean; nextOffset: number };
+      setFeed((prev) => reset ? d.events : [...prev, ...d.events]);
+      setFeedOffset(d.nextOffset);
+      setFeedHasMore(!!d.hasMore);
+      if (reset) setEventPage(1);
+    } catch {
+      if (reset) setFeed([]);
+    } finally {
+      setFeedLoading(false);
+    }
+  }, [from, to, days, listFilter]);
+
   useEffect(() => {
     fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {});
   }, []);
@@ -141,19 +169,21 @@ export default function AnalyticsClient() {
     return () => { active = false; };
   }, [days, listFilter, from, to]);
 
+  // (Re)load the feed from the top whenever the window/list changes
+  useEffect(() => { fetchFeed(true, 0); }, [fetchFeed]);
+  // Reset to the first client page when filters change
   useEffect(() => { setEventPage(1); }, [eventTypeFilter, activitySearch]);
 
   const selectedListName = listFilter === "all" ? null : lists.find((l) => l.id === listFilter)?.name ?? null;
 
   const b = data?.brevo;
-  const allEvents = data?.events ?? [];
 
   // Distinct event types present (by readable label) for the status dropdown
-  const eventTypeOptions = Array.from(new Set(allEvents.map((e) => eventStyle(e.event).label))).sort();
+  const eventTypeOptions = Array.from(new Set(feed.map((e) => eventStyle(e.event).label))).sort();
 
-  // Apply status + search filters, then paginate the result
+  // Apply status + search filters across everything loaded, then page 20 at a time
   const q = activitySearch.trim().toLowerCase();
-  const filteredEvents = allEvents.filter((e) => {
+  const filteredEvents = feed.filter((e) => {
     if (eventTypeFilter !== "all" && eventStyle(e.event).label !== eventTypeFilter) return false;
     if (q && !(e.email || "").toLowerCase().includes(q) && !(e.subject || "").toLowerCase().includes(q)) return false;
     return true;
@@ -161,6 +191,7 @@ export default function AnalyticsClient() {
   const totalEventPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
   const currentEventPage = Math.min(eventPage, totalEventPages);
   const pagedEvents = filteredEvents.slice((currentEventPage - 1) * EVENTS_PER_PAGE, currentEventPage * EVENTS_PER_PAGE);
+  const onLastLoadedPage = currentEventPage >= totalEventPages;
   const bounces = b ? b.hardBounces + b.softBounces : 0;
   const deliveryRate = b && b.requests > 0 ? Math.round((b.delivered / b.requests) * 100) : 0;
   const openRate = b && b.delivered > 0 ? Math.round((b.uniqueOpens / b.delivered) * 100) : 0;
@@ -273,7 +304,7 @@ export default function AnalyticsClient() {
           <div>
             <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
             <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-              Latest send events — delivered, opened, clicked, bounced — newest first · via Brevo · {b?.range ?? `last ${days} days`}
+              Newest first · via Brevo · {b?.range ?? `last ${days} days`} · {feed.length} loaded{feedHasMore ? "+" : ""}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -308,11 +339,11 @@ export default function AnalyticsClient() {
           </div>
         </div>
 
-        {loading ? (
+        {feedLoading && feed.length === 0 ? (
           <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
         ) : filteredEvents.length === 0 ? (
           <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-            {allEvents.length === 0
+            {feed.length === 0
               ? "No email activity in this window (or Brevo couldn't be reached)."
               : "No events match your filters."}
           </div>
@@ -349,7 +380,50 @@ export default function AnalyticsClient() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={currentEventPage} total={filteredEvents.length} perPage={EVENTS_PER_PAGE} onPage={setEventPage} />
+            <div className="flex items-center justify-between gap-3 px-5 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                {(currentEventPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(currentEventPage * EVENTS_PER_PAGE, filteredEvents.length)} of {filteredEvents.length} loaded{feedHasMore ? "+" : ""}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEventPage((p) => Math.max(1, p - 1))}
+                  disabled={currentEventPage <= 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <ChevronLeft size={13} /> Prev
+                </button>
+                <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  Page {currentEventPage} of {totalEventPages}
+                </span>
+                <button
+                  onClick={() => {
+                    // At the end of what's loaded? Pull the next block from Brevo, then advance.
+                    if (onLastLoadedPage && feedHasMore) {
+                      fetchFeed(false, feedOffset).then(() => setEventPage((p) => p + 1));
+                    } else {
+                      setEventPage((p) => Math.min(totalEventPages, p + 1));
+                    }
+                  }}
+                  disabled={feedLoading || (currentEventPage >= totalEventPages && !feedHasMore)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  {feedLoading ? "Loading…" : "Next"} <ChevronRight size={13} />
+                </button>
+                {feedHasMore && (
+                  <button
+                    onClick={() => fetchFeed(false, feedOffset)}
+                    disabled={feedLoading}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 hover:scale-[1.02]"
+                    style={{ background: "rgba(230,57,70,0.1)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+                    title="Fetch the next block of older events from Brevo"
+                  >
+                    {feedLoading ? "Loading…" : "Load more"}
+                  </button>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

@@ -88,6 +88,8 @@ export default function CampaignClient({
   const [attachPostcard, setAttachPostcard] = useState(false);
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [bodyIsHtml, setBodyIsHtml] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,6 +195,22 @@ export default function CampaignClient({
   ];
   const hasAttachment = attachmentNames.length > 0;
 
+  // Live preview — substitutes sample values and formats exactly like the server:
+  // plain text turns newlines into <br>, HTML is used verbatim.
+  const previewBodyHtml = (() => {
+    const s = { first_name: "Alex", last_name: "Morgan", full_name: "Alex Morgan", title: "Principal Engineer", company: "Acme Corp", email: "alex.morgan@example.com" };
+    let out = (body || "")
+      .replace(/\{\{first_name\}\}/gi, s.first_name)
+      .replace(/\{\{last_name\}\}/gi, s.last_name)
+      .replace(/\{\{full_name\}\}/gi, s.full_name)
+      .replace(/\{\{name\}\}/gi, s.full_name)
+      .replace(/\{\{email\}\}/gi, s.email)
+      .replace(/\{\{title\}\}/gi, s.title)
+      .replace(/\{\{company\}\}/gi, s.company);
+    if (!bodyIsHtml) out = out.trim().replace(/\n/g, "<br />");
+    return out;
+  })();
+
   async function handleSend(e: FormEvent) {
     e.preventDefault();
     if (!subject.trim() || !body.trim()) { toast.error("Subject and body are required"); return; }
@@ -217,6 +235,7 @@ export default function CampaignClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject, body,
+          isHtml: bodyIsHtml,
           listId: listId ?? null,
           dailyLimit,
           offset: sendOffset,
@@ -233,10 +252,11 @@ export default function CampaignClient({
         toast.error(friendlyError(data.error, res.status));
       } else {
         const n = Number(data.recipients ?? 0);
+        const failedN = Number(data.failed ?? 0);
         toast.success(
           isTestSend
             ? `Test email sent to ${testEmail.trim()}`
-            : `✓ Campaign sent to ${n} recipient${n === 1 ? "" : "s"}`
+            : `✓ Campaign sent to ${n} recipient${n === 1 ? "" : "s"}${failedN ? ` · ${failedN} failed` : ""}`
         );
         if (!isTestSend) {
           setSubject(""); setBody("");
@@ -605,15 +625,77 @@ export default function CampaignClient({
 
           {/* Body */}
           <div>
-            <label style={{ ...labelStyle }}>
-              Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(plain text — use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
-            </label>
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+              <label style={{ ...labelStyle, marginBottom: 0 }}>
+                Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                {/* Plain / HTML toggle */}
+                <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  {([["Plain text", false], ["HTML", true]] as [string, boolean][]).map(([lbl, val]) => (
+                    <button
+                      key={lbl}
+                      type="button"
+                      onClick={() => setBodyIsHtml(val)}
+                      className="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors"
+                      style={{ background: bodyIsHtml === val ? "rgba(230,57,70,0.15)" : "transparent", color: bodyIsHtml === val ? "#f87171" : "rgba(255,255,255,0.4)" }}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPreview((v) => !v)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5"
+                  style={{ color: showPreview ? "#f87171" : "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  {showPreview ? "Hide preview" : "Preview"}
+                </button>
+              </div>
+            </div>
             <textarea
               style={{ ...inputStyle, minHeight: "240px", resize: "vertical", fontFamily: "monospace", fontSize: "0.8rem" }}
-              placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
+              placeholder={bodyIsHtml
+                ? "<p>Hi {{first_name}},</p>\n<p>I saw you are a {{title}} at {{company}}…</p>\n<p>Best,<br/>Patrick</p>"
+                : "Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
+            {bodyIsHtml && (
+              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                HTML mode: your markup is sent as-is (newlines are not auto-converted). The standard header/footer &amp; unsubscribe link are still added.
+              </p>
+            )}
+
+            {/* Live preview */}
+            {showPreview && (
+              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>
+                  <span>Preview — sample contact (Alex Morgan · Principal Engineer · Acme Corp)</span>
+                  <span style={{ color: "rgba(255,255,255,0.25)" }}>{bodyIsHtml ? "HTML" : "Plain text"}</span>
+                </div>
+                <div style={{ background: "#ffffff", padding: "24px", maxHeight: 360, overflowY: "auto" }}>
+                  <div className="text-sm mb-1" style={{ color: "#111", fontWeight: 600 }}>{subject.trim() || "(no subject yet)"}</div>
+                  <div style={{ borderTop: "1px solid #eee", margin: "8px 0 16px" }} />
+                  {body.trim() ? (
+                    <div style={{ color: "#1a1a1a", fontSize: "15px", lineHeight: 1.7, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" }}
+                      dangerouslySetInnerHTML={{ __html: previewBodyHtml }} />
+                  ) : (
+                    <div style={{ color: "#999", fontSize: "14px" }}>Start typing the body to see it here…</div>
+                  )}
+                  {hasAttachment && (
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #eee", color: "#666", fontSize: "12px" }}>
+                      📎 {attachmentNames.join(", ")}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid #eee", textAlign: "center", color: "#999", fontSize: "11px" }}>
+                    Metro Associates, LLC • 1317 Edgewater Drive #4452, Orlando, FL 32804<br />
+                    <span style={{ textDecoration: "underline" }}>Unsubscribe</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <button

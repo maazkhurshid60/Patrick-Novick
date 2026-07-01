@@ -319,7 +319,11 @@ export async function DELETE(req: NextRequest): Promise<NextResponse> {
   const emailResult = await db.execute({ sql: "SELECT email FROM contacts WHERE id = ?", args: [id] });
   const email = emailResult.rows[0]?.email as string | undefined;
 
-  await db.execute({ sql: "DELETE FROM contacts WHERE id = ?", args: [id] });
+  await db.batch([
+    { sql: "DELETE FROM contacts WHERE id = ?", args: [id] },
+    // Remove list memberships too, or they become orphans that inflate list counts.
+    { sql: "DELETE FROM contact_list_members WHERE contact_id = ?", args: [id] },
+  ], "write");
 
   if (suppress && email) {
     await db.execute({

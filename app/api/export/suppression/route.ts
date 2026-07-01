@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
+import { csvRow } from "@/lib/csv";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,7 +18,7 @@ export async function GET(): Promise<NextResponse> {
 
   const lines = [
     "email,reason,added_at",
-    ...rows.map((r) => `"${r.email}","${r.reason}","${r.added_at}"`),
+    ...rows.map((r) => csvRow([r.email, r.reason, r.added_at])),
   ];
 
   const csv = lines.join("\r\n");

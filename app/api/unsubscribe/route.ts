@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
 
-// GET /api/unsubscribe?email=... — called when recipient clicks the link in email
+// GET /api/unsubscribe?email=... — do NOT suppress on a bare GET. Email security
+// scanners and inbox link-prefetchers fetch links automatically, which would
+// unsubscribe people who never clicked. Instead, send them to the confirmation
+// page where an explicit button click (POST) performs the unsubscribe.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const email = req.nextUrl.searchParams.get("email")?.toLowerCase().trim();
-  if (!email || !email.includes("@")) {
-    return NextResponse.redirect(new URL("/unsubscribe?status=invalid", req.url));
-  }
-  await db.batch([
-    { sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, 'unsubscribed')", args: [email] },
-    { sql: "UPDATE contacts SET status = 'unsubscribed' WHERE LOWER(email) = ?", args: [email] },
-  ], "write");
-  return NextResponse.redirect(new URL(`/unsubscribe?status=done&email=${encodeURIComponent(email)}`, req.url));
+  const target = email && email.includes("@")
+    ? `/unsubscribe?email=${encodeURIComponent(email)}`
+    : "/unsubscribe?status=invalid";
+  return NextResponse.redirect(new URL(target, req.url));
 }
 
 // POST /api/unsubscribe — called from the unsubscribe page form
