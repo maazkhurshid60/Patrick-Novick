@@ -111,9 +111,14 @@ export default function AnalyticsClient() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const rangeActive = !!(from && to);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [listFilter, setListFilter] = useState<number | "all">("all");
   const [eventPage, setEventPage] = useState(1);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all"); // by readable label, e.g. "Opened"
+  const [activitySearch, setActivitySearch] = useState("");
   const EVENTS_PER_PAGE = 20;
 
   useEffect(() => {
@@ -124,43 +129,93 @@ export default function AnalyticsClient() {
     let active = true;
     setLoading(true);
     setEventPage(1);
-    const url = listFilter === "all" ? `/api/analytics?days=${days}` : `/api/analytics?days=${days}&listId=${listFilter}`;
-    fetch(url)
+    const params = new URLSearchParams();
+    // An explicit from/to range overrides the rolling "last N days" window.
+    if (from && to) { params.set("from", from); params.set("to", to); }
+    else params.set("days", String(days));
+    if (listFilter !== "all") params.set("listId", String(listFilter));
+    fetch(`/api/analytics?${params.toString()}`)
       .then((r) => r.json())
       .then((d: AnalyticsData) => { if (active) { setData(d); setLoading(false); } })
       .catch(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [days, listFilter]);
+  }, [days, listFilter, from, to]);
+
+  useEffect(() => { setEventPage(1); }, [eventTypeFilter, activitySearch]);
 
   const selectedListName = listFilter === "all" ? null : lists.find((l) => l.id === listFilter)?.name ?? null;
 
   const b = data?.brevo;
   const allEvents = data?.events ?? [];
-  const totalEventPages = Math.max(1, Math.ceil(allEvents.length / EVENTS_PER_PAGE));
+
+  // Distinct event types present (by readable label) for the status dropdown
+  const eventTypeOptions = Array.from(new Set(allEvents.map((e) => eventStyle(e.event).label))).sort();
+
+  // Apply status + search filters, then paginate the result
+  const q = activitySearch.trim().toLowerCase();
+  const filteredEvents = allEvents.filter((e) => {
+    if (eventTypeFilter !== "all" && eventStyle(e.event).label !== eventTypeFilter) return false;
+    if (q && !(e.email || "").toLowerCase().includes(q) && !(e.subject || "").toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const totalEventPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
   const currentEventPage = Math.min(eventPage, totalEventPages);
-  const pagedEvents = allEvents.slice((currentEventPage - 1) * EVENTS_PER_PAGE, currentEventPage * EVENTS_PER_PAGE);
+  const pagedEvents = filteredEvents.slice((currentEventPage - 1) * EVENTS_PER_PAGE, currentEventPage * EVENTS_PER_PAGE);
   const bounces = b ? b.hardBounces + b.softBounces : 0;
   const deliveryRate = b && b.requests > 0 ? Math.round((b.delivered / b.requests) * 100) : 0;
   const openRate = b && b.delivered > 0 ? Math.round((b.uniqueOpens / b.delivered) * 100) : 0;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* List scope selector */}
+      {/* List scope + date-range selectors */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
           {selectedListName ? <>Showing analytics for <span className="font-semibold" style={{ color: "#f87171" }}>{selectedListName}</span></> : "Showing analytics across all contacts"}
+          {rangeActive && <> · <span className="font-semibold" style={{ color: "#f87171" }}>{from} → {to}</span></>}
         </p>
-        <select
-          value={listFilter}
-          onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.78rem", padding: "0.45rem 0.75rem", outline: "none", cursor: "pointer", maxWidth: 220 }}
-          title="Scope analytics to a list"
-        >
-          <option value="all" style={{ background: "#16181e" }}>All lists</option>
-          {lists.map((l) => (
-            <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* From / To date range — the whole end day is included */}
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+              style={{ background: "transparent", border: "none", color: "#fff", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
+              title="From date (inclusive)"
+            />
+            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.75rem" }}>→</span>
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              style={{ background: "transparent", border: "none", color: "#fff", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
+              title="To date (the entire day is included)"
+            />
+            {rangeActive && (
+              <button
+                onClick={() => { setFrom(""); setTo(""); }}
+                className="px-1.5 py-0.5 rounded text-xs font-semibold transition-colors hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+                title="Clear date range"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <select
+            value={listFilter}
+            onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.78rem", padding: "0.45rem 0.75rem", outline: "none", cursor: "pointer", maxWidth: 220 }}
+            title="Scope analytics to a list"
+          >
+            <option value="all" style={{ background: "#16181e" }}>All lists</option>
+            {lists.map((l) => (
+              <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Engagement totals (from your own send logs) */}
@@ -170,8 +225,8 @@ export default function AnalyticsClient() {
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users} label="Total Contacts" value={data?.totals.total_contacts ?? 0} color="#7dd3fc" dim="rgba(125,211,252,0.1)" />
-          <StatCard icon={Send} label="Emails Sent (all time)" value={data?.totals.total_sends ?? 0} color="#4ade80" dim="rgba(74,222,128,0.1)" />
-          <StatCard icon={Eye} label="Total Opens" value={data?.totals.total_opens ?? 0} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
+          <StatCard icon={Send} label={rangeActive ? "Emails Sent (in range)" : "Emails Sent (all time)"} value={data?.totals.total_sends ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="#4ade80" dim="rgba(74,222,128,0.1)" />
+          <StatCard icon={Eye} label={rangeActive ? "Opens (in range)" : "Total Opens"} value={data?.totals.total_opens ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
           <StatCard icon={UserMinus} label="Unsubscribed / Suppressed" value={data?.totals.total_suppressed ?? 0} color="#f87171" dim="rgba(248,113,113,0.12)" />
         </div>
       </div>
@@ -183,15 +238,15 @@ export default function AnalyticsClient() {
             Deliverability <span style={{ color: "rgba(255,255,255,0.2)" }}>· via Brevo · {b?.range ?? `last ${days} days`}</span>
             {loading && <Loader2 className="animate-spin" size={12} style={{ color: "rgba(255,255,255,0.35)" }} />}
           </p>
-          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)" }}>
+          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", opacity: rangeActive ? 0.4 : 1 }} title={rangeActive ? "Clear the date range to use these quick windows" : undefined}>
             {[7, 30, 90].map((d) => (
               <button
                 key={d}
-                onClick={() => setDays(d)}
+                onClick={() => { setFrom(""); setTo(""); setDays(d); }}
                 className="px-3 py-1 rounded-md text-xs font-semibold transition-colors"
                 style={{
-                  background: days === d ? "rgba(230,57,70,0.15)" : "transparent",
-                  color: days === d ? "#f87171" : "rgba(255,255,255,0.4)",
+                  background: !rangeActive && days === d ? "rgba(230,57,70,0.15)" : "transparent",
+                  color: !rangeActive && days === d ? "#f87171" : "rgba(255,255,255,0.4)",
                 }}
               >
                 {d}d
@@ -214,18 +269,52 @@ export default function AnalyticsClient() {
 
       {/* Recent email activity (live event log from Brevo, newest first) */}
       <div style={card} className="overflow-hidden">
-        <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Latest send events — delivered, opened, clicked, bounced — newest first · via Brevo · {b?.range ?? `last ${days} days`}
-          </p>
+        <div className="px-5 py-4 flex items-start justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              Latest send events — delivered, opened, clicked, bounced — newest first · via Brevo · {b?.range ?? `last ${days} days`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Recipient / subject search */}
+            <input
+              value={activitySearch}
+              onChange={(e) => setActivitySearch(e.target.value)}
+              placeholder="Search recipient or subject…"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 200 }}
+            />
+            {/* Status / event-type filter */}
+            <select
+              value={eventTypeFilter}
+              onChange={(e) => setEventTypeFilter(e.target.value)}
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", cursor: "pointer" }}
+              title="Filter by status / event type"
+            >
+              <option value="all" style={{ background: "#16181e" }}>All statuses</option>
+              {eventTypeOptions.map((label) => (
+                <option key={label} value={label} style={{ background: "#16181e" }}>{label}</option>
+              ))}
+            </select>
+            {(eventTypeFilter !== "all" || activitySearch) && (
+              <button
+                onClick={() => { setEventTypeFilter("all"); setActivitySearch(""); }}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:bg-white/10"
+                style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
           <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
-        ) : allEvents.length === 0 ? (
+        ) : filteredEvents.length === 0 ? (
           <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
-            No email activity in this window (or Brevo couldn&apos;t be reached).
+            {allEvents.length === 0
+              ? "No email activity in this window (or Brevo couldn't be reached)."
+              : "No events match your filters."}
           </div>
         ) : (
           <>
@@ -260,7 +349,7 @@ export default function AnalyticsClient() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={currentEventPage} total={allEvents.length} perPage={EVENTS_PER_PAGE} onPage={setEventPage} />
+            <Pagination page={currentEventPage} total={filteredEvents.length} perPage={EVENTS_PER_PAGE} onPage={setEventPage} />
           </>
         )}
       </div>

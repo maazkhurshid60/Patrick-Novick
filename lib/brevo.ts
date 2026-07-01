@@ -52,17 +52,27 @@ export interface BrevoStats {
  * for the last `days` days. Returns zeros if Brevo can't be reached so the
  * dashboard still renders.
  */
-export async function getBrevoStats(days = 30): Promise<BrevoStats> {
+export interface DateRange {
+  startDate: string; // YYYY-MM-DD, inclusive
+  endDate: string;   // YYYY-MM-DD, inclusive (Brevo counts the whole end day)
+}
+
+export async function getBrevoStats(days = 30, range?: DateRange): Promise<BrevoStats> {
+  const label = range ? `${range.startDate} → ${range.endDate}` : `last ${days} days`;
   const empty: BrevoStats = {
-    range: `last ${days} days`,
+    range: label,
     requests: 0, delivered: 0, hardBounces: 0, softBounces: 0,
     clicks: 0, uniqueClicks: 0, opens: 0, uniqueOpens: 0,
     spamReports: 0, blocked: 0, invalid: 0, unsubscribed: 0,
   };
 
+  const qs = range
+    ? `startDate=${range.startDate}&endDate=${range.endDate}`
+    : `days=${days}`;
+
   try {
     const res = await fetch(
-      `${BREVO_API_URL}/smtp/statistics/aggregatedReport?days=${days}`,
+      `${BREVO_API_URL}/smtp/statistics/aggregatedReport?${qs}`,
       {
         headers: { "api-key": getApiKey(), Accept: "application/json" },
         cache: "no-store",
@@ -70,7 +80,7 @@ export async function getBrevoStats(days = 30): Promise<BrevoStats> {
     );
     if (!res.ok) return empty;
     const data = (await res.json()) as Partial<BrevoStats>;
-    return { ...empty, ...data, range: `last ${days} days` };
+    return { ...empty, ...data, range: label };
   } catch {
     return empty;
   }
@@ -91,10 +101,13 @@ export interface BrevoEvent {
  * the same feed shown on Brevo's Logs page. Sorted newest-first. Returns [] if the
  * API can't be reached so the dashboard still renders.
  */
-export async function getBrevoEvents(days = 30, limit = 100): Promise<BrevoEvent[]> {
+export async function getBrevoEvents(days = 30, limit = 100, range?: DateRange): Promise<BrevoEvent[]> {
+  const window = range
+    ? `startDate=${range.startDate}&endDate=${range.endDate}`
+    : `days=${days}`;
   try {
     const res = await fetch(
-      `${BREVO_API_URL}/smtp/statistics/events?limit=${limit}&offset=0&days=${days}&sort=desc`,
+      `${BREVO_API_URL}/smtp/statistics/events?limit=${limit}&offset=0&${window}&sort=desc`,
       { headers: { "api-key": getApiKey(), Accept: "application/json" }, cache: "no-store" }
     );
     if (!res.ok) return [];
