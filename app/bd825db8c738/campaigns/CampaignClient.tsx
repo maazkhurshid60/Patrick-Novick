@@ -75,6 +75,7 @@ export default function CampaignClient({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dailyLimit, setDailyLimit] = useState(50);
+  const [sendOffset, setSendOffset] = useState(0);
   const [excludeRecent, setExcludeRecent] = useState(false);
   const [excludeDays, setExcludeDays] = useState(7);
   const [replyTo, setReplyTo] = useState("");
@@ -180,7 +181,9 @@ export default function CampaignClient({
 
   const selectedList = lists.find((l) => l.id === listId);
   const recipientCount = listId ? Number(selectedList?.member_count ?? 0) : contactCount;
-  const sendCount = Math.min(recipientCount, dailyLimit);
+  // Skip the first `sendOffset` recipients, then send up to `dailyLimit` of the rest.
+  const remainingAfterSkip = Math.max(0, recipientCount - sendOffset);
+  const sendCount = Math.min(remainingAfterSkip, dailyLimit);
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -202,6 +205,7 @@ export default function CampaignClient({
           subject, body,
           listId: listId ?? null,
           dailyLimit,
+          offset: sendOffset,
           excludeRecentDays: excludeRecent ? excludeDays : null,
           replyTo: replyTo.trim() || null,
           isTestSend,
@@ -289,17 +293,31 @@ export default function CampaignClient({
               </div>
             </div>
 
-            {/* Daily limit */}
-            <div>
-              <label style={labelStyle}>Daily send limit</label>
-              <input
-                type="number"
-                min={1}
-                max={500}
-                style={inputStyle}
-                value={dailyLimit}
-                onChange={(e) => setDailyLimit(Math.max(1, Math.min(500, Number(e.target.value))))}
-              />
+            {/* Batch size + start position */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label style={labelStyle}>Batch size (send)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  style={inputStyle}
+                  value={dailyLimit}
+                  onChange={(e) => setDailyLimit(Math.max(1, Math.min(500, Number(e.target.value))))}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Skip first</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={dailyLimit}
+                  style={inputStyle}
+                  value={sendOffset}
+                  onChange={(e) => setSendOffset(Math.max(0, Number(e.target.value) || 0))}
+                  title="Skip this many recipients from the top of the list, then send the next batch. E.g. set 25 to start after the first 25."
+                />
+              </div>
             </div>
           </div>
 
@@ -308,9 +326,16 @@ export default function CampaignClient({
             <div className="flex items-center gap-2">
               <Users size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
               <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                Will send to <strong className="text-white">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
-                {recipientCount > dailyLimit && (
-                  <span style={{ color: "rgba(255,255,255,0.25)" }}> ({recipientCount - dailyLimit} held back by daily limit)</span>
+                {sendCount === 0 ? (
+                  <>Nothing to send — &ldquo;skip first&rdquo; ({sendOffset}) is past the {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}</>
+                ) : (
+                  <>
+                    Will send to <strong className="text-white">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
+                    {" "}(#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount})
+                    {recipientCount > sendOffset + sendCount && (
+                      <span style={{ color: "rgba(255,255,255,0.25)" }}> · {recipientCount - sendOffset - sendCount} remaining after this batch</span>
+                    )}
+                  </>
                 )}
               </span>
             </div>

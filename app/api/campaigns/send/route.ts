@@ -75,6 +75,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     listId,
     excludeRecentDays,
     dailyLimit,
+    offset,
     replyTo,
     isTestSend,
     testEmail,
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     listId?: number | null;
     excludeRecentDays?: number | null;
     dailyLimit?: number | null;
+    offset?: number | null;
     replyTo?: string | null;
     isTestSend?: boolean;
     testEmail?: string | null;
@@ -196,9 +198,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     args.push(cutoff);
   }
 
+  // Stable ordering so "skip first N" refers to the same positions across sends.
+  sql += ` ORDER BY ${listId ? "c.id" : "id"}`;
+
   const limit = dailyLimit && dailyLimit > 0 ? dailyLimit : 500;
   sql += ` LIMIT ?`;
   args.push(limit);
+
+  // Skip the first N eligible recipients (batch sending: 1–25, then 26–50, …)
+  const skip = offset && offset > 0 ? Math.floor(offset) : 0;
+  if (skip > 0) {
+    sql += ` OFFSET ?`;
+    args.push(skip);
+  }
 
   const contactsResult = await db.execute({ sql, args });
   const contacts = contactsResult.rows as unknown as ContactRow[];
