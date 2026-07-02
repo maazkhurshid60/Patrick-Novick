@@ -37,6 +37,104 @@ export async function GET(): Promise<NextResponse> {
   }
 }
 
+// Fields a re-upload is allowed to update. status/bounce_reason/id/email handled separately.
+const IMPORT_FIELDS = [
+  "name", "first_name", "last_name", "title", "company",
+  "business_email", "email_2", "personal_email_2",
+  "phone", "work_phone_2", "phone_2", "mobile_phone_2",
+  "linkedin", "website",
+  "street_address", "city", "state", "zip_code", "county", "region", "country",
+];
+
+// POST /api/contacts/bounced — bulk apply a fixed export back onto contacts.
+// Matches each row by `id` (preferred) or current `email`, updates fields
+// NON-destructively (a blank cell never wipes existing data — protects edits the
+// team already made), applies a corrected email if given, and releases the
+// address(es) from suppression so they're sendable again.
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  try {
+    const { rows } = await req.json() as { rows?: Record<string, unknown>[] };
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return NextResponse.json({ error: "No rows to import" }, { status: 400 });
+    }
+
+    let updated = 0, released = 0, invalid = 0, notFound = 0;
+
+    for (const row of rows) {
+      const id = row.id != null && String(row.id).trim() !== "" ? Number(row.id) : null;
+      const newEmail = String(row.email ?? "").trim().toLowerCase();
+
+      // Locate the contact: by id first (survives an email correction), then by email
+      let contact: { id: number; email: string } | null = null;
+      if (id && Number.isFinite(id)) {
+        const r = await db.execute({ sql: "SELECT id, email FROM contacts WHERE id = ?", args: [id] });
+        if (r.rows[0]) contact = { id: Number(r.rows[0].id), email: String(r.rows[0].email) };
+      }
+      if (!contact && newEmail) {
+        const r = await db.execute({ sql: "SELECT id, email FROM contacts WHERE LOWER(email) = ?", args: [newEmail] });
+        if (r.rows[0]) contact = { id: Number(r.rows[0].id), email: String(r.rows[0].email) };
+      }
+
+      if (!contact) {
+        // No matching contact — at least release the address from suppression if valid
+        if (isValidEmail(newEmail)) {
+          await db.execute({ sql: "DELETE FROM suppression_list WHERE LOWER(email) = ?", args: [newEmail] });
+          released++;
+        } else {
+          notFound++;
+        }
+        continue;
+      }
+
+      const sets: string[] = [];
+      const args: (string | number)[] = [];
+      for (const f of IMPORT_FIELDS) {
+        const v = row[f];
+        if (v === undefined) continue;
+        const val = String(v).trim();
+        if (!val) continue; // blank never overwrites existing data
+        sets.push(`${f} = ?`);
+        args.push(val);
+      }
+
+      const emailsToRelease = [contact.email.toLowerCase()];
+
+      // Apply a corrected email if it changed, is valid, and doesn't collide
+      if (newEmail && newEmail !== contact.email.toLowerCase()) {
+        if (!isValidEmail(newEmail)) {
+          invalid++;
+        } else {
+          const conflict = await db.execute({
+            sql: "SELECT id FROM contacts WHERE LOWER(email) = ? AND id != ?",
+            args: [newEmail, contact.id],
+          });
+          if (conflict.rows.length === 0) {
+            sets.push("email = ?");
+            args.push(newEmail);
+            emailsToRelease.push(newEmail);
+          }
+        }
+      }
+
+      // Always reactivate the contact
+      sets.push("status = 'active'");
+      args.push(contact.id);
+      await db.execute({ sql: `UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`, args });
+
+      for (const e of emailsToRelease) {
+        await db.execute({ sql: "DELETE FROM suppression_list WHERE LOWER(email) = ?", args: [e] });
+      }
+      updated++;
+      released++;
+    }
+
+    return NextResponse.json({ updated, released, invalid, notFound });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Import failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 // PATCH /api/contacts/bounced — correct a wrong email and release it back to sendable.
 // Updates the contact's email to the new address, removes the old (bad) address
 // from the suppression list, and reactivates the contact.

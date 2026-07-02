@@ -1,8 +1,36 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Search, RefreshCw, MailWarning, Pencil, Check, X, RotateCcw } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Search, RefreshCw, MailWarning, Pencil, Check, X, RotateCcw, Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
 import { Pagination } from "../Toast";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Load SheetJS on demand (same CDN the Contacts importer uses) for reading
+// uploaded .xlsx/.csv files and for writing the .xlsx export.
+const loadXLSX = (): Promise<any> => {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if ((window as any).XLSX) return Promise.resolve((window as any).XLSX);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    script.onload = () => resolve((window as any).XLSX);
+    script.onerror = (e) => reject(e);
+    document.head.appendChild(script);
+  });
+};
+
+// Columns our export uses — re-uploads are matched header→field by exact key.
+const IMPORT_KEYS = new Set([
+  "id", "email", "name", "first_name", "last_name", "title", "company",
+  "business_email", "email_2", "personal_email_2",
+  "phone", "work_phone_2", "phone_2", "mobile_phone_2",
+  "linkedin", "website",
+  "street_address", "city", "state", "zip_code", "county", "region", "country",
+]);
+function headerToKey(header: string): string | null {
+  const k = String(header).trim().toLowerCase().replace(/\s+/g, "_");
+  return IMPORT_KEYS.has(k) ? k : null;
+}
 
 interface BouncedContact {
   email: string;
@@ -56,6 +84,85 @@ export default function BouncedClient() {
   // Inline email-editing state
   const [editing, setEditing] = useState<string | null>(null); // the original email being edited
   const [draft, setDraft] = useState("");
+
+  // Export / upload state
+  const [exporting, setExporting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function downloadCsv() {
+    const a = document.createElement("a");
+    a.href = "/api/export/bounced";
+    a.click();
+  }
+
+  async function downloadExcel() {
+    try {
+      setExporting(true);
+      setError("");
+      const XLSX = await loadXLSX();
+      const res = await fetch("/api/export/bounced?format=json");
+      const data = await res.json();
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Bounced");
+      XLSX.writeFile(wb, `bounced-contacts-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err: any) {
+      setError(err.message || "Excel export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    try {
+      setUploading(true);
+      setError("");
+      setSuccess("");
+      const XLSX = await loadXLSX();
+      const ab = await file.arrayBuffer();
+      const wb = XLSX.read(ab, { type: "array", cellText: true, cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "", blankrows: false }) as any[][];
+      if (grid.length < 2) throw new Error("That file has a header row but no data rows.");
+
+      const keys = grid[0].map((h) => headerToKey(h));
+      if (!keys.some((k) => k === "id" || k === "email")) {
+        throw new Error("Couldn't find an 'id' or 'email' column. Upload the file exported from this page.");
+      }
+      const uploadRows = grid.slice(1)
+        .map((cells) => {
+          const o: Record<string, string> = {};
+          keys.forEach((k, i) => { if (k) o[k] = cells[i] == null ? "" : String(cells[i]); });
+          return o;
+        })
+        .filter((o) => (o.id && o.id.trim()) || (o.email && o.email.trim()));
+
+      if (uploadRows.length === 0) throw new Error("No rows with an id or email were found.");
+
+      const res = await fetch("/api/contacts/bounced", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: uploadRows }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      setSuccess(
+        `Applied ${uploadRows.length} row${uploadRows.length === 1 ? "" : "s"}: ` +
+        `${data.updated} updated · ${data.released} released back to sendable` +
+        (data.invalid ? ` · ${data.invalid} invalid email skipped` : "") +
+        (data.notFound ? ` · ${data.notFound} not matched` : "")
+      );
+      fetchRows();
+    } catch (err: any) {
+      setError(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function fetchRows() {
     try {
@@ -172,8 +279,10 @@ export default function BouncedClient() {
           <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>What this is</p>
           <p className="text-xs mt-1 leading-relaxed" style={{ color: "rgba(255,255,255,0.3)" }}>
             These addresses bounced, were blocked, or came back invalid, so they're blocked from future sends.
-            If it's just a typo, click <span className="text-white font-semibold">Fix email</span> to correct it — that releases them back to your sendable list automatically.
-            Use <span className="text-white font-semibold">Release</span> only if you think the bounce was temporary.
+            Fix one inline with <span className="text-white font-semibold">Fix email</span>, or do a batch:
+            <span className="text-white font-semibold"> CSV / Excel</span> downloads every field for review,
+            then <span className="text-white font-semibold">Upload fixed file</span> re-applies your edits and releases them back to sendable.
+            Blank cells never overwrite existing data, so any updates you&apos;ve already made are safe.
           </p>
         </div>
       </div>
@@ -196,6 +305,40 @@ export default function BouncedClient() {
                 style={{ ...inputStyle, padding: "0.5rem 0.75rem 0.5rem 2.2rem", fontSize: "0.8rem", width: "240px" }}
               />
             </div>
+            <button
+              onClick={downloadCsv}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5"
+              style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+              title="Download all bounced contacts with every field, as CSV"
+            >
+              <Download size={13} /> CSV
+            </button>
+            <button
+              onClick={downloadExcel}
+              disabled={exporting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-50"
+              style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+              title="Download all bounced contacts with every field, as Excel (.xlsx)"
+            >
+              {exporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} Excel
+            </button>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
+              style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+              title="Upload your fixed CSV/Excel to update these contacts and release them back to sendable"
+            >
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {uploading ? "Applying…" : "Upload fixed file"}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleUpload}
+              style={{ display: "none" }}
+            />
             <button
               onClick={fetchRows}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"

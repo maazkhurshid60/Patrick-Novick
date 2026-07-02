@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { Send, Clock, ChevronDown, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2 } from "lucide-react";
+import { Send, Clock, ChevronDown, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2, Search, X, MapPin } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
 
 interface Campaign {
@@ -14,6 +14,18 @@ interface Campaign {
   sent_at: number;
   total_opens: number;
   unique_opens: number;
+}
+
+interface RecipientRow {
+  id: number;
+  email: string;
+  name: string;
+  title: string;
+  company: string;
+  city?: string;
+  state?: string;
+  send_count: number;
+  last_sent: number | null;
 }
 
 interface ContactList {
@@ -90,6 +102,12 @@ export default function CampaignClient({
   const [showConfirm, setShowConfirm] = useState(false);
   const [bodyIsHtml, setBodyIsHtml] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Recipient preview — the actual people this send will go to
+  const [showRecipients, setShowRecipients] = useState(false);
+  const [recipients, setRecipients] = useState<RecipientRow[]>([]);
+  const [recipientsLoading, setRecipientsLoading] = useState(false);
+  const [recipientSearch, setRecipientSearch] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,6 +228,26 @@ export default function CampaignClient({
     if (!bodyIsHtml) out = out.trim().replace(/\n/g, "<br />");
     return out;
   })();
+
+  async function openRecipients() {
+    setShowRecipients(true);
+    setRecipientsLoading(true);
+    setRecipientSearch("");
+    const params = new URLSearchParams();
+    if (listId) params.set("listId", String(listId));
+    if (excludeRecent) params.set("excludeRecentDays", String(excludeDays));
+    params.set("dailyLimit", String(dailyLimit));
+    params.set("offset", String(sendOffset));
+    try {
+      const res = await fetch(`/api/campaigns/recipients?${params.toString()}`);
+      const data = await res.json();
+      setRecipients(data.recipients ?? []);
+    } catch {
+      setRecipients([]);
+    } finally {
+      setRecipientsLoading(false);
+    }
+  }
 
   async function handleSend(e: FormEvent) {
     e.preventDefault();
@@ -366,6 +404,93 @@ export default function CampaignClient({
         </div>
       </div>
     )}
+    {/* Recipient preview — the actual people this send resolves to */}
+    {showRecipients && (
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        onClick={(e) => { if (e.target === e.currentTarget) setShowRecipients(false); }}
+      >
+        <div style={{ background: "#151821", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1.25rem", width: "100%", maxWidth: 620, maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
+          <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div>
+              <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
+                Recipients for this send {!recipientsLoading && <span style={{ color: "rgba(255,255,255,0.4)" }}>· {recipients.length}</span>}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Exactly who gets this email with the current settings, and how many times we&apos;ve emailed each before.
+              </p>
+            </div>
+            <button onClick={() => setShowRecipients(false)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5 shrink-0" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="relative">
+              <Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }} />
+              <input
+                value={recipientSearch}
+                onChange={(e) => setRecipientSearch(e.target.value)}
+                placeholder="Search name, email, company…"
+                style={{ ...inputStyle, paddingLeft: "2.2rem", fontSize: "0.8rem" }}
+              />
+            </div>
+          </div>
+
+          <div style={{ overflowY: "auto" }}>
+            {recipientsLoading ? (
+              <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Resolving recipients…</div>
+            ) : (() => {
+              const rq = recipientSearch.trim().toLowerCase();
+              const shown = recipients.filter((r) =>
+                !rq || r.email.toLowerCase().includes(rq) || (r.name || "").toLowerCase().includes(rq) || (r.company || "").toLowerCase().includes(rq)
+              );
+              if (shown.length === 0) {
+                return <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{recipients.length === 0 ? "No eligible recipients for these settings." : "No recipients match your search."}</div>;
+              }
+              return shown.map((r, i) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: i < shown.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                      {(r.name || r.email)[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{r.name || r.email}</p>
+                      <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {r.name ? r.email : ""}
+                        {(r.title || r.company) && <>{r.name ? " · " : ""}{[r.title, r.company].filter(Boolean).join(" at ")}</>}
+                      </p>
+                      {[r.city, r.state].filter(Boolean).length > 0 && (
+                        <p className="text-xs flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          <MapPin size={9} /> {[r.city, r.state].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {r.send_count > 0 ? (
+                      <>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}>
+                          sent {r.send_count}×
+                        </span>
+                        {r.last_sent && (
+                          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                            last {new Date(r.last_sent * 1000).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>first time</span>
+                    )}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
       <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -519,6 +644,17 @@ export default function CampaignClient({
               )}
             </label>
           </div>
+
+          {/* See exactly who this send resolves to */}
+          <button
+            type="button"
+            onClick={openRecipients}
+            disabled={sendCount === 0}
+            className="self-start flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          >
+            <Users size={13} /> Preview recipients &amp; send history
+          </button>
 
           {/* Reply-to */}
           <div>
