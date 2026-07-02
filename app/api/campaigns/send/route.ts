@@ -13,6 +13,7 @@ export const revalidate = 0;
 const VERIFIER_EMAILS: string[] = [
   "news@patricknovick.com",
   "pat@jobw.com",
+  "zohaibe840@gmail.com",
 ];
 
 
