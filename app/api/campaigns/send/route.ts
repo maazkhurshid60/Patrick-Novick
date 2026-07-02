@@ -7,6 +7,14 @@ import path from "path";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Every real campaign also sends ONE clearly-marked copy to these verifier
+// addresses so the team can see exactly what went out. They are not tracked,
+// not counted as recipients, and not written to any log.
+const VERIFIER_EMAILS: string[] = [
+  "news@patricknovick.com",
+  "pat@jobw.com",
+];
+
 
 interface ContactRow {
   id: number;
@@ -288,6 +296,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })),
     "write"
   );
+
+  // Send one verifier copy of what just went out (non-blocking to the result —
+  // a failure here must never fail the campaign). Uses the first recipient's data
+  // for a representative, personalized example; campaignId 0 so it isn't tracked.
+  if (VERIFIER_EMAILS.length > 0) {
+    try {
+      const sample = contacts[0];
+      const verifierSubject = `[CAMPAIGN COPY] ${personalize(subject, sample)}`;
+      const verifierBodyText = personalize(body, sample);
+      await sendCampaignEmail({
+        subject: verifierSubject,
+        htmlContent: wrapInHtmlTemplate(verifierBodyText, VERIFIER_EMAILS[0], 0, !!isHtml),
+        replyTo: replyTo ?? undefined,
+        attachments: attachmentsOption,
+        recipients: VERIFIER_EMAILS.map((e) => ({
+          email: e,
+          name: "Campaign Verifier",
+          personalizedHtml: wrapInHtmlTemplate(verifierBodyText, e, 0, !!isHtml),
+          personalizedSubject: verifierSubject,
+        })),
+      });
+    } catch (err) {
+      console.error("Verifier copy failed (non-fatal):", err);
+    }
+  }
 
   return NextResponse.json({
     success: true,
