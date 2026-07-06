@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { Search, RefreshCw, MailWarning, Pencil, Check, X, RotateCcw, Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Search, RefreshCw, MailWarning, Pencil, Check, X, RotateCcw, Download, Upload, FileSpreadsheet, Loader2, Trash2 } from "lucide-react";
 import { Pagination } from "../Toast";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -80,6 +80,9 @@ export default function BouncedClient() {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
   const PER_PAGE = 30;
+
+  // Delete dialog state
+  const [deleteContactInfo, setDeleteContactInfo] = useState<{ contactId: number | null; email: string; name: string } | null>(null);
 
   // Inline email-editing state
   const [editing, setEditing] = useState<string | null>(null); // the original email being edited
@@ -235,6 +238,59 @@ export default function BouncedClient() {
       fetchRows();
     } catch (err: any) {
       setError(err.message || "An error occurred");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function deleteContact(c: BouncedContact) {
+    setError("");
+    setSuccess("");
+    setDeleteContactInfo({
+      contactId: c.contact_id,
+      email: c.email,
+      name: c.name || c.email,
+    });
+  }
+
+  async function executeDelete() {
+    if (!deleteContactInfo) return;
+    const { contactId, email } = deleteContactInfo;
+    setDeleteContactInfo(null);
+    try {
+      setBusy(true);
+      setError("");
+      setSuccess("");
+
+      const promises = [
+        fetch("/api/contacts/bounced", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        })
+      ];
+
+      if (contactId != null) {
+        promises.push(
+          fetch("/api/contacts", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: contactId }),
+          })
+        );
+      }
+
+      const responses = await Promise.all(promises);
+      const failed = responses.find(r => !r.ok);
+      if (failed) {
+        const data = await failed.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete contact");
+      }
+
+      setSuccess(`Successfully deleted ${email} entirely from the database.`);
+      fetchRows();
+    } catch (err: any) {
+      setError(err.message || "An error occurred during deletion");
     } finally {
       setBusy(false);
     }
@@ -477,6 +533,15 @@ export default function BouncedClient() {
                               >
                                 <RotateCcw size={12} /> Release
                               </button>
+                              <button
+                                onClick={() => deleteContact(r)}
+                                disabled={busy}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:scale-[1.03] disabled:opacity-50"
+                                style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+                                title="Delete this contact entirely from database and bounced lists"
+                              >
+                                <Trash2 size={12} /> Delete
+                              </button>
                             </>
                           )}
                         </div>
@@ -490,6 +555,36 @@ export default function BouncedClient() {
           </div>
         )}
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteContactInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-2">Delete Bounced Contact</h3>
+            <p className="text-xs text-slate-300 mb-4">
+              You are about to delete <span className="font-semibold text-white">{deleteContactInfo.name}</span>.
+            </p>
+            <p className="text-xs text-slate-400 mb-5">
+              This will permanently delete the contact from the database, remove all list memberships, and clear their bounce record from the suppression list. This action cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-2 text-xs font-bold">
+              <button
+                onClick={() => setDeleteContactInfo(null)}
+                className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer"
+              >
+                Delete Entirely
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
