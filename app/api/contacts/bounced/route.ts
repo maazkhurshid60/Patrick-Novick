@@ -49,8 +49,12 @@ const IMPORT_FIELDS = [
 // POST /api/contacts/bounced — bulk apply a fixed export back onto contacts.
 // Matches each row by `id` (preferred) or current `email`, updates fields
 // NON-destructively (a blank cell never wipes existing data — protects edits the
-// team already made), applies a corrected email if given, and releases the
-// address(es) from suppression so they're sendable again.
+// team already made). Then, per row:
+//   • `__keep` empty  → release: apply a corrected email if given, set active,
+//                       and remove the address(es) from suppression (sendable again).
+//   • `__keep` set    → keep in bounced: apply field edits, leave the contact
+//                       suppressed, and store the note as the reason (e.g.
+//                       "bounced: Retired") so it still shows on the Bounced page.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const { rows } = await req.json() as { rows?: Record<string, unknown>[] };
@@ -58,11 +62,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: "No rows to import" }, { status: 400 });
     }
 
-    let updated = 0, released = 0, invalid = 0, notFound = 0;
+    let released = 0, kept = 0, invalid = 0, notFound = 0;
 
     for (const row of rows) {
       const id = row.id != null && String(row.id).trim() !== "" ? Number(row.id) : null;
       const newEmail = String(row.email ?? "").trim().toLowerCase();
+      const keepNote = String(row.__keep ?? "").trim();
+      const isKeep = keepNote !== "";
+      const keepReason = isKeep ? `bounced: ${keepNote}`.slice(0, 200) : "";
 
       // Locate the contact: by id first (survives an email correction), then by email
       let contact: { id: number; email: string } | null = null;
@@ -75,17 +82,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (r.rows[0]) contact = { id: Number(r.rows[0].id), email: String(r.rows[0].email) };
       }
 
+      // No matching contact row — just manage the suppression entry by email
       if (!contact) {
-        // No matching contact — at least release the address from suppression if valid
-        if (isValidEmail(newEmail)) {
+        if (!isValidEmail(newEmail)) { notFound++; continue; }
+        if (isKeep) {
+          await db.execute({ sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, ?)", args: [newEmail, keepReason] });
+          await db.execute({ sql: "UPDATE suppression_list SET reason = ? WHERE LOWER(email) = ?", args: [keepReason, newEmail] });
+          kept++;
+        } else {
           await db.execute({ sql: "DELETE FROM suppression_list WHERE LOWER(email) = ?", args: [newEmail] });
           released++;
-        } else {
-          notFound++;
         }
         continue;
       }
 
+      // Non-destructive field updates
       const sets: string[] = [];
       const args: (string | number)[] = [];
       for (const f of IMPORT_FIELDS) {
@@ -97,7 +108,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         args.push(val);
       }
 
-      const emailsToRelease = [contact.email.toLowerCase()];
+      const affectedEmails = [contact.email.toLowerCase()];
 
       // Apply a corrected email if it changed, is valid, and doesn't collide
       if (newEmail && newEmail !== contact.email.toLowerCase()) {
@@ -111,24 +122,35 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (conflict.rows.length === 0) {
             sets.push("email = ?");
             args.push(newEmail);
-            emailsToRelease.push(newEmail);
+            affectedEmails.push(newEmail);
           }
         }
       }
 
-      // Always reactivate the contact
-      sets.push("status = 'active'");
-      args.push(contact.id);
-      await db.execute({ sql: `UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`, args });
-
-      for (const e of emailsToRelease) {
-        await db.execute({ sql: "DELETE FROM suppression_list WHERE LOWER(email) = ?", args: [e] });
+      if (isKeep) {
+        // Keep suppressed — apply edits but leave them in the bounced list
+        if (sets.length > 0) {
+          args.push(contact.id);
+          await db.execute({ sql: `UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`, args });
+        }
+        for (const e of affectedEmails) {
+          await db.execute({ sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, ?)", args: [e, keepReason] });
+          await db.execute({ sql: "UPDATE suppression_list SET reason = ? WHERE LOWER(email) = ?", args: [keepReason, e] });
+        }
+        kept++;
+      } else {
+        // Release — apply edits, reactivate, and drop from suppression
+        sets.push("status = 'active'");
+        args.push(contact.id);
+        await db.execute({ sql: `UPDATE contacts SET ${sets.join(", ")} WHERE id = ?`, args });
+        for (const e of affectedEmails) {
+          await db.execute({ sql: "DELETE FROM suppression_list WHERE LOWER(email) = ?", args: [e] });
+        }
+        released++;
       }
-      updated++;
-      released++;
     }
 
-    return NextResponse.json({ updated, released, invalid, notFound });
+    return NextResponse.json({ released, kept, invalid, notFound });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Import failed";
     return NextResponse.json({ error: msg }, { status: 500 });

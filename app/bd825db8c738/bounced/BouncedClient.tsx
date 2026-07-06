@@ -129,14 +129,34 @@ export default function BouncedClient() {
       const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "", blankrows: false }) as any[][];
       if (grid.length < 2) throw new Error("That file has a header row but no data rows.");
 
-      const keys = grid[0].map((h) => headerToKey(h));
+      const rawHeaders = grid[0].map((h) => String(h ?? "").trim());
+      const keys = rawHeaders.map((h) => headerToKey(h));
       if (!keys.some((k) => k === "id" || k === "email")) {
         throw new Error("Couldn't find an 'id' or 'email' column. Upload the file exported from this page.");
       }
+
+      // Locate the "keep in bounced" signal: a dedicated column, or (for files
+      // annotated in the last column) a trailing blank-header column, or a
+      // human-written bounce_reason. Any value there = keep the person suppressed.
+      const norm = (h: string) => h.toLowerCase().replace(/\s+/g, "_");
+      const KEEP_HEADERS = ["keep", "keep_bounced", "do_not_email", "donotemail", "note", "notes", "action"];
+      let keepIdx = rawHeaders.findIndex((h) => KEEP_HEADERS.includes(norm(h)));
+      if (keepIdx === -1 && rawHeaders.length && rawHeaders[rawHeaders.length - 1] === "") {
+        keepIdx = rawHeaders.length - 1; // trailing unnamed column holds the notes
+      }
+      const reasonIdx = rawHeaders.findIndex((h) => norm(h) === "bounce_reason");
+      const isSystemReason = (v: string) => /^(bounced|blocked|invalid)$/i.test(v.trim());
+
       const uploadRows = grid.slice(1)
         .map((cells) => {
           const o: Record<string, string> = {};
           keys.forEach((k, i) => { if (k) o[k] = cells[i] == null ? "" : String(cells[i]); });
+          let keepNote = keepIdx >= 0 ? String(cells[keepIdx] ?? "").trim() : "";
+          if (!keepNote && reasonIdx >= 0) {
+            const rv = String(cells[reasonIdx] ?? "").trim();
+            if (rv && !isSystemReason(rv)) keepNote = rv; // e.g. "Retired"
+          }
+          if (keepNote) o.__keep = keepNote;
           return o;
         })
         .filter((o) => (o.id && o.id.trim()) || (o.email && o.email.trim()));
@@ -152,7 +172,7 @@ export default function BouncedClient() {
       if (!res.ok) throw new Error(data.error || "Import failed");
       setSuccess(
         `Applied ${uploadRows.length} row${uploadRows.length === 1 ? "" : "s"}: ` +
-        `${data.updated} updated · ${data.released} released back to sendable` +
+        `${data.released} fixed & released · ${data.kept} kept in bounced` +
         (data.invalid ? ` · ${data.invalid} invalid email skipped` : "") +
         (data.notFound ? ` · ${data.notFound} not matched` : "")
       );

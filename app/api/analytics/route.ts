@@ -108,9 +108,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const contactsSel = listId
     ? "(SELECT COUNT(*) FROM contact_list_members WHERE list_id = ?)"
     : "(SELECT COUNT(*) FROM contacts)";
+  // "Unsubscribed / Suppressed" counts genuine opt-outs only — bounces/invalids
+  // have their own Bounced page (and Bounces stat), so exclude them here to match
+  // the Opt-Outs page.
+  const notBounce = "s.reason NOT IN ('bounced','invalid') AND s.reason NOT LIKE '%bounce%'";
   const suppressedSel = listId
-    ? "(SELECT COUNT(*) FROM contact_list_members m JOIN contacts c ON c.id = m.contact_id JOIN suppression_list s ON s.email = c.email WHERE m.list_id = ?)"
-    : "(SELECT COUNT(*) FROM suppression_list)";
+    ? `(SELECT COUNT(*) FROM contact_list_members m JOIN contacts c ON c.id = m.contact_id JOIN suppression_list s ON s.email = c.email WHERE m.list_id = ? AND ${notBounce})`
+    : `(SELECT COUNT(*) FROM suppression_list s WHERE ${notBounce})`;
 
   const totalsRes = await db.execute({
     sql: `

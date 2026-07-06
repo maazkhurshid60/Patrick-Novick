@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
-import Script from "next/script";
+import ChatWidget from "@/app/components/ChatWidget";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -63,11 +63,7 @@ export default function RootLayout({
     >
       <body className="antialiased">
         {children}
-        <Script
-          id="nextivacx-code-snippet"
-          src="https://d3po7etsbw5eiv.cloudfront.net/Simplify360Chat.js?key=NmEwNWU5OTE5NjFjZTYzZTcwOGFmZWU1fDQxNzIzNzA="
-          strategy="afterInteractive"
-        />
+        <ChatWidget />
       </body>
     </html>
   );

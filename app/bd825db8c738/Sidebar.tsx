@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Menu, X } from "lucide-react";
+import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X } from "lucide-react";
 
 const BASE = "/bd825db8c738";
 
@@ -10,6 +10,7 @@ const navItems = [
   { label: "Dashboard",       icon: BarChart2, href: BASE,                key: "dashboard" },
   { label: "Analytics",       icon: Activity,  href: `${BASE}/analytics`, key: "analytics" },
   { label: "Contacts",        icon: Users,     href: `${BASE}/contacts`,  key: "contacts" },
+  { label: "Spreadsheet",     icon: Table,     href: `${BASE}/spreadsheet`, key: "spreadsheet" },
   { label: "Lists",           icon: List,      href: `${BASE}/lists`,     key: "lists" },
   { label: "Email Campaigns", icon: Mail,      href: `${BASE}/campaigns`, key: "campaigns" },
   { label: "Templates",       icon: Layout,    href: `${BASE}/templates`, key: "templates" },
@@ -20,6 +21,16 @@ const navItems = [
 export default function Sidebar({ active }: { active: string }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+
+  const handleLinkClick = (e: React.MouseEvent) => {
+    if (typeof window !== "undefined" && (window as any).__hasUnsavedChanges) {
+      if (!window.confirm("You have unsaved changes. Are you sure you want to leave this page?")) {
+        e.preventDefault();
+        return;
+      }
+    }
+    close();
+  };
 
   return (
     <>
@@ -77,7 +88,7 @@ export default function Sidebar({ active }: { active: string }) {
               <Link
                 key={href}
                 href={href}
-                onClick={close}
+                onClick={handleLinkClick}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
                 style={{
                   background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
@@ -96,7 +107,7 @@ export default function Sidebar({ active }: { active: string }) {
             </p>
             <Link
               href="/"
-              onClick={close}
+              onClick={handleLinkClick}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/5"
               style={{ color: "rgba(255,255,255,0.38)" }}
             >

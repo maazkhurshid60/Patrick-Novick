@@ -1,0 +1,716 @@
+"use client";
+
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
+import { Search, Loader2, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+
+interface Contact {
+  id: number;
+  status?: string;
+  [key: string]: string | number | undefined;
+}
+
+interface ContactList { id: number; name: string; member_count?: number }
+
+// Columns rendered in the grid. `select` renders a status dropdown.
+const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
+  { key: "name", label: "Name", w: 180 },
+  { key: "first_name", label: "First", w: 110 },
+  { key: "last_name", label: "Last", w: 110 },
+  { key: "email", label: "Email", w: 230 },
+  { key: "title", label: "Title", w: 190 },
+  { key: "company", label: "Company", w: 190 },
+  { key: "phone", label: "Work Phone 1", w: 140 },
+  { key: "work_phone_2", label: "Work Phone 2", w: 140 },
+  { key: "phone_2", label: "Mobile 1", w: 140 },
+  { key: "mobile_phone_2", label: "Mobile 2", w: 140 },
+  { key: "business_email", label: "Business Email", w: 210 },
+  { key: "email_2", label: "Personal Email 1", w: 210 },
+  { key: "personal_email_2", label: "Personal Email 2", w: 210 },
+  { key: "linkedin", label: "LinkedIn", w: 210 },
+  { key: "website", label: "Website", w: 170 },
+  { key: "street_address", label: "Work Address", w: 230 },
+  { key: "city", label: "City", w: 140 },
+  { key: "state", label: "State", w: 80 },
+  { key: "zip_code", label: "ZIP", w: 90 },
+  { key: "county", label: "County", w: 130 },
+  { key: "region", label: "Region", w: 130 },
+  { key: "country", label: "Country", w: 90 },
+  { key: "status", label: "Status", w: 130, type: "select" },
+];
+
+interface GridCellProps {
+  rowId: number;
+  colKey: string;
+  colType?: "select";
+  colW: number;
+  initialValue: string;
+  pendingValue: string | undefined;
+  r: number;
+  c: number;
+  cellRefs: React.MutableRefObject<Map<string, HTMLInputElement | HTMLSelectElement>>;
+  onChangePending: (id: number, key: string, value: string | undefined) => void;
+  onKeyDown: (e: React.KeyboardEvent, r: number, c: number) => void;
+}
+
+const GridCell = memo(function GridCell({
+  rowId,
+  colKey,
+  colType,
+  colW,
+  initialValue,
+  pendingValue,
+  r,
+  c,
+  cellRefs,
+  onChangePending,
+  onKeyDown,
+}: GridCellProps) {
+  const isDirty = pendingValue !== undefined;
+  const displayValue = isDirty ? pendingValue : initialValue;
+
+  const [val, setVal] = useState(displayValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    setVal(displayValue);
+  }, [displayValue]);
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    if (val === initialValue) {
+      onChangePending(rowId, colKey, undefined);
+    } else {
+      onChangePending(rowId, colKey, val);
+    }
+  };
+
+  const handleSelectChange = (newVal: string) => {
+    setVal(newVal);
+    if (newVal === initialValue) {
+      onChangePending(rowId, colKey, undefined);
+    } else {
+      onChangePending(rowId, colKey, newVal);
+    }
+  };
+
+  const cellStyle: React.CSSProperties = {
+    width: colW,
+    background: isFocused ? "rgba(59,130,246,0.08)" : isDirty ? "rgba(245,158,11,0.02)" : "transparent",
+    color: "#e5e7eb",
+    border: isFocused
+      ? "2px solid #3b82f6"
+      : "2px solid transparent",
+    outline: "none",
+    padding: "6px 8px",
+    transition: "border-color 0.1s, background-color 0.1s",
+  };
+
+  if (colType === "select") {
+    return (
+      <div style={{ position: "relative", width: colW }}>
+        <select
+          ref={(el) => { if (el) cellRefs.current.set(`r${r}c${c}`, el); }}
+          value={val}
+          onChange={(e) => handleSelectChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onKeyDown={(e) => onKeyDown(e, r, c)}
+          style={{ ...cellStyle, color: "#fff", cursor: "pointer" }}
+        >
+          <option value="active" style={{ background: "#16181e" }}>active</option>
+          <option value="unsubscribed" style={{ background: "#16181e" }}>unsubscribed</option>
+          <option value="invalid" style={{ background: "#16181e" }}>invalid</option>
+        </select>
+        {isDirty && (
+          <div style={{
+            position: "absolute",
+            top: 2,
+            right: 2,
+            width: 0,
+            height: 0,
+            borderStyle: "solid",
+            borderWidth: "0 6px 6px 0",
+            borderColor: `transparent #f59e0b transparent transparent`,
+            pointerEvents: "none"
+          }} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: "relative", width: colW }}>
+      <input
+        ref={(el) => { if (el) cellRefs.current.set(`r${r}c${c}`, el); }}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onFocus={() => setIsFocused(true)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => onKeyDown(e, r, c)}
+        spellCheck={false}
+        style={cellStyle}
+      />
+      {isDirty && (
+        <div style={{
+          position: "absolute",
+          top: 2,
+          right: 2,
+          width: 0,
+          height: 0,
+          borderStyle: "solid",
+          borderWidth: "0 6px 6px 0",
+          borderColor: `transparent #f59e0b transparent transparent`,
+          pointerEvents: "none"
+        }} />
+      )}
+    </div>
+  );
+});
+
+const PER_PAGE = 100;
+
+export default function SpreadsheetClient() {
+  const [all, setAll] = useState<Contact[]>([]);
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [listFilter, setListFilter] = useState<number | "all">("all");
+  const [memberIds, setMemberIds] = useState<Set<number> | null>(null);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [banner, setBanner] = useState("");
+
+  const [pendingEdits, setPendingEdits] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  const [showAddRowModal, setShowAddRowModal] = useState(false);
+  const [selectedAddListId, setSelectedAddListId] = useState<number | "all">("all");
+  const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
+
+  // last-saved snapshot per contact, to know what changed
+  const saved = useRef<Map<number, Contact>>(new Map());
+  // input refs for keyboard navigation, keyed by "r{row}c{col}"
+  const cellRefs = useRef<Map<string, HTMLInputElement | HTMLSelectElement>>(new Map());
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/contacts");
+      const data = (await res.json()) as Contact[];
+      setAll(data);
+      saved.current = new Map(data.map((c) => [c.id, { ...c }]));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAll();
+    fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {});
+  }, [loadAll]);
+
+  useEffect(() => {
+    if (listFilter === "all") { setMemberIds(null); return; }
+    fetch(`/api/lists/${listFilter}/members`)
+      .then((r) => r.json())
+      .then((rows: { id: number }[]) => setMemberIds(new Set(rows.map((r) => r.id))))
+      .catch(() => setMemberIds(new Set()));
+  }, [listFilter]);
+
+  useEffect(() => { setPage(1); }, [listFilter, search]);
+
+  useEffect(() => {
+    const hasUnsaved = Object.keys(pendingEdits).length > 0;
+    if (typeof window !== "undefined") {
+      (window as any).__hasUnsavedChanges = hasUnsaved;
+    }
+
+    if (!hasUnsaved) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (typeof window !== "undefined") {
+        (window as any).__hasUnsavedChanges = false;
+      }
+    };
+  }, [pendingEdits]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return all.filter((c) => {
+      if (memberIds && !memberIds.has(c.id)) return false;
+      if (!q) return true;
+      return ["name", "email", "company", "title", "city", "state"].some((k) =>
+        String(c[k] ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [all, memberIds, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+
+  function setValue(id: number, key: string, value: string) {
+    setAll((prev) => prev.map((c) => (c.id === id ? { ...c, [key]: value } : c)));
+  }
+
+  const onChangePending = useCallback((id: number, key: string, value: string | undefined) => {
+    const ck = `${id}-${key}`;
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      if (value === undefined) {
+        delete next[ck];
+      } else {
+        next[ck] = value;
+      }
+      return next;
+    });
+  }, []);
+
+  async function saveChanges() {
+    setSaving(true);
+    setBanner("");
+    const editsArray = Object.entries(pendingEdits);
+    if (editsArray.length === 0) { setSaving(false); return; }
+
+    const contactUpdates: Record<number, Record<string, string>> = {};
+    for (const [ck, val] of editsArray) {
+      const [idStr, key] = ck.split("-");
+      const id = Number(idStr);
+      if (!contactUpdates[id]) contactUpdates[id] = {};
+      contactUpdates[id][key] = val;
+    }
+
+    try {
+      const updatePromises = Object.entries(contactUpdates).map(async ([idStr, fields]) => {
+        const id = Number(idStr);
+        const res = await fetch("/api/contacts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, ...fields }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Save failed");
+
+        const snap = saved.current.get(id);
+        Object.entries(fields).forEach(([key, val]) => {
+          setValue(id, key, val);
+          if (snap) {
+            snap[key] = val;
+            if (key === "first_name" || key === "last_name") {
+              const cur = all.find((c) => c.id === id) || snap;
+              const first = key === "first_name" ? val : String(cur.first_name ?? "");
+              const last = key === "last_name" ? val : String(cur.last_name ?? "");
+              const nm = [first, last].filter(Boolean).join(" ");
+              setValue(id, "name", nm); snap.name = nm;
+            }
+          }
+        });
+      });
+
+      await Promise.all(updatePromises);
+      setPendingEdits({});
+      setBanner("All changes saved successfully.");
+      setTimeout(() => setBanner(""), 3000);
+    } catch (err) {
+      setBanner((err as Error).message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function discardChanges() {
+    setPendingEdits({});
+    setBanner("Discarded unsaved changes.");
+    setTimeout(() => setBanner(""), 2000);
+  }
+
+  async function deleteRow(id: number) {
+    const contact = all.find((c) => c.id === id);
+    const name = String(contact?.name || contact?.email || `contact #${id}`);
+    setDeleteContactInfo({ id, name });
+  }
+
+  async function executeDeleteEntirely(id: number) {
+    setDeleteContactInfo(null);
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${id}-`)) delete next[k];
+      });
+      return next;
+    });
+
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete contact");
+      }
+      setAll((prev) => prev.filter((c) => c.id !== id));
+      saved.current.delete(id);
+      if (listFilter !== "all" && memberIds) {
+        setMemberIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      }
+      setBanner("Contact deleted entirely from database.");
+      setTimeout(() => setBanner(""), 3000);
+    } catch (err) {
+      setBanner((err as Error).message || "Failed to delete contact");
+    }
+  }
+
+  async function executeRemoveFromList(contactId: number) {
+    setDeleteContactInfo(null);
+    if (listFilter === "all") return;
+
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((k) => {
+        if (k.startsWith(`${contactId}-`)) delete next[k];
+      });
+      return next;
+    });
+
+    try {
+      const res = await fetch(`/api/lists/${listFilter}/members`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to remove member");
+      }
+      if (memberIds) {
+        setMemberIds((prev) => {
+          const next = new Set(prev);
+          next.delete(contactId);
+          return next;
+        });
+      }
+      setBanner(`Removed contact from current list.`);
+      setTimeout(() => setBanner(""), 3000);
+    } catch (err) {
+      setBanner((err as Error).message || "Failed to remove member");
+    }
+  }
+
+  // Google-Sheets-style movement between cells
+  function focusCell(r: number, c: number) {
+    const el = cellRefs.current.get(`r${r}c${c}`);
+    if (el) { el.focus(); if (el instanceof HTMLInputElement) el.select(); }
+  }
+  function onKeyDown(e: React.KeyboardEvent, r: number, c: number) {
+    const maxR = pageRows.length - 1;
+    const maxC = COLS.length - 1;
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); focusCell(Math.min(maxR, r + 1), c); }
+    else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); focusCell(Math.max(0, r - 1), c); }
+    else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); c < maxC ? focusCell(r, c + 1) : focusCell(Math.min(maxR, r + 1), 0); }
+    else if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); c > 0 ? focusCell(r, c - 1) : focusCell(Math.max(0, r - 1), maxC); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); focusCell(Math.min(maxR, r + 1), c); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); focusCell(Math.max(0, r - 1), c); }
+  }
+
+  function addRow() {
+    setSelectedAddListId(listFilter);
+    setShowAddRowModal(true);
+  }
+
+  async function executeAddRow() {
+    setShowAddRowModal(false);
+    const email = `new.contact.${Date.now()}@edit-me.com`;
+    const body: Record<string, unknown> = { contacts: [{ email }] };
+    if (selectedAddListId !== "all") {
+      body.listId = selectedAddListId;
+    }
+    try {
+      await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      await loadAll();
+      if (listFilter !== "all") {
+        const r = await fetch(`/api/lists/${listFilter}/members`);
+        const rows = await r.json();
+        setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
+      }
+      setPage(1);
+      const listName = selectedAddListId === "all" ? "All Contacts" : lists.find(l => l.id === selectedAddListId)?.name || "selected list";
+      setBanner(`Added new contact to ${listName}.`);
+      setTimeout(() => setBanner(""), 3500);
+    } catch (err) {
+      setBanner((err as Error).message || "Failed to add row");
+    }
+  }
+
+  const selectedName = listFilter === "all" ? null : lists.find((l) => l.id === listFilter)?.name;
+
+  return (
+    <div className="flex flex-col gap-4 w-full max-w-full overflow-hidden flex-1">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">
+        <div>
+          <p className="text-lg font-black text-white" style={{ fontFamily: "var(--font-heading)" }}>
+            {selectedName ?? "All contacts"} <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>· {filtered.length}</span>
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            Double-click or click to edit. Tab / Enter / arrow keys move between cells. Changes save when you click "Save Changes".
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem 0.45rem 2rem", outline: "none", width: 200 }} />
+          </div>
+          <select value={listFilter} onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem", outline: "none", cursor: "pointer", maxWidth: 220 }}>
+            <option value="all" style={{ background: "#16181e" }}>All contacts</option>
+            {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
+          </select>
+          <button onClick={addRow}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
+            style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+            <Plus size={14} /> Add row
+          </button>
+        </div>
+      </div>
+
+      {banner && (
+        <div className="px-4 py-2.5 rounded-xl text-xs font-medium shrink-0" style={{ background: "rgba(96,165,250,0.1)", color: "#93c5fd", border: "1px solid rgba(96,165,250,0.2)" }}>
+          {banner} <button onClick={() => setBanner("")} className="ml-2 underline">dismiss</button>
+        </div>
+      )}
+
+      {/* Grid */}
+      <div className="spreadsheet-grid" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "#14161b", width: "100%", maxWidth: "100%" }}>
+        {loading ? (
+          <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <Loader2 size={14} className="animate-spin" /> Loading contacts…
+          </div>
+        ) : pageRows.length === 0 ? (
+          <div className="py-20 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No contacts here.</div>
+        ) : (
+          <table style={{ borderCollapse: "separate", borderSpacing: 0, fontSize: "0.78rem", width: "max-content" }}>
+            <thead>
+              <tr>
+                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#1e2128", color: "rgba(255,255,255,0.4)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.15)", minWidth: 44 }}>#</th>
+                {COLS.map((col) => (
+                  <th key={col.key} style={{ position: "sticky", top: 0, zIndex: 2, background: "#1e2128", color: "rgba(255,255,255,0.5)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: col.w, whiteSpace: "nowrap" }}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((row, r) => (
+                <tr key={row.id} style={{ background: r % 2 === 0 ? "#14161b" : "#171a20" }}>
+                  {(() => {
+                    const hasPendingChangesInRow = Object.keys(pendingEdits).some((k) => k.startsWith(`${row.id}-`));
+                    return (
+                      <td className="group" style={{ position: "sticky", left: 0, zIndex: 1, background: "#171a20", color: "rgba(255,255,255,0.3)", padding: 0, textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>
+                        <div className="relative flex items-center justify-end w-[44px] h-[36px] px-[10px]">
+                          {hasPendingChangesInRow && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 shrink-0" title="Row has unsaved changes" />
+                          )}
+                          <span className="group-hover:opacity-0 transition-opacity duration-150">
+                            {(currentPage - 1) * PER_PAGE + r + 1}
+                          </span>
+                          <button
+                            onClick={() => deleteRow(row.id)}
+                            className="opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center text-red-400 hover:text-red-300 transition-all cursor-pointer bg-[#171a20]"
+                            title="Delete Row"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    );
+                  })()}
+                  {COLS.map((col, c) => {
+                    const ck = `${row.id}-${col.key}`;
+                    const pendingValue = pendingEdits[ck];
+                    return (
+                      <td key={col.key} style={{ padding: 0, borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+                        <GridCell
+                          rowId={row.id}
+                          colKey={col.key}
+                          colType={col.type}
+                          colW={col.w}
+                          initialValue={String(row[col.key] ?? "")}
+                          pendingValue={pendingValue}
+                          r={r}
+                          c={c}
+                          cellRefs={cellRefs}
+                          onChangePending={onChangePending}
+                          onKeyDown={onKeyDown}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Pager */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 shrink-0">
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5 cursor-pointer"
+              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <ChevronLeft size={13} /> Prev
+            </button>
+            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5 cursor-pointer"
+              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              Next <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Save Panel */}
+      {Object.keys(pendingEdits).length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 px-4 py-3 rounded-xl shadow-2xl border transition-all duration-300 flex-wrap sm:flex-nowrap"
+             style={{
+               background: "#1a1d23",
+               borderColor: "rgba(245,158,11,0.3)",
+               width: "calc(100% - 32px)",
+               maxWidth: "460px",
+               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)"
+             }}>
+          <div className="flex flex-col gap-0.5 max-w-[280px]">
+            <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              Unsaved changes ({Object.keys(pendingEdits).length})
+            </p>
+            <p className="text-[0.7rem] text-slate-400 truncate">
+              {Object.keys(pendingEdits).map(k => {
+                const [id, key] = k.split("-");
+                const contact = all.find(c => String(c.id) === id);
+                const fieldLabel = COLS.find(c => c.key === key)?.label || key;
+                return `${contact?.name || `Row #${id}`}: ${fieldLabel}`;
+              }).join(", ")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={discardChanges} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-white/5 cursor-pointer text-slate-400 disabled:opacity-40 select-none">
+              Discard
+            </button>
+            <button onClick={saveChanges} disabled={saving} className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:opacity-50 select-none">
+              {saving ? <Loader2 size={13} className="animate-spin" /> : null}
+              Save Changes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Row Modal */}
+      {showAddRowModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-3">Add Row to List</h3>
+            <p className="text-xs text-slate-400 mb-4">Choose which list this new contact should be added to:</p>
+            
+            <select
+              value={selectedAddListId}
+              onChange={(e) => setSelectedAddListId(e.target.value === "all" ? "all" : Number(e.target.value))}
+              className="w-full mb-5 px-3 py-2 rounded-lg text-xs"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+            >
+              <option value="all" style={{ background: "#16181e" }}>All Contacts (No specific list)</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
+
+            <div className="flex justify-end gap-2 text-xs font-bold">
+              <button
+                onClick={() => setShowAddRowModal(false)}
+                className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeAddRow}
+                className="px-4 py-1.5 rounded-lg bg-green-500 text-slate-950 hover:bg-green-400 cursor-pointer"
+              >
+                Add Row
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete/Remove Row Modal */}
+      {deleteContactInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-2">Delete or Remove Row</h3>
+            <p className="text-xs text-slate-300 mb-4">
+              You are about to delete <span className="font-semibold text-white">{deleteContactInfo.name}</span>.
+            </p>
+
+            {listFilter === "all" ? (
+              <p className="text-xs text-slate-400 mb-5">
+                This will permanently delete the contact entirely from the database and remove them from all lists. This action cannot be undone.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 mb-5">
+                Do you want to just remove them from the current list <span className="font-semibold text-white">"{selectedName}"</span>, or delete them entirely from the database?
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2 text-xs font-bold flex-wrap">
+              <button
+                onClick={() => setDeleteContactInfo(null)}
+                className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer"
+              >
+                Cancel
+              </button>
+              
+              {listFilter !== "all" && (
+                <button
+                  onClick={() => executeRemoveFromList(deleteContactInfo.id)}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 cursor-pointer"
+                >
+                  Remove from List
+                </button>
+              )}
+              
+              <button
+                onClick={() => executeDeleteEntirely(deleteContactInfo.id)}
+                className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer"
+              >
+                Delete Entirely
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

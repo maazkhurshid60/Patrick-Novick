@@ -15,6 +15,8 @@ const FIELDS = [
   "linkedin", "website",
   "street_address", "city", "state", "zip_code", "county", "region", "country",
   "status", "bounce_reason",
+  // Control column: blank = fix & release on re-upload; any value = keep in bounced.
+  "keep_bounced",
 ];
 
 // GET /api/export/bounced — every bounced/invalid address joined to its full
@@ -29,7 +31,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
            c.linkedin, c.website,
            c.street_address, c.city, c.state, c.zip_code, c.county, c.region, c.country,
            c.status,
-           s.reason AS bounce_reason
+           s.reason AS bounce_reason,
+           CASE WHEN s.reason LIKE 'bounced:%' THEN TRIM(SUBSTR(s.reason, 9)) ELSE '' END AS keep_bounced
     FROM suppression_list s
     LEFT JOIN contacts c ON LOWER(c.email) = LOWER(s.email)
     WHERE s.reason IN ('bounced', 'invalid') OR s.reason LIKE '%bounce%'
