@@ -201,6 +201,8 @@ export default function SpreadsheetClient() {
   const saved = useRef<Map<number, Contact>>(new Map());
   // input refs for keyboard navigation, keyed by "r{row}c{col}"
   const cellRefs = useRef<Map<string, HTMLInputElement | HTMLSelectElement>>(new Map());
+  // the scrollable grid container, so we can snap to the new row after adding
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Load a saved column order (client only); reconcile with current columns.
   useEffect(() => {
@@ -245,6 +247,9 @@ export default function SpreadsheetClient() {
     else setSortKey(null); // asc → desc → off
   }
 
+  // ids of rows just added in this session, so we can highlight them until saved
+  const [newRowIds, setNewRowIds] = useState<Set<number>>(new Set());
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
@@ -252,6 +257,7 @@ export default function SpreadsheetClient() {
       const data = (await res.json()) as Contact[];
       setAll(data);
       saved.current = new Map(data.map((c) => [c.id, { ...c }]));
+      return data;
     } finally {
       setLoading(false);
     }
@@ -390,6 +396,13 @@ export default function SpreadsheetClient() {
 
       await Promise.all(updatePromises);
       setPendingEdits({});
+      // Once a new row's details are saved, it's no longer "new"
+      const savedIds = Object.keys(contactUpdates).map(Number);
+      setNewRowIds((prev) => {
+        const next = new Set(prev);
+        savedIds.forEach((id) => next.delete(id));
+        return next;
+      });
       setBanner("All changes saved successfully.");
       setTimeout(() => setBanner(""), 3000);
     } catch (err) {
@@ -433,6 +446,7 @@ export default function SpreadsheetClient() {
       }
       setAll((prev) => prev.filter((c) => c.id !== id));
       saved.current.delete(id);
+      setNewRowIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       if (listFilter !== "all" && memberIds) {
         setMemberIds((prev) => {
           const next = new Set(prev);
@@ -518,15 +532,21 @@ export default function SpreadsheetClient() {
       setSortKey(null);   // newest-first so the new row is at the top
       setSearch("");      // make sure it isn't filtered out
       setPage(1);
-      await loadAll();
+      const data = await loadAll();
+      const created = data.find((c) => String(c.email) === email);
+      if (created) setNewRowIds((prev) => new Set(prev).add(created.id));
       if (listFilter !== "all") {
         const r = await fetch(`/api/lists/${listFilter}/members`);
         const rows = await r.json();
         setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
       }
-      setBanner("Blank row added at the top — fill it in, then Save.");
-      setTimeout(() => setBanner(""), 3500);
-      setTimeout(() => focusCell(0, 0), 150); // focus the first cell of the new row
+      setBanner("Blank row added at the top (marked NEW) — fill it in, then Save.");
+      setTimeout(() => setBanner(""), 4000);
+      // Snap the grid to the top-left and focus the new row so it's right in front of you
+      setTimeout(() => {
+        if (gridRef.current) gridRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        focusCell(0, 0);
+      }, 150);
     } catch (err) {
       setBanner((err as Error).message || "Failed to add row");
     }
@@ -545,7 +565,11 @@ export default function SpreadsheetClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      await loadAll();
+      setSortKey(null);
+      setSearch("");
+      const data = await loadAll();
+      const created = data.find((c) => String(c.email) === email);
+      if (created) setNewRowIds((prev) => new Set(prev).add(created.id));
       if (listFilter !== "all") {
         const r = await fetch(`/api/lists/${listFilter}/members`);
         const rows = await r.json();
@@ -553,8 +577,12 @@ export default function SpreadsheetClient() {
       }
       setPage(1);
       const listName = selectedAddListId === "all" ? "All Contacts" : lists.find(l => l.id === selectedAddListId)?.name || "selected list";
-      setBanner(`Added new contact to ${listName}.`);
-      setTimeout(() => setBanner(""), 3500);
+      setBanner(`Added new contact to ${listName} (marked NEW at the top).`);
+      setTimeout(() => setBanner(""), 4000);
+      setTimeout(() => {
+        if (gridRef.current) gridRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        focusCell(0, 0);
+      }, 150);
     } catch (err) {
       setBanner((err as Error).message || "Failed to add row");
     }
@@ -605,7 +633,7 @@ export default function SpreadsheetClient() {
       )}
 
       {/* Grid */}
-      <div className="spreadsheet-grid" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "#14161b", width: "100%", maxWidth: "100%" }}>
+      <div ref={gridRef} className="spreadsheet-grid" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "#14161b", width: "100%", maxWidth: "100%" }}>
         {loading ? (
           <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
             <Loader2 size={14} className="animate-spin" /> Loading contacts…
@@ -653,14 +681,20 @@ export default function SpreadsheetClient() {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((row, r) => (
-                <tr key={row.id} style={{ background: r % 2 === 0 ? "#14161b" : "#171a20" }}>
+              {pageRows.map((row, r) => {
+                const isNew = newRowIds.has(row.id);
+                const rowBg = isNew ? "#14251b" : r % 2 === 0 ? "#14161b" : "#171a20";
+                return (
+                <tr key={row.id} style={{ background: rowBg, boxShadow: isNew ? "inset 3px 0 0 #22c55e" : "none" }}>
                   {(() => {
                     const hasPendingChangesInRow = Object.keys(pendingEdits).some((k) => k.startsWith(`${row.id}-`));
                     return (
-                      <td className="group" style={{ position: "sticky", left: 0, zIndex: 1, background: "#171a20", color: "rgba(255,255,255,0.3)", padding: 0, textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>
+                      <td className="group" style={{ position: "sticky", left: 0, zIndex: 1, background: isNew ? "#14251b" : "#171a20", color: "rgba(255,255,255,0.3)", padding: 0, textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>
                         <div className="relative flex items-center justify-end w-[44px] h-[36px] px-[10px]">
-                          {hasPendingChangesInRow && (
+                          {isNew && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 shrink-0 animate-pulse" title="Just added — fill it in and Save" />
+                          )}
+                          {hasPendingChangesInRow && !isNew && (
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5 shrink-0" title="Row has unsaved changes" />
                           )}
                           <span className="group-hover:opacity-0 transition-opacity duration-150">
@@ -699,7 +733,8 @@ export default function SpreadsheetClient() {
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
