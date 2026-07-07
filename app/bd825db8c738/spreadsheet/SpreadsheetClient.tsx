@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
-import { Search, Loader2, Plus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Search, Loader2, Plus, ChevronLeft, ChevronRight, Trash2, ArrowUp, ArrowDown, Zap } from "lucide-react";
 
 interface Contact {
   id: number;
@@ -19,6 +19,11 @@ const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
   { key: "email", label: "Email", w: 230 },
   { key: "title", label: "Title", w: 190 },
   { key: "company", label: "Company", w: 190 },
+  // Work address block sits right after the company they work at
+  { key: "street_address", label: "Work Address", w: 230 },
+  { key: "city", label: "City", w: 140 },
+  { key: "state", label: "State", w: 80 },
+  { key: "zip_code", label: "ZIP", w: 90 },
   { key: "phone", label: "Work Phone 1", w: 140 },
   { key: "work_phone_2", label: "Work Phone 2", w: 140 },
   { key: "phone_2", label: "Mobile 1", w: 140 },
@@ -28,10 +33,6 @@ const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
   { key: "personal_email_2", label: "Personal Email 2", w: 210 },
   { key: "linkedin", label: "LinkedIn", w: 210 },
   { key: "website", label: "Website", w: 170 },
-  { key: "street_address", label: "Work Address", w: 230 },
-  { key: "city", label: "City", w: 140 },
-  { key: "state", label: "State", w: 80 },
-  { key: "zip_code", label: "ZIP", w: 90 },
   { key: "county", label: "County", w: 130 },
   { key: "region", label: "Region", w: 130 },
   { key: "country", label: "Country", w: 90 },
@@ -186,10 +187,49 @@ export default function SpreadsheetClient() {
   const [selectedAddListId, setSelectedAddListId] = useState<number | "all">("all");
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
 
+  // Sorting (click a header) and column order (drag a header, persisted per browser)
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [colOrder, setColOrder] = useState<string[]>(() => COLS.map((c) => c.key));
+  const dragKey = useRef<string | null>(null);
+  const suppressClick = useRef(false);
+
   // last-saved snapshot per contact, to know what changed
   const saved = useRef<Map<number, Contact>>(new Map());
   // input refs for keyboard navigation, keyed by "r{row}c{col}"
   const cellRefs = useRef<Map<string, HTMLInputElement | HTMLSelectElement>>(new Map());
+
+  // Load a saved column order (client only); reconcile with current columns.
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("ss_col_order") || "null");
+      if (Array.isArray(raw)) {
+        const valid = raw.filter((k) => COLS.some((c) => c.key === k));
+        const missing = COLS.map((c) => c.key).filter((k) => !valid.includes(k));
+        setColOrder([...valid, ...missing]);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  function saveColOrder(order: string[]) {
+    setColOrder(order);
+    try { localStorage.setItem("ss_col_order", JSON.stringify(order)); } catch { /* ignore */ }
+  }
+  function reorderCol(targetKey: string) {
+    const from = dragKey.current;
+    dragKey.current = null;
+    if (!from || from === targetKey) return;
+    const order = colOrder.filter((k) => k !== from);
+    const ti = order.indexOf(targetKey);
+    order.splice(ti, 0, from); // drop places the dragged column to the left of the target
+    saveColOrder(order);
+  }
+  function toggleSort(key: string) {
+    if (suppressClick.current) return; // ignore the click that follows a drag
+    if (sortKey !== key) { setSortKey(key); setSortDir("asc"); }
+    else if (sortDir === "asc") setSortDir("desc");
+    else setSortKey(null); // asc → desc → off
+  }
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -252,9 +292,29 @@ export default function SpreadsheetClient() {
     });
   }, [all, memberIds, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  // Columns in the user's chosen order
+  const orderedCols = useMemo(
+    () => colOrder.map((k) => COLS.find((c) => c.key === k)).filter(Boolean) as typeof COLS,
+    [colOrder]
+  );
+
+  // Sort the filtered rows (empties sink to the bottom); length is unchanged
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const av = String(a[sortKey] ?? "").trim().toLowerCase();
+      const bv = String(b[sortKey] ?? "").trim().toLowerCase();
+      if (av === bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return av.localeCompare(bv, undefined, { numeric: true }) * dir;
+    });
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
   const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+  const pageRows = sorted.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
   function setValue(id: number, key: string, value: string) {
     setAll((prev) => prev.map((c) => (c.id === id ? { ...c, [key]: value } : c)));
@@ -416,7 +476,7 @@ export default function SpreadsheetClient() {
   }
   function onKeyDown(e: React.KeyboardEvent, r: number, c: number) {
     const maxR = pageRows.length - 1;
-    const maxC = COLS.length - 1;
+    const maxC = orderedCols.length - 1;
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); focusCell(Math.min(maxR, r + 1), c); }
     else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); focusCell(Math.max(0, r - 1), c); }
     else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); c < maxC ? focusCell(r, c + 1) : focusCell(Math.min(maxR, r + 1), 0); }
@@ -428,6 +488,34 @@ export default function SpreadsheetClient() {
   function addRow() {
     setSelectedAddListId(listFilter);
     setShowAddRowModal(true);
+  }
+
+  // One-click blank row at the top of the current view, ready to fill in place.
+  async function quickAdd() {
+    const email = `new.contact.${Date.now()}@edit-me.com`;
+    const body: Record<string, unknown> = { contacts: [{ email }] };
+    if (listFilter !== "all") body.listId = listFilter;
+    try {
+      await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setSortKey(null);   // newest-first so the new row is at the top
+      setSearch("");      // make sure it isn't filtered out
+      setPage(1);
+      await loadAll();
+      if (listFilter !== "all") {
+        const r = await fetch(`/api/lists/${listFilter}/members`);
+        const rows = await r.json();
+        setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
+      }
+      setBanner("Blank row added at the top — fill it in, then Save.");
+      setTimeout(() => setBanner(""), 3500);
+      setTimeout(() => focusCell(0, 0), 150); // focus the first cell of the new row
+    } catch (err) {
+      setBanner((err as Error).message || "Failed to add row");
+    }
   }
 
   async function executeAddRow() {
@@ -469,7 +557,7 @@ export default function SpreadsheetClient() {
             {selectedName ?? "All contacts"} <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>· {filtered.length}</span>
           </p>
           <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Double-click or click to edit. Tab / Enter / arrow keys move between cells. Changes save when you click "Save Changes".
+            Click a cell to edit · Tab / Enter / arrows to move · <span style={{ color: "rgba(255,255,255,0.45)" }}>click a header to sort</span> · <span style={{ color: "rgba(255,255,255,0.45)" }}>drag a header to reorder</span> · Save when done.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -483,7 +571,12 @@ export default function SpreadsheetClient() {
             <option value="all" style={{ background: "#16181e" }}>All contacts</option>
             {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
           </select>
-          <button onClick={addRow}
+          <button onClick={quickAdd} title="Instantly add a blank row at the top of this view"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
+            style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}>
+            <Zap size={14} /> Quick add
+          </button>
+          <button onClick={addRow} title="Add a row and choose which list it goes to"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
             style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
             <Plus size={14} /> Add row
@@ -510,11 +603,25 @@ export default function SpreadsheetClient() {
             <thead>
               <tr>
                 <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#1e2128", color: "rgba(255,255,255,0.4)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.15)", minWidth: 44 }}>#</th>
-                {COLS.map((col) => (
-                  <th key={col.key} style={{ position: "sticky", top: 0, zIndex: 2, background: "#1e2128", color: "rgba(255,255,255,0.5)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: col.w, whiteSpace: "nowrap" }}>
-                    {col.label}
-                  </th>
-                ))}
+                {orderedCols.map((col) => {
+                  const active = sortKey === col.key;
+                  return (
+                    <th key={col.key}
+                      draggable
+                      onDragStart={() => { dragKey.current = col.key; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => reorderCol(col.key)}
+                      onDragEnd={() => { suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 150); }}
+                      onClick={() => toggleSort(col.key)}
+                      title="Click to sort · drag to reorder"
+                      style={{ position: "sticky", top: 0, zIndex: 2, background: active ? "#242832" : "#1e2128", color: active ? "#fff" : "rgba(255,255,255,0.5)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                      <span className="inline-flex items-center gap-1">
+                        {col.label}
+                        {active && (sortDir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+                      </span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -542,7 +649,7 @@ export default function SpreadsheetClient() {
                       </td>
                     );
                   })()}
-                  {COLS.map((col, c) => {
+                  {orderedCols.map((col, c) => {
                     const ck = `${row.id}-${col.key}`;
                     const pendingValue = pendingEdits[ck];
                     return (
