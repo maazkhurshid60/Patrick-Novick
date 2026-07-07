@@ -193,6 +193,9 @@ export default function SpreadsheetClient() {
   const [colOrder, setColOrder] = useState<string[]>(() => COLS.map((c) => c.key));
   const dragKey = useRef<string | null>(null);
   const suppressClick = useRef(false);
+  // Live drag feedback: which column is being dragged and which it will drop before.
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   // last-saved snapshot per contact, to know what changed
   const saved = useRef<Map<number, Contact>>(new Map());
@@ -218,11 +221,22 @@ export default function SpreadsheetClient() {
   function reorderCol(targetKey: string) {
     const from = dragKey.current;
     dragKey.current = null;
+    setDraggingKey(null);
+    setDragOverKey(null);
     if (!from || from === targetKey) return;
+    const fromIdx = colOrder.indexOf(from);
+    const targetIdx = colOrder.indexOf(targetKey);
+    const after = targetIdx > fromIdx; // dragging rightward → land just after the target
     const order = colOrder.filter((k) => k !== from);
-    const ti = order.indexOf(targetKey);
-    order.splice(ti, 0, from); // drop places the dragged column to the left of the target
+    let ti = order.indexOf(targetKey);
+    if (after) ti += 1;
+    order.splice(ti, 0, from);
     saveColOrder(order);
+  }
+  // Which edge of the hovered column the drop-line shows on — matches reorderCol.
+  function dropSide(targetKey: string): "left" | "right" | null {
+    if (!draggingKey || draggingKey === targetKey) return null;
+    return colOrder.indexOf(targetKey) > colOrder.indexOf(draggingKey) ? "right" : "left";
   }
   function toggleSort(key: string) {
     if (suppressClick.current) return; // ignore the click that follows a drag
@@ -557,7 +571,7 @@ export default function SpreadsheetClient() {
             {selectedName ?? "All contacts"} <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>· {filtered.length}</span>
           </p>
           <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Click a cell to edit · Tab / Enter / arrows to move · <span style={{ color: "rgba(255,255,255,0.45)" }}>click a header to sort</span> · <span style={{ color: "rgba(255,255,255,0.45)" }}>drag a header to reorder</span> · Save when done.
+            Click a cell to edit · Tab / Enter / arrows to move · <span style={{ color: "rgba(255,255,255,0.45)" }}>click a header to sort</span> · <span style={{ color: "rgba(255,255,255,0.45)" }}>drag a header to reorder (a blue line shows where it lands)</span> · Save when done.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -605,16 +619,30 @@ export default function SpreadsheetClient() {
                 <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#1e2128", color: "rgba(255,255,255,0.4)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.15)", minWidth: 44 }}>#</th>
                 {orderedCols.map((col) => {
                   const active = sortKey === col.key;
+                  const isDragging = draggingKey === col.key;
+                  const side = dragOverKey === col.key ? dropSide(col.key) : null;
+                  const dropLine = "0 0 0 2px #3b82f6";
                   return (
                     <th key={col.key}
                       draggable
-                      onDragStart={() => { dragKey.current = col.key; }}
-                      onDragOver={(e) => e.preventDefault()}
+                      onDragStart={() => { dragKey.current = col.key; setDraggingKey(col.key); }}
+                      onDragOver={(e) => { e.preventDefault(); if (col.key !== dragKey.current && dragOverKey !== col.key) setDragOverKey(col.key); }}
+                      onDragLeave={() => { setDragOverKey((k) => (k === col.key ? null : k)); }}
                       onDrop={() => reorderCol(col.key)}
-                      onDragEnd={() => { suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 150); }}
+                      onDragEnd={() => { setDraggingKey(null); setDragOverKey(null); dragKey.current = null; suppressClick.current = true; setTimeout(() => { suppressClick.current = false; }, 150); }}
                       onClick={() => toggleSort(col.key)}
                       title="Click to sort · drag to reorder"
-                      style={{ position: "sticky", top: 0, zIndex: 2, background: active ? "#242832" : "#1e2128", color: active ? "#fff" : "rgba(255,255,255,0.5)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                      style={{
+                        position: "sticky", top: 0, zIndex: 2,
+                        background: side ? "rgba(59,130,246,0.18)" : active ? "#242832" : "#1e2128",
+                        color: active ? "#fff" : "rgba(255,255,255,0.5)",
+                        padding: "8px 10px", fontWeight: 600, textAlign: "left",
+                        borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)",
+                        minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
+                        opacity: isDragging ? 0.4 : 1,
+                        boxShadow: side === "left" ? `inset ${dropLine}` : side === "right" ? `inset -2px 0 0 #3b82f6` : "none",
+                        transition: "background-color 0.1s, opacity 0.1s",
+                      }}>
                       <span className="inline-flex items-center gap-1">
                         {col.label}
                         {active && (sortDir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
