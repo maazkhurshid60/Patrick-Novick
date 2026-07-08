@@ -520,9 +520,12 @@ export default function SpreadsheetClient() {
 
   // One-click blank row at the top of the current view, ready to fill in place.
   async function quickAdd() {
+    if (listFilter === "all") {
+      addRow();
+      return;
+    }
     const email = `new.contact.${Date.now()}@edit-me.com`;
-    const body: Record<string, unknown> = { contacts: [{ email }] };
-    if (listFilter !== "all") body.listId = listFilter;
+    const body: Record<string, unknown> = { contacts: [{ email }], listId: listFilter };
     try {
       await fetch("/api/contacts", {
         method: "POST",
@@ -535,11 +538,9 @@ export default function SpreadsheetClient() {
       const data = await loadAll();
       const created = data.find((c) => String(c.email) === email);
       if (created) setNewRowIds((prev) => new Set(prev).add(created.id));
-      if (listFilter !== "all") {
-        const r = await fetch(`/api/lists/${listFilter}/members`);
-        const rows = await r.json();
-        setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
-      }
+      const r = await fetch(`/api/lists/${listFilter}/members`);
+      const rows = await r.json();
+      setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
       setBanner("Blank row added at the top (marked NEW) — fill it in, then Save.");
       setTimeout(() => setBanner(""), 4000);
       // Snap the grid to the top-left and focus the new row so it's right in front of you
