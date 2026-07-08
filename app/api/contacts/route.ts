@@ -19,7 +19,10 @@ export async function GET(): Promise<NextResponse> {
       (SELECT GROUP_CONCAT(cl.name, ', ')
        FROM contact_list_members clm
        JOIN contact_lists cl ON clm.list_id = cl.id
-       WHERE clm.contact_id = c.id) AS lists
+       WHERE clm.contact_id = c.id) AS lists,
+      (SELECT GROUP_CONCAT(clm.list_id, ', ')
+       FROM contact_list_members clm
+       WHERE clm.contact_id = c.id) AS list_ids
     FROM contacts c
     ORDER BY c.created_at DESC
   `);
@@ -54,13 +57,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     website?: string;
     county?: string;
     region?: string;
-  }[];
-  let listId: number | null = null;
+  }[] = [];
+  let listIds: number[] = [];
   let newListName: string | null = null;
 
-  if (body && !Array.isArray(body) && Array.isArray(body.contacts)) {
-    entries = body.contacts;
-    listId = body.listId ?? null;
+  if (body && !Array.isArray(body)) {
+    if (Array.isArray(body.contacts)) {
+      entries = body.contacts;
+    } else if (body.contact) {
+      entries = [body.contact];
+    } else if (body.email) {
+      entries = [body];
+    } else {
+      entries = [];
+    }
+
+    if (body.listId) {
+      listIds.push(Number(body.listId));
+    }
+    if (Array.isArray(body.listIds)) {
+      listIds.push(...body.listIds.map(Number));
+    }
+    listIds = Array.from(new Set(listIds));
     newListName = body.newListName ?? null;
   } else {
     entries = Array.isArray(body) ? body : [body];
@@ -79,7 +97,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         args: [listNameClean],
       });
       if (listFetch.rows[0]) {
-        listId = Number(listFetch.rows[0].id);
+        const createdId = Number(listFetch.rows[0].id);
+        if (!listIds.includes(createdId)) {
+          listIds.push(createdId);
+        }
       }
     } catch (err) {
       console.error("Failed to create list: ", err);
@@ -178,8 +199,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
     if (wasExisting) { updated++; } else { added++; existing.add(email); }
 
-    // Link contact to list if listId is set
-    if (listId) {
+    // Link contact to lists if listIds is set
+    if (listIds.length > 0) {
       try {
         const contactFetch = await db.execute({
           sql: "SELECT id FROM contacts WHERE email = ?",
@@ -187,10 +208,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
         const contactId = contactFetch.rows[0]?.id;
         if (contactId) {
-          await db.execute({
-            sql: "INSERT OR IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)",
-            args: [listId, Number(contactId)],
-          });
+          for (const lid of listIds) {
+            await db.execute({
+              sql: "INSERT OR IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)",
+              args: [lid, Number(contactId)],
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to associate contact with list:", err);
@@ -206,6 +229,8 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   const body = await req.json() as {
     id: number;
     status?: string;
+    listIds?: number[];
+    newListName?: string;
     name?: string;
     email?: string;
     first_name?: string;
@@ -232,7 +257,7 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     county?: string;
     region?: string;
   };
-  const { id, status, ...fields } = body;
+  const { id, status, listIds, newListName, ...fields } = body;
 
   const scalarFields = [
     "name", "email", "first_name", "last_name", "title", "company",
@@ -303,6 +328,63 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
       } else if (status === "active") {
         await db.execute({ sql: "DELETE FROM suppression_list WHERE email = ?", args: [contactEmail] });
       }
+    }
+  }
+
+  // Create list if newListName is provided
+  let targetListIds = Array.isArray(listIds) ? listIds.map(Number) : null;
+  if (newListName && newListName.trim()) {
+    try {
+      const listNameClean = newListName.trim();
+      await db.execute({
+        sql: "INSERT OR IGNORE INTO contact_lists (name) VALUES (?)",
+        args: [listNameClean],
+      });
+      const listFetch = await db.execute({
+        sql: "SELECT id FROM contact_lists WHERE name = ?",
+        args: [listNameClean],
+      });
+      if (listFetch.rows[0]) {
+        const createdId = Number(listFetch.rows[0].id);
+        if (targetListIds === null) {
+          const currentMemberships = await db.execute({
+            sql: "SELECT list_id FROM contact_list_members WHERE contact_id = ?",
+            args: [id],
+          });
+          targetListIds = currentMemberships.rows.map((r) => Number(r.list_id));
+        }
+        if (!targetListIds.includes(createdId)) {
+          targetListIds.push(createdId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to create list in PATCH: ", err);
+    }
+  }
+
+  // Update list memberships if targetListIds is set
+  if (targetListIds !== null) {
+    try {
+      if (targetListIds.length === 0) {
+        await db.execute({
+          sql: "DELETE FROM contact_list_members WHERE contact_id = ?",
+          args: [id],
+        });
+      } else {
+        const placeholders = targetListIds.map(() => "?").join(",");
+        await db.execute({
+          sql: `DELETE FROM contact_list_members WHERE contact_id = ? AND list_id NOT IN (${placeholders})`,
+          args: [id, ...targetListIds],
+        });
+      }
+      for (const lid of targetListIds) {
+        await db.execute({
+          sql: "INSERT OR IGNORE INTO contact_list_members (list_id, contact_id) VALUES (?, ?)",
+          args: [lid, id],
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update list memberships in PATCH:", err);
     }
   }
 

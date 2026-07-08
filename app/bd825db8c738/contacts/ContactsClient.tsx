@@ -4,6 +4,7 @@ import {
   Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck,
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
   ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
+  List as ListIcon,
 } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay, Pagination } from "../Toast";
 
@@ -41,6 +42,7 @@ interface Contact {
   campaigns_sent: number;
   created_at: number;
   lists?: string | null;
+  list_ids?: string | null;
 }
 
 interface ActivityEntry {
@@ -239,13 +241,19 @@ export default function ContactsClient() {
   // Add modal
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ ...BLANK });
+  const [selectedAddLists, setSelectedAddLists] = useState<number[]>([]);
+  const [newAddListName, setNewAddListName] = useState("");
 
   // Bulk import
   const [bulk, setBulk] = useState("");
+  const [selectedBulkLists, setSelectedBulkLists] = useState<number[]>([]);
+  const [newBulkListName, setNewBulkListName] = useState("");
 
   // Detail drawer
   const [drawer, setDrawer] = useState<Contact | null>(null);
   const [editForm, setEditForm] = useState({ ...BLANK, email: "" });
+  const [selectedEditLists, setSelectedEditLists] = useState<number[]>([]);
+  const [newEditListName, setNewEditListName] = useState("");
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [mailingCount, setMailingCount] = useState<number | null>(null);
   const [segmentFilter, setSegmentFilter] = useState("");
@@ -320,6 +328,11 @@ export default function ContactsClient() {
       notes:      c.notes,
       segments:   c.segments,
     });
+    const initialListIds = c.list_ids
+      ? c.list_ids.split(",").map(Number).filter(Boolean)
+      : [];
+    setSelectedEditLists(initialListIds);
+    setNewEditListName("");
     fetchActivity(c.email);
   }
 
@@ -333,15 +346,22 @@ export default function ContactsClient() {
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          contact: form,
+          listIds: selectedAddLists,
+          newListName: newAddListName.trim() || null,
+        }),
       });
       const data = await res.json().catch(() => ({} as { error?: string }));
       if (!res.ok) toast.error(data.error ?? "Failed to add contact");
       else {
         toast.success(`Contact added`);
         setForm({ ...BLANK });
+        setSelectedAddLists([]);
+        setNewAddListName("");
         setShowAdd(false);
         fetchContacts();
+        fetchAllLists();
       }
     } catch {
       toast.error("Couldn't reach the server. Please try again.");
@@ -370,7 +390,11 @@ export default function ContactsClient() {
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entries),
+        body: JSON.stringify({
+          contacts: entries,
+          listIds: selectedBulkLists,
+          newListName: newBulkListName.trim() || null,
+        }),
       });
       const data = await res.json().catch(() => ({} as { error?: string; added?: number; updated?: number; skipped?: number; invalid?: number }));
       if (!res.ok) { toast.error(data.error ?? "Failed"); return; }
@@ -379,7 +403,11 @@ export default function ContactsClient() {
       if (data.skipped) parts.push(`${data.skipped} suppressed`);
       if (data.invalid) parts.push(`${data.invalid} ignored (not a valid email)`);
       toast.success(parts.join(" · "));
-      setBulk(""); fetchContacts();
+      setBulk("");
+      setSelectedBulkLists([]);
+      setNewBulkListName("");
+      fetchContacts();
+      fetchAllLists();
     } catch {
       toast.error("Couldn't reach the server. Please try again.");
     } finally {
@@ -546,11 +574,21 @@ export default function ContactsClient() {
     const res = await fetch("/api/contacts", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: drawer.id, ...editForm }),
+      body: JSON.stringify({
+        id: drawer.id,
+        ...editForm,
+        listIds: selectedEditLists,
+        newListName: newEditListName.trim() || null,
+      }),
     });
     const data = await res.json();
     if (!res.ok) toast.error(data.error ?? "Update failed");
-    else { toast.success("Contact updated"); fetchContacts(); setDrawer(null); }
+    else {
+      toast.success("Contact updated");
+      fetchContacts();
+      fetchAllLists();
+      setDrawer(null);
+    }
     setLoading(false);
   }
 
@@ -947,6 +985,54 @@ export default function ContactsClient() {
                 </div>
               </div>
 
+              {/* List Assignment */}
+              <div>
+                <SectionLabel icon={ListIcon} label="List Assignment" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label style={label}>Assign to Lists</label>
+                    {allLists.length === 0 ? (
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No lists created yet.</p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-white/10" style={{ background: "rgba(255,255,255,0.02)" }}>
+                        {allLists.map((l) => {
+                          const checked = selectedAddLists.includes(l.id);
+                          return (
+                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedAddLists([...selectedAddLists, l.id]);
+                                  } else {
+                                    setSelectedAddLists(selectedAddLists.filter((id) => id !== l.id));
+                                  }
+                                }}
+                                className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0 animate-none"
+                                style={{ accentColor: "#f87171" }}
+                              />
+                              <span>{l.name} ({l.member_count})</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label style={label}>Create & Add to New List</label>
+                    <input
+                      type="text"
+                      value={newAddListName}
+                      onChange={(e) => setNewAddListName(e.target.value)}
+                      placeholder="e.g. New List Name"
+                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
 
               <div className="flex gap-3 pt-1">
@@ -1084,6 +1170,54 @@ export default function ContactsClient() {
                 <textarea style={{ ...inp, minHeight: "90px", resize: "vertical" }} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes about this contact…" />
               </div>
 
+              {/* List Assignment */}
+              <div>
+                <SectionLabel icon={ListIcon} label="List Assignment" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label style={label}>Assigned Lists</label>
+                    {allLists.length === 0 ? (
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No lists created yet.</p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-white/10" style={{ background: "rgba(255,255,255,0.02)" }}>
+                        {allLists.map((l) => {
+                          const checked = selectedEditLists.includes(l.id);
+                          return (
+                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedEditLists([...selectedEditLists, l.id]);
+                                  } else {
+                                    setSelectedEditLists(selectedEditLists.filter((id) => id !== l.id));
+                                  }
+                                }}
+                                className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0 animate-none"
+                                style={{ accentColor: "#f87171" }}
+                              />
+                              <span>{l.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label style={label}>Create & Add to New List</label>
+                    <input
+                      type="text"
+                      value={newEditListName}
+                      onChange={(e) => setNewEditListName(e.target.value)}
+                      placeholder="e.g. New List Name"
+                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Email Activity History */}
               <div>
                 <SectionLabel icon={Send} label="Email Activity History" />
@@ -1146,6 +1280,45 @@ export default function ContactsClient() {
                 value={bulk}
                 onChange={(e) => setBulk(e.target.value)}
               />
+              
+              {/* Select list for bulk import */}
+              <div className="mt-1">
+                <label style={label}>Add to Lists (Optional)</label>
+                {allLists.length > 0 && (
+                  <div className="flex flex-col gap-2 max-h-24 overflow-y-auto p-2 rounded-lg border border-white/5 mb-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                    {allLists.map((l) => {
+                      const checked = selectedBulkLists.includes(l.id);
+                      return (
+                        <label key={l.id} className="flex items-center gap-1.5 cursor-pointer text-[11px] text-white">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedBulkLists([...selectedBulkLists, l.id]);
+                              } else {
+                                setSelectedBulkLists(selectedBulkLists.filter((id) => id !== l.id));
+                              }
+                            }}
+                            className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0"
+                            style={{ accentColor: "#f87171" }}
+                          />
+                          <span>{l.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={newBulkListName}
+                  onChange={(e) => setNewBulkListName(e.target.value)}
+                  placeholder="Or create new list..."
+                  className="h-8 px-2.5 rounded-lg text-[11px] text-white outline-none border border-white/10 w-full"
+                  style={{ background: "rgba(255,255,255,0.04)" }}
+                />
+              </div>
+
               <button
                 type="submit" disabled={loading}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
