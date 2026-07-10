@@ -20,8 +20,9 @@ interface ContactList {
 
 const SIGNATURE = `
 
-Patrick
-(239) 255-5921`;
+Best,
+
+Patrick`;
 
 const STARTER_TEMPLATES = [
   {
@@ -390,7 +391,7 @@ export default function TemplatesClient() {
             </div>
             {/* Plain text preview */}
             <div className="overflow-auto flex-1 p-4">
-              <pre
+              <div
                 style={{
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
@@ -405,8 +406,19 @@ export default function TemplatesClient() {
                   minHeight: "400px",
                 }}
               >
-                {previewing.body}
-              </pre>
+                <div style={{ marginBottom: "30px" }}>
+                  {previewing.body}
+                </div>
+                <div style={{ borderTop: "1px solid #eeeeee", paddingTop: "20px" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/signature.png"
+                    alt="Patrick Novick - CEO, Metro Associates LLC"
+                    width="550"
+                    style={{ display: "block", maxWidth: "100%", height: "auto", border: 0 }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

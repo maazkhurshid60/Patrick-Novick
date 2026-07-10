@@ -58,6 +58,9 @@ function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number,
     <tr>
       <td style="padding:40px 30px;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:600px;">
         ${formattedBody}
+        <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
+          <img src="https://patricknovick.com/signature.png" alt="Patrick Novick - CEO, Metro Associates LLC" width="550" style="display: block; max-width: 100%; height: auto; border: 0;" />
+        </div>
       </td>
     </tr>
     <tr>

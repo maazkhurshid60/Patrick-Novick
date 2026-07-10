@@ -13,6 +13,8 @@ interface ContactList { id: number; name: string; member_count?: number }
 
 // Columns rendered in the grid. `select` renders a status dropdown.
 const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
+  { key: "list_ids", label: "Contact List", w: 180, type: "select" },
+  { key: "status", label: "Status", w: 130, type: "select" },
   { key: "name", label: "Name", w: 180 },
   { key: "first_name", label: "First", w: 110 },
   { key: "last_name", label: "Last", w: 110 },
@@ -36,7 +38,6 @@ const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
   { key: "county", label: "County", w: 130 },
   { key: "region", label: "Region", w: 130 },
   { key: "country", label: "Country", w: 90 },
-  { key: "status", label: "Status", w: 130, type: "select" },
 ];
 
 interface GridCellProps {
@@ -51,6 +52,8 @@ interface GridCellProps {
   cellRefs: React.MutableRefObject<Map<string, HTMLInputElement | HTMLSelectElement>>;
   onChangePending: (id: number, key: string, value: string | undefined) => void;
   onKeyDown: (e: React.KeyboardEvent, r: number, c: number) => void;
+  lists?: ContactList[];
+  onAutoSave?: (rowId: number, colKey: string, newVal: string) => Promise<void>;
 }
 
 const GridCell = memo(function GridCell({
@@ -65,12 +68,15 @@ const GridCell = memo(function GridCell({
   cellRefs,
   onChangePending,
   onKeyDown,
+  lists,
+  onAutoSave,
 }: GridCellProps) {
   const isDirty = pendingValue !== undefined;
   const displayValue = isDirty ? pendingValue : initialValue;
 
   const [val, setVal] = useState(displayValue);
   const [isFocused, setIsFocused] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setVal(displayValue);
@@ -85,12 +91,24 @@ const GridCell = memo(function GridCell({
     }
   };
 
-  const handleSelectChange = (newVal: string) => {
+  const handleSelectChange = async (newVal: string) => {
     setVal(newVal);
-    if (newVal === initialValue) {
-      onChangePending(rowId, colKey, undefined);
+    if (colKey === "list_ids" && onAutoSave) {
+      setSaving(true);
+      try {
+        await onAutoSave(rowId, colKey, newVal);
+      } catch (err) {
+        alert((err as Error).message || "Failed to save list");
+        setVal(initialValue);
+      } finally {
+        setSaving(false);
+      }
     } else {
-      onChangePending(rowId, colKey, newVal);
+      if (newVal === initialValue) {
+        onChangePending(rowId, colKey, undefined);
+      } else {
+        onChangePending(rowId, colKey, newVal);
+      }
     }
   };
 
@@ -105,6 +123,36 @@ const GridCell = memo(function GridCell({
     padding: "6px 8px",
     transition: "border-color 0.1s, background-color 0.1s",
   };
+
+  if (colKey === "list_ids") {
+    const listVal = val ? val.split(",")[0].trim() : "";
+    return (
+      <div style={{ position: "relative", width: colW, display: "flex", alignItems: "center" }}>
+        <select
+          ref={(el) => { if (el) cellRefs.current.set(`r${r}c${c}`, el); }}
+          value={listVal}
+          disabled={saving}
+          onChange={(e) => handleSelectChange(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onKeyDown={(e) => onKeyDown(e, r, c)}
+          style={{ ...cellStyle, color: "#fff", cursor: saving ? "not-allowed" : "pointer", paddingRight: saving ? "28px" : "8px" }}
+        >
+          <option value="" style={{ background: "#16181e" }}>— None —</option>
+          {lists?.map((l) => (
+            <option key={l.id} value={String(l.id)} style={{ background: "#16181e" }}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+        {saving && (
+          <div style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", pointerEvents: "none" }}>
+            <Loader2 size={13} className="animate-spin text-blue-400" />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (colType === "select") {
     return (
@@ -185,6 +233,8 @@ export default function SpreadsheetClient() {
 
   const [showAddRowModal, setShowAddRowModal] = useState(false);
   const [selectedAddListId, setSelectedAddListId] = useState<number | "all">("all");
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [quickAddListId, setQuickAddListId] = useState<number | "all">("all");
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
 
   // Sorting (click a header) and column order (drag a header, persisted per browser)
@@ -211,7 +261,18 @@ export default function SpreadsheetClient() {
       if (Array.isArray(raw)) {
         const valid = raw.filter((k) => COLS.some((c) => c.key === k));
         const missing = COLS.map((c) => c.key).filter((k) => !valid.includes(k));
-        setColOrder([...valid, ...missing]);
+        
+        // Reconcile and place missing columns in their default positions from COLS
+        const combined = [...valid];
+        for (const m of missing) {
+          const defaultIdx = COLS.findIndex((c) => c.key === m);
+          if (defaultIdx !== -1) {
+            combined.splice(defaultIdx, 0, m);
+          } else {
+            combined.push(m);
+          }
+        }
+        setColOrder(combined);
       }
     } catch { /* ignore */ }
   }, []);
@@ -352,6 +413,40 @@ export default function SpreadsheetClient() {
       return next;
     });
   }, []);
+
+  const onAutoSave = useCallback(async (rowId: number, colKey: string, newVal: string) => {
+    if (colKey === "list_ids") {
+      const listIds = newVal ? [Number(newVal)] : [];
+      const res = await fetch("/api/contacts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: rowId, listIds }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update list");
+      }
+      
+      const selectedList = lists.find((l) => String(l.id) === newVal);
+      const listName = selectedList ? selectedList.name : "";
+      
+      setAll((prev) => prev.map((c) => {
+        if (c.id === rowId) {
+          return { ...c, list_ids: newVal, lists: listName };
+        }
+        return c;
+      }));
+      
+      const currentContact = all.find((c) => c.id === rowId);
+      if (currentContact) {
+        saved.current.set(rowId, {
+          ...currentContact,
+          list_ids: newVal,
+          lists: listName,
+        });
+      }
+    }
+  }, [all, lists]);
 
   async function saveChanges() {
     setSaving(true);
@@ -518,36 +613,47 @@ export default function SpreadsheetClient() {
     setShowAddRowModal(true);
   }
 
-  // One-click blank row at the top of the current view, ready to fill in place.
-  async function quickAdd() {
-    if (listFilter === "all") {
-      addRow();
-      return;
-    }
+  // Quick add: pick which list first (defaults to the list you're viewing), then
+  // drop a blank NEW row at the top and jump straight into editing it.
+  function openQuickAdd() {
+    setQuickAddListId(listFilter);
+    setShowQuickAddModal(true);
+  }
+
+  async function confirmQuickAdd() {
+    setShowQuickAddModal(false);
+    const target = quickAddListId;
     const email = `new.contact.${Date.now()}@edit-me.com`;
-    const body: Record<string, unknown> = { contacts: [{ email }], listId: listFilter };
+    const body: Record<string, unknown> = { contacts: [{ email }] };
+    if (target !== "all") body.listId = target;
     try {
       await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      setSortKey(null);   // newest-first so the new row is at the top
-      setSearch("");      // make sure it isn't filtered out
+      setSortKey(null);       // newest-first so the new row is at the top
+      setSearch("");          // make sure it isn't filtered out
       setPage(1);
+      setListFilter(target);  // switch the view to the destination list so the row is visible
       const data = await loadAll();
       const created = data.find((c) => String(c.email) === email);
       if (created) setNewRowIds((prev) => new Set(prev).add(created.id));
-      const r = await fetch(`/api/lists/${listFilter}/members`);
-      const rows = await r.json();
-      setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
-      setBanner("Blank row added at the top (marked NEW) — fill it in, then Save.");
-      setTimeout(() => setBanner(""), 4000);
+      if (target !== "all") {
+        const r = await fetch(`/api/lists/${target}/members`);
+        const rows = await r.json();
+        setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
+      } else {
+        setMemberIds(null);
+      }
+      const listName = target === "all" ? "All Contacts" : lists.find((l) => l.id === target)?.name || "the list";
+      setBanner(`Blank row added to ${listName} (marked NEW at the top) — fill it in, then Save.`);
+      setTimeout(() => setBanner(""), 4500);
       // Snap the grid to the top-left and focus the new row so it's right in front of you
       setTimeout(() => {
         if (gridRef.current) gridRef.current.scrollTo({ top: 0, left: 0, behavior: "smooth" });
         focusCell(0, 0);
-      }, 150);
+      }, 250);
     } catch (err) {
       setBanner((err as Error).message || "Failed to add row");
     }
@@ -614,7 +720,7 @@ export default function SpreadsheetClient() {
             <option value="all" style={{ background: "#16181e" }}>All contacts</option>
             {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
           </select>
-          <button onClick={quickAdd} title="Instantly add a blank row at the top of this view"
+          <button onClick={openQuickAdd} title="Pick a list, then add a blank row at the top ready to edit"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
             style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}>
             <Zap size={14} /> Quick add
@@ -729,6 +835,8 @@ export default function SpreadsheetClient() {
                           cellRefs={cellRefs}
                           onChangePending={onChangePending}
                           onKeyDown={onKeyDown}
+                          lists={lists}
+                          onAutoSave={onAutoSave}
                         />
                       </td>
                     );
@@ -795,6 +903,38 @@ export default function SpreadsheetClient() {
               {saving ? <Loader2 size={13} className="animate-spin" /> : null}
               Save Changes
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Modal — choose the destination list, then jump into editing */}
+      {showQuickAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onKeyDown={(e) => { if (e.key === "Enter") confirmQuickAdd(); if (e.key === "Escape") setShowQuickAddModal(false); }}>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(96,165,250,0.25)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Zap size={14} className="text-blue-400" /> Quick add contact</h3>
+            <p className="text-xs text-slate-400 mb-4">Which list should this new contact go into? A blank row will appear at the top, marked <span className="text-green-400 font-semibold">NEW</span>, ready to edit.</p>
+
+            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Add to list</label>
+            <select
+              autoFocus
+              value={quickAddListId}
+              onChange={(e) => setQuickAddListId(e.target.value === "all" ? "all" : Number(e.target.value))}
+              className="w-full mt-1 mb-5 px-3 py-2 rounded-lg text-xs"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+            >
+              <option value="all" style={{ background: "#16181e" }}>All Contacts (no specific list)</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
+
+            <div className="flex justify-end gap-2 text-xs font-bold">
+              <button onClick={() => setShowQuickAddModal(false)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer">Cancel</button>
+              <button onClick={confirmQuickAdd} className="px-4 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-400 cursor-pointer flex items-center gap-1.5">
+                <Zap size={13} /> Add &amp; edit
+              </button>
+            </div>
           </div>
         </div>
       )}

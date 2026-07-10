@@ -226,7 +226,8 @@ export default function CampaignClient({
       .replace(/\{\{title\}\}/gi, s.title)
       .replace(/\{\{company\}\}/gi, s.company);
     if (!bodyIsHtml) out = out.trim().replace(/\n/g, "<br />");
-    return out;
+    const sigHtml = `<div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;"><img src="/signature.png" alt="Patrick Novick - CEO, Metro Associates LLC" width="550" style="display: block; max-width: 100%; height: auto; border: 0;" /></div>`;
+    return out + sigHtml;
   })();
 
   async function openRecipients() {
