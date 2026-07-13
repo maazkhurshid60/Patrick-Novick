@@ -5,9 +5,11 @@ import { csvRow } from "@/lib/csv";
 // GET /api/export/contacts — download full contact list as CSV
 // ?filter=removed  → only contacts in suppression_list with reason='removed'
 // ?filter=all      → all contacts (default)
+// ?list=<id>       → only contacts that belong to the given contact list
 export async function GET(req: Request): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
   const filter = searchParams.get("filter") ?? "all";
+  const listId = searchParams.get("list");
 
   let rows: { name: string; email: string; title: string; company: string; status: string; tags: string; created_at: string }[];
 
@@ -42,20 +44,48 @@ export async function GET(req: Request): Promise<NextResponse> {
     });
   }
 
-  // All contacts
-  const result = await db.execute(`
-    SELECT
-      name,
-      email,
-      COALESCE(status, 'active') AS status,
-      COALESCE(title, '') AS title,
-      COALESCE(company, '') AS company,
-      COALESCE(tags, '') AS tags,
-      datetime(created_at, 'unixepoch') AS created_at
-    FROM contacts
-    ORDER BY created_at DESC
-  `);
-  rows = result.rows as unknown as typeof rows;
+  // All contacts, optionally scoped to a single list via ?list=<id>
+  let scopeLabel = "all"; // used for the download filename
+
+  if (listId && /^\d+$/.test(listId)) {
+    const nameRes = await db.execute({ sql: "SELECT name FROM contact_lists WHERE id = ?", args: [Number(listId)] });
+    const listName = (nameRes.rows[0]?.name as string | undefined) ?? `list-${listId}`;
+    // Slugify the list name for the filename (fall back to list-<id>)
+    scopeLabel = listName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `list-${listId}`;
+
+    const result = await db.execute({
+      sql: `
+        SELECT
+          c.name,
+          c.email,
+          COALESCE(c.status, 'active') AS status,
+          COALESCE(c.title, '') AS title,
+          COALESCE(c.company, '') AS company,
+          COALESCE(c.tags, '') AS tags,
+          datetime(c.created_at, 'unixepoch') AS created_at
+        FROM contacts c
+        JOIN contact_list_members clm ON clm.contact_id = c.id
+        WHERE clm.list_id = ?
+        ORDER BY c.created_at DESC
+      `,
+      args: [Number(listId)],
+    });
+    rows = result.rows as unknown as typeof rows;
+  } else {
+    const result = await db.execute(`
+      SELECT
+        name,
+        email,
+        COALESCE(status, 'active') AS status,
+        COALESCE(title, '') AS title,
+        COALESCE(company, '') AS company,
+        COALESCE(tags, '') AS tags,
+        datetime(created_at, 'unixepoch') AS created_at
+      FROM contacts
+      ORDER BY created_at DESC
+    `);
+    rows = result.rows as unknown as typeof rows;
+  }
 
   const date = new Date().toISOString().slice(0, 10);
   const lines = [
@@ -66,7 +96,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   return new NextResponse(lines.join("\r\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="all-contacts-${date}.csv"`,
+      "Content-Disposition": `attachment; filename="${scopeLabel}-contacts-${date}.csv"`,
       "Cache-Control": "no-store",
     },
   });

@@ -236,6 +236,8 @@ export default function SpreadsheetClient() {
   const [selectedAddListId, setSelectedAddListId] = useState<number | "all">("all");
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [quickAddListId, setQuickAddListId] = useState<number | "all">("all");
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportListId, setExportListId] = useState<number | "all">("all");
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
 
   // Sorting (click a header) and column order (drag a header, persisted per browser)
@@ -339,6 +341,19 @@ export default function SpreadsheetClient() {
 
   function triggerDownload(url: string) {
     const a = document.createElement("a"); a.href = url; a.click();
+  }
+
+  // Export CSV: let the user pick a list (defaults to the one they're viewing) or all.
+  function openExport() {
+    setExportListId(listFilter);
+    setShowExportModal(true);
+  }
+  function confirmExport() {
+    setShowExportModal(false);
+    const url = exportListId === "all"
+      ? "/api/export/contacts?filter=all"
+      : `/api/export/contacts?list=${exportListId}`;
+    triggerDownload(url);
   }
 
   // Reload everything after a spreadsheet import so new/updated contacts and any
@@ -764,7 +779,7 @@ export default function SpreadsheetClient() {
               </button>
             )}
           />
-          <button onClick={() => triggerDownload("/api/export/contacts?filter=all")} title="Download all contacts as a CSV file"
+          <button onClick={openExport} title="Export contacts to CSV — choose a list or all contacts"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
             style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <Download size={14} /> Export
@@ -952,6 +967,38 @@ export default function SpreadsheetClient() {
               {saving ? <Loader2 size={13} className="animate-spin" /> : null}
               Save Changes
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal — choose which list to export (or all contacts) */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onKeyDown={(e) => { if (e.key === "Enter") confirmExport(); if (e.key === "Escape") setShowExportModal(false); }}>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Download size={14} /> Export contacts to CSV</h3>
+            <p className="text-xs text-slate-400 mb-4">Export every contact, or only the members of a specific list.</p>
+
+            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Export from</label>
+            <select
+              autoFocus
+              value={exportListId}
+              onChange={(e) => setExportListId(e.target.value === "all" ? "all" : Number(e.target.value))}
+              className="w-full mt-1 mb-5 px-3 py-2 rounded-lg text-xs"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+            >
+              <option value="all" style={{ background: "#16181e" }}>All contacts</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
+
+            <div className="flex justify-end gap-2 text-xs font-bold">
+              <button onClick={() => setShowExportModal(false)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer">Cancel</button>
+              <button onClick={confirmExport} className="px-4 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 cursor-pointer flex items-center gap-1.5">
+                <Download size={13} /> Download CSV
+              </button>
+            </div>
           </div>
         </div>
       )}
