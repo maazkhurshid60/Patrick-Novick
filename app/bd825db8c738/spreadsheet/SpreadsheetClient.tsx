@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback, memo } from "react";
-import { Search, Loader2, Plus, ChevronLeft, ChevronRight, Trash2, ArrowUp, ArrowDown, Zap } from "lucide-react";
+import { Search, Loader2, Plus, ChevronLeft, ChevronRight, Trash2, ArrowUp, ArrowDown, Zap, Upload, Download } from "lucide-react";
+import ContactImportModal, { ImportSummary } from "../ContactImportModal";
 
 interface Contact {
   id: number;
@@ -324,10 +325,41 @@ export default function SpreadsheetClient() {
     }
   }, []);
 
+  const loadLists = useCallback(async () => {
+    try {
+      const r = await fetch("/api/lists");
+      setLists(await r.json());
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     loadAll();
-    fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {});
-  }, [loadAll]);
+    loadLists();
+  }, [loadAll, loadLists]);
+
+  function triggerDownload(url: string) {
+    const a = document.createElement("a"); a.href = url; a.click();
+  }
+
+  // Reload everything after a spreadsheet import so new/updated contacts and any
+  // newly created list show up immediately in the grid.
+  const afterImport = useCallback(async (s: ImportSummary) => {
+    const parts = [`${s.added} added`];
+    if (s.updated) parts.push(`${s.updated} updated`);
+    if (s.skipped) parts.push(`${s.skipped} suppressed`);
+    if (s.invalid) parts.push(`${s.invalid} ignored (not a valid email)`);
+    setBanner(`Import complete — ${parts.join(" · ")}.`);
+    setTimeout(() => setBanner(""), 5000);
+    await loadAll();
+    await loadLists();
+    if (listFilter !== "all") {
+      try {
+        const r = await fetch(`/api/lists/${listFilter}/members`);
+        const rows = await r.json();
+        setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
+      } catch { /* ignore */ }
+    }
+  }, [loadAll, loadLists, listFilter]);
 
   useEffect(() => {
     if (listFilter === "all") { setMemberIds(null); return; }
@@ -720,6 +752,23 @@ export default function SpreadsheetClient() {
             <option value="all" style={{ background: "#16181e" }}>All contacts</option>
             {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
           </select>
+          <ContactImportModal
+            lists={lists}
+            defaultListId={listFilter === "all" ? null : listFilter}
+            onImported={afterImport}
+            renderTrigger={(open, busy) => (
+              <button onClick={open} disabled={busy} title="Upload a CSV/Excel file and map its columns to contact fields"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer disabled:opacity-50"
+                style={{ background: "rgba(165,180,252,0.12)", color: "#a5b4fc", border: "1px solid rgba(165,180,252,0.25)" }}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Import
+              </button>
+            )}
+          />
+          <button onClick={() => triggerDownload("/api/export/contacts?filter=all")} title="Download all contacts as a CSV file"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <Download size={14} /> Export
+          </button>
           <button onClick={openQuickAdd} title="Pick a list, then add a blank row at the top ready to edit"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
             style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.25)" }}>
