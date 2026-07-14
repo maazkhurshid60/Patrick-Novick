@@ -41,6 +41,59 @@ const COLS: { key: string; label: string; w: number; type?: "select" }[] = [
   { key: "country", label: "Country", w: 90 },
 ];
 
+// ── Excel export (client-side via SheetJS from CDN) ──────────────────────────
+interface XLSXWriteLib {
+  utils: {
+    aoa_to_sheet: (data: (string | number)[][]) => unknown;
+    book_new: () => unknown;
+    book_append_sheet: (wb: unknown, ws: unknown, name: string) => void;
+  };
+  writeFile: (wb: unknown, filename: string) => void;
+}
+const loadXLSX = (): Promise<XLSXWriteLib> => {
+  const w = window as unknown as { XLSX?: XLSXWriteLib };
+  if (w.XLSX) return Promise.resolve(w.XLSX);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    s.onload = () => resolve((window as unknown as { XLSX: XLSXWriteLib }).XLSX);
+    s.onerror = (e) => reject(e);
+    document.head.appendChild(s);
+  });
+};
+
+// Columns for the full export — mirrors /api/export/contacts?full=1. Every value
+// is written as a string so Excel keeps them as text (ZIP 02886 stays 02886).
+const EXPORT_COLS: { header: string; key: string }[] = [
+  { header: "Contact List", key: "lists" },
+  { header: "Status", key: "status" },
+  { header: "Name", key: "name" },
+  { header: "First", key: "first_name" },
+  { header: "Last", key: "last_name" },
+  { header: "Email", key: "email" },
+  { header: "Title", key: "title" },
+  { header: "Company", key: "company" },
+  { header: "Work Address", key: "street_address" },
+  { header: "City", key: "city" },
+  { header: "State", key: "state" },
+  { header: "ZIP", key: "zip_code" },
+  { header: "Work Phone 1", key: "phone" },
+  { header: "Work Phone 2", key: "work_phone_2" },
+  { header: "Mobile 1", key: "phone_2" },
+  { header: "Mobile 2", key: "mobile_phone_2" },
+  { header: "Business Email", key: "business_email" },
+  { header: "Personal Email 1", key: "email_2" },
+  { header: "Personal Email 2", key: "personal_email_2" },
+  { header: "LinkedIn", key: "linkedin" },
+  { header: "Website", key: "website" },
+  { header: "County", key: "county" },
+  { header: "Region", key: "region" },
+  { header: "Country", key: "country" },
+  { header: "Segments", key: "segments" },
+  { header: "Notes", key: "notes" },
+  { header: "Created At", key: "created_at" },
+];
+
 interface GridCellProps {
   rowId: number;
   colKey: string;
@@ -238,6 +291,8 @@ export default function SpreadsheetClient() {
   const [quickAddListId, setQuickAddListId] = useState<number | "all">("all");
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportListId, setExportListId] = useState<number | "all">("all");
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
+  const [exportBusy, setExportBusy] = useState(false);
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
 
   // Sorting (click a header) and column order (drag a header, persisted per browser)
@@ -348,12 +403,54 @@ export default function SpreadsheetClient() {
     setExportListId(listFilter);
     setShowExportModal(true);
   }
-  function confirmExport() {
-    setShowExportModal(false);
-    const url = exportListId === "all"
-      ? "/api/export/contacts?filter=all&full=1"
-      : `/api/export/contacts?list=${exportListId}&full=1`;
-    triggerDownload(url);
+  const exportScopeLabel = () =>
+    exportListId === "all"
+      ? "all"
+      : ((lists.find((l) => l.id === exportListId)?.name || `list-${exportListId}`)
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || `list-${exportListId}`);
+
+  async function confirmExport() {
+    if (exportFormat === "csv") {
+      setShowExportModal(false);
+      const url = exportListId === "all"
+        ? "/api/export/contacts?filter=all&full=1"
+        : `/api/export/contacts?list=${exportListId}&full=1`;
+      triggerDownload(url);
+      return;
+    }
+
+    // Excel: build the workbook from the contacts already in memory. Values are
+    // strings, so Excel treats them as text and keeps ZIP leading zeros.
+    setExportBusy(true);
+    try {
+      const scopeRows = exportListId === "all"
+        ? all
+        : all.filter((c) =>
+            String(c.list_ids ?? "").split(",").map((s) => s.trim()).filter(Boolean).includes(String(exportListId))
+          );
+      const aoa: (string | number)[][] = [EXPORT_COLS.map((col) => col.header)];
+      for (const c of scopeRows) {
+        aoa.push(EXPORT_COLS.map((col) => {
+          const v = c[col.key];
+          if (col.key === "created_at" && typeof v === "number") {
+            return new Date(v * 1000).toISOString().slice(0, 10);
+          }
+          return v == null ? "" : String(v);
+        }));
+      }
+      const XLSX = await loadXLSX();
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Contacts");
+      const date = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `${exportScopeLabel()}-contacts-${date}.xlsx`);
+      setShowExportModal(false);
+    } catch {
+      setBanner("Excel export failed — please try again.");
+      setTimeout(() => setBanner(""), 4000);
+    } finally {
+      setExportBusy(false);
+    }
   }
 
   // Reload everything after a spreadsheet import so new/updated contacts and any
@@ -976,7 +1073,7 @@ export default function SpreadsheetClient() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onKeyDown={(e) => { if (e.key === "Enter") confirmExport(); if (e.key === "Escape") setShowExportModal(false); }}>
           <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Download size={14} /> Export contacts to CSV</h3>
+            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Download size={14} /> Export contacts</h3>
             <p className="text-xs text-slate-400 mb-4">Export every contact, or only the members of a specific list.</p>
 
             <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Export from</label>
@@ -984,7 +1081,7 @@ export default function SpreadsheetClient() {
               autoFocus
               value={exportListId}
               onChange={(e) => setExportListId(e.target.value === "all" ? "all" : Number(e.target.value))}
-              className="w-full mt-1 mb-5 px-3 py-2 rounded-lg text-xs"
+              className="w-full mt-1 mb-4 px-3 py-2 rounded-lg text-xs"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
             >
               <option value="all" style={{ background: "#16181e" }}>All contacts</option>
@@ -993,10 +1090,28 @@ export default function SpreadsheetClient() {
               ))}
             </select>
 
+            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Format</label>
+            <div className="flex gap-1 mt-1 mb-1.5 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+              {(["csv", "xlsx"] as const).map((f) => (
+                <button key={f} type="button" onClick={() => setExportFormat(f)}
+                  className="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
+                  style={exportFormat === f
+                    ? { background: "rgba(96,165,250,0.18)", color: "#93c5fd" }
+                    : { background: "transparent", color: "rgba(255,255,255,0.5)" }}>
+                  {f === "csv" ? "CSV" : "Excel (.xlsx)"}
+                </button>
+              ))}
+            </div>
+            <p className="text-[0.7rem] text-slate-500 mb-5">
+              {exportFormat === "xlsx"
+                ? "Excel keeps ZIP codes as text, so leading zeros (02886) are preserved."
+                : "CSV opens anywhere; ZIP codes are written as text to keep leading zeros."}
+            </p>
+
             <div className="flex justify-end gap-2 text-xs font-bold">
-              <button onClick={() => setShowExportModal(false)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer">Cancel</button>
-              <button onClick={confirmExport} className="px-4 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 cursor-pointer flex items-center gap-1.5">
-                <Download size={13} /> Download CSV
+              <button onClick={() => setShowExportModal(false)} disabled={exportBusy} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={confirmExport} disabled={exportBusy} className="px-4 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+                {exportBusy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download {exportFormat === "csv" ? "CSV" : "Excel"}
               </button>
             </div>
           </div>
