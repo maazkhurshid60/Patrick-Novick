@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, FormEvent } from "react";
-import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock } from "lucide-react";
+import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock, UserPlus, Eye, EyeOff, Check, AtSign } from "lucide-react";
 import { ToastProvider, toast, Spinner } from "../Toast";
 
 type Role = "admin" | "member";
@@ -53,8 +53,22 @@ export default function UsersClient() {
   const [busyId, setBusyId] = useState<number | null>(null); // row toggling
 
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ username: "", password: "", role: "member" as Role });
+  const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", role: "member" as Role });
+  const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Live validation for the Add User form
+  const pwEqual = form.confirmPassword.length > 0 && form.password === form.confirmPassword;
+  const canSubmit =
+    form.username.trim().length >= 3 &&
+    form.password.length >= 8 &&
+    form.password === form.confirmPassword;
+
+  function closeAdd() {
+    setShowAdd(false);
+    setShowPw(false);
+    setForm({ username: "", password: "", confirmPassword: "", role: "member" });
+  }
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -87,18 +101,22 @@ export default function UsersClient() {
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
+    if (form.password !== form.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    const username = form.username.trim();
     setSaving(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ username, password: form.password, role: form.role }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(data.error ?? "Failed to create user"); return; }
-      toast.success(`User “${form.username.trim()}” created`);
-      setForm({ username: "", password: "", role: "member" });
-      setShowAdd(false);
+      toast.success(`User “${username}” created`);
+      closeAdd();
       loadUsers();
     } catch {
       toast.error("Couldn't reach the server. Please try again.");
@@ -249,33 +267,114 @@ export default function UsersClient() {
 
       {/* Add User modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowAdd(false); }}>
-          <div className="w-full max-w-sm rounded-xl p-6 border" style={{ background: "#16181e", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)" }}>
-            <div className="flex items-center justify-between mb-5">
-              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Add User</p>
-              <button onClick={() => setShowAdd(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeAdd(); }}>
+          <div className="w-full max-w-md rounded-2xl border overflow-hidden" style={{ background: "#16181e", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 30px 60px -12px rgba(0,0,0,0.6)" }}>
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg, rgba(230,57,70,0.06), transparent)" }}>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(230,57,70,0.14)", border: "1px solid rgba(230,57,70,0.25)" }}>
+                  <UserPlus size={19} style={{ color: "#f87171" }} />
+                </div>
+                <div>
+                  <p className="text-base font-bold text-white leading-tight" style={{ fontFamily: "var(--font-heading)" }}>Add User</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Create a new dashboard account</p>
+                </div>
+              </div>
+              <button onClick={closeAdd} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5 transition-colors shrink-0" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
             </div>
-            <form onSubmit={handleAdd} className="flex flex-col gap-4">
+
+            <form onSubmit={handleAdd} className="flex flex-col gap-4 px-6 py-6">
+              {/* Username */}
               <div>
                 <label style={label}>Username</label>
-                <input style={inp} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="jane" autoComplete="off" required minLength={3} />
+                <div style={{ position: "relative" }}>
+                  <AtSign size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                  <input style={{ ...inp, paddingLeft: 34 }} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="jane" autoComplete="off" required minLength={3} />
+                </div>
               </div>
+
+              {/* Password */}
               <div>
                 <label style={label}>Password</label>
-                <input style={inp} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" autoComplete="new-password" required minLength={8} />
+                <div style={{ position: "relative" }}>
+                  <Lock size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                  <input style={{ ...inp, paddingLeft: 34, paddingRight: 40 }} type={showPw ? "text" : "password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="At least 8 characters" autoComplete="new-password" required minLength={8} />
+                  <button type="button" onClick={() => setShowPw((v) => !v)} title={showPw ? "Hide passwords" : "Show passwords"} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
               </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label style={label}>Confirm Password</label>
+                <div style={{ position: "relative" }}>
+                  <Lock size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                  <input
+                    style={{
+                      ...inp, paddingLeft: 34, paddingRight: 40,
+                      border: form.confirmPassword.length === 0
+                        ? inp.border
+                        : pwEqual ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(248,113,113,0.5)",
+                    }}
+                    type={showPw ? "text" : "password"}
+                    value={form.confirmPassword}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    placeholder="Re-enter password"
+                    autoComplete="new-password"
+                    required
+                  />
+                  {form.confirmPassword.length > 0 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      {pwEqual ? <Check size={15} style={{ color: "#4ade80" }} /> : <X size={15} style={{ color: "#f87171" }} />}
+                    </div>
+                  )}
+                </div>
+                {form.confirmPassword.length > 0 && (
+                  <p className="text-[0.7rem] font-medium flex items-center gap-1 mt-1.5" style={{ color: pwEqual ? "#4ade80" : "#f87171" }}>
+                    {pwEqual ? "Passwords match" : "Passwords don't match"}
+                  </p>
+                )}
+              </div>
+
+              {/* Role — selectable cards */}
               <div>
                 <label style={label}>Role</label>
-                <select style={{ ...inp, cursor: "pointer" }} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
-                  <option value="member" style={{ background: "#16181e" }}>Member — dashboard access only</option>
-                  <option value="admin" style={{ background: "#16181e" }}>Admin — can also manage users</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(["member", "admin"] as Role[]).map((r) => {
+                    const selected = form.role === r;
+                    const Icon = r === "admin" ? ShieldCheck : UserIcon;
+                    return (
+                      <button
+                        type="button"
+                        key={r}
+                        onClick={() => setForm({ ...form, role: r })}
+                        className="text-left rounded-xl p-3 transition-all cursor-pointer"
+                        style={{
+                          border: selected ? "1px solid rgba(230,57,70,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                          background: selected ? "rgba(230,57,70,0.08)" : "rgba(255,255,255,0.02)",
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon size={13} style={{ color: selected ? "#f87171" : "rgba(255,255,255,0.5)" }} />
+                          <span className="text-xs font-bold capitalize" style={{ color: selected ? "#fff" : "rgba(255,255,255,0.65)" }}>{r}</span>
+                        </div>
+                        <p className="text-[0.7rem] leading-snug" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {r === "admin" ? "Full access + manage users" : "Dashboard access only"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex justify-end gap-2 mt-1 text-sm font-bold">
-                <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-full text-slate-400 hover:bg-white/5 cursor-pointer" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>Cancel</button>
-                <button type="submit" disabled={saving} className="px-5 py-2 rounded-full text-white cursor-pointer flex items-center gap-2 disabled:opacity-50" style={{ background: "var(--color-red)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
-                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 mt-2 text-sm font-bold">
+                <button type="button" onClick={closeAdd} className="px-4 py-2 rounded-full text-slate-400 hover:bg-white/5 cursor-pointer transition-colors" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>Cancel</button>
+                <button type="submit" disabled={saving || !canSubmit} className="px-5 py-2 rounded-full text-white cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:brightness-110" style={{ background: "linear-gradient(135deg, #e63946, #b5121b)", boxShadow: "0 6px 20px rgba(230,57,70,0.35)" }}>
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create User
                 </button>
               </div>
             </form>
