@@ -9,12 +9,23 @@ function getSecret(): string {
   return s;
 }
 
-/** Creates a signed session token: "1.<timestamp>.<hmac>" */
-export function createSessionToken(): string {
+/**
+ * Creates a signed session token: "<userId>.<timestamp>.<hmac>".
+ * userId is "env" for the bootstrap admin, or the numeric admin_users.id for a
+ * DB-backed account. Must not contain "." (we only ever pass "env" or digits).
+ */
+export function createSessionToken(userId: string = "env"): string {
   const ts = Math.floor(Date.now() / 1000);
-  const payload = `1.${ts}`;
+  const payload = `${userId}.${ts}`;
   const sig = createHmac("sha256", getSecret()).update(payload).digest("hex");
   return `${payload}.${sig}`;
+}
+
+/** Verifies a token and returns the embedded user id, or null if invalid. */
+export function sessionUserId(token: string): string | null {
+  if (!verifySessionToken(token)) return null;
+  const uid = token.split(".")[0];
+  return uid || null;
 }
 
 /** Returns true if the token is valid and not expired. */

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X, UserCog } from "lucide-react";
 
 const BASE = "/bd825db8c738";
 
@@ -20,7 +20,20 @@ const navItems = [
 
 export default function Sidebar({ active }: { active: string }) {
   const [open, setOpen] = useState(false);
+  const [me, setMe] = useState<{ username: string; role: string } | null>(null);
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => {
+        // 401 means the session is no longer valid (e.g. the account was
+        // disabled) — bounce to the login page rather than showing a stale UI.
+        if (r.status === 401) { window.location.href = "/feb58da15ece"; return null; }
+        return r.ok ? r.json() : null;
+      })
+      .then((data) => setMe(data))
+      .catch(() => setMe(null));
+  }, []);
 
   const handleLinkClick = (e: React.MouseEvent) => {
     if (typeof window !== "undefined" && (window as any).__hasUnsavedChanges) {
@@ -101,6 +114,22 @@ export default function Sidebar({ active }: { active: string }) {
             );
           })}
 
+          {/* Admin-only: user management */}
+          {me?.role === "admin" && (
+            <Link
+              href={`${BASE}/users`}
+              onClick={handleLinkClick}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+              style={{
+                background: active === "users" ? "rgba(230,57,70,0.12)" : "transparent",
+                color: active === "users" ? "#f87171" : "rgba(255,255,255,0.38)",
+              }}
+            >
+              <UserCog size={15} strokeWidth={1.75} />
+              Users
+            </Link>
+          )}
+
           <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: "rgba(255,255,255,0.18)" }}>
               Others
@@ -121,11 +150,11 @@ export default function Sidebar({ active }: { active: string }) {
         <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "var(--color-red)", color: "#fff" }}>
-              P
+              {(me?.username?.[0] ?? "P").toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-semibold text-white truncate">Patrick Novick</p>
-              <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.3)" }}>Admin</p>
+              <p className="text-xs font-semibold text-white truncate">{me?.username ?? "Patrick Novick"}</p>
+              <p className="text-xs truncate capitalize" style={{ color: "rgba(255,255,255,0.3)" }}>{me?.role ?? "Admin"}</p>
             </div>
           </div>
         </div>

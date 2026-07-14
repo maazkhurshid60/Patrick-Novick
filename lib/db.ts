@@ -69,6 +69,18 @@ db.batch([
     email       TEXT NOT NULL,
     opened_at   INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Dashboard login accounts. The bootstrap super-admin still lives in the
+  // ADMIN_USERNAME/ADMIN_PASSWORD env vars; these are additional accounts an
+  // admin creates from the Users page. Passwords are scrypt-hashed with a salt.
+  `CREATE TABLE IF NOT EXISTS admin_users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'member',
+    active        INTEGER NOT NULL DEFAULT 1,
+    created_at    INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ], "write")
   .catch(console.error)
   .then(() => Promise.all([

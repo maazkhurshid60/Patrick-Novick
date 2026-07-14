@@ -1,0 +1,122 @@
+import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
+import db from "@/lib/db";
+import { sessionUserId } from "@/lib/session";
+
+export type Role = "admin" | "member";
+
+export interface SessionUser {
+  id: string;        // "env" for the bootstrap admin, or a numeric id as a string
+  username: string;
+  role: Role;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  role: Role;
+  active: boolean;
+  created_at: number;
+}
+
+// ─── Password hashing (scrypt + per-user salt) ────────────────────────────────
+
+export function hashPassword(password: string): { hash: string; salt: string } {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(password, salt, 64).toString("hex");
+  return { hash, salt };
+}
+
+function verifyHash(password: string, hash: string, salt: string): boolean {
+  const a = scryptSync(password, salt, 64);
+  const b = Buffer.from(hash, "hex");
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+
+// Returns the id of an active DB user whose credentials match, else null.
+export async function findUserForLogin(username: string, password: string): Promise<number | null> {
+  const res = await db.execute({
+    sql: "SELECT id, password_hash, password_salt, active FROM admin_users WHERE username = ?",
+    args: [username],
+  });
+  const row = res.rows[0];
+  if (!row) return null;
+  if (Number(row.active) !== 1) return null;
+  if (!verifyHash(password, row.password_hash as string, row.password_salt as string)) return null;
+  return Number(row.id);
+}
+
+// ─── Session → user resolution ────────────────────────────────────────────────
+
+// Resolves the logged-in user from a session token. The env bootstrap admin is
+// always treated as an active admin; DB users must still exist and be active
+// (so disabling an account immediately invalidates its sessions).
+export async function getSessionUserFromToken(token: string | undefined): Promise<SessionUser | null> {
+  if (!token) return null;
+  const uid = sessionUserId(token);
+  if (!uid) return null;
+
+  if (uid === "env") {
+    return { id: "env", username: process.env.ADMIN_USERNAME ?? "admin", role: "admin" };
+  }
+
+  if (!/^\d+$/.test(uid)) return null;
+  const res = await db.execute({
+    sql: "SELECT id, username, role, active FROM admin_users WHERE id = ?",
+    args: [Number(uid)],
+  });
+  const row = res.rows[0];
+  if (!row || Number(row.active) !== 1) return null;
+  return {
+    id: String(row.id),
+    username: row.username as string,
+    role: row.role === "admin" ? "admin" : "member",
+  };
+}
+
+// ─── User management (admin-only; callers must authorize) ─────────────────────
+
+export async function listUsers(): Promise<AdminUser[]> {
+  const res = await db.execute(
+    "SELECT id, username, role, active, created_at FROM admin_users ORDER BY created_at DESC"
+  );
+  return res.rows.map((r) => ({
+    id: Number(r.id),
+    username: r.username as string,
+    role: r.role === "admin" ? "admin" : "member",
+    active: Number(r.active) === 1,
+    created_at: Number(r.created_at),
+  }));
+}
+
+export type CreateUserResult =
+  | { ok: true; id: number }
+  | { ok: false; error: string; status: number };
+
+export async function createUser(username: string, password: string, role: Role): Promise<CreateUserResult> {
+  const uname = username.trim();
+  if (uname.length < 3) return { ok: false, error: "Username must be at least 3 characters.", status: 400 };
+  if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters.", status: 400 };
+  if (role !== "admin" && role !== "member") return { ok: false, error: "Invalid role.", status: 400 };
+
+  const { hash, salt } = hashPassword(password);
+  try {
+    const res = await db.execute({
+      sql: "INSERT INTO admin_users (username, password_hash, password_salt, role, active) VALUES (?, ?, ?, ?, 1)",
+      args: [uname, hash, salt, role],
+    });
+    return { ok: true, id: Number(res.lastInsertRowid) };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("UNIQUE")) return { ok: false, error: "That username is already taken.", status: 409 };
+    return { ok: false, error: "Failed to create user.", status: 500 };
+  }
+}
+
+export async function setUserActive(id: number, active: boolean): Promise<void> {
+  await db.execute({
+    sql: "UPDATE admin_users SET active = ? WHERE id = ?",
+    args: [active ? 1 : 0, id],
+  });
+}
