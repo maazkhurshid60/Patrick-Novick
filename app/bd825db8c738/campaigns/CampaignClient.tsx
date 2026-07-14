@@ -192,9 +192,10 @@ export default function CampaignClient({
     const draft = localStorage.getItem("campaign_draft");
     if (draft) {
       try {
-        const { subject: s, body: b } = JSON.parse(draft);
+        const { subject: s, body: b, isHtml: h } = JSON.parse(draft);
         setSubject(s ?? "");
         setBody(b ?? "");
+        if (typeof h === "boolean") setBodyIsHtml(h);
         localStorage.removeItem("campaign_draft");
       } catch { /* ignore */ }
     }

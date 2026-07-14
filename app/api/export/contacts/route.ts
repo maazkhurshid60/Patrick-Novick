@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/db";
-import { csvRow } from "@/lib/csv";
+import { csvRow, csvCell, csvTextCell } from "@/lib/csv";
 
 // GET /api/export/contacts — download contacts as CSV
 // ?filter=removed  → only contacts in suppression_list with reason='removed'
@@ -104,12 +104,16 @@ export async function GET(req: Request): Promise<NextResponse> {
     ]);
     const lines = [
       header,
-      ...result.rows.map((r) => csvRow([
-        r.lists ?? "", r.status, r.name, r.first_name, r.last_name, r.email, r.title, r.company,
-        r.street_address, r.city, r.state, r.zip_code, r.phone, r.work_phone_2, r.phone_2, r.mobile_phone_2,
-        r.business_email, r.email_2, r.personal_email_2, r.linkedin, r.website,
-        r.county, r.region, r.country, r.segments, r.notes, r.created_at,
-      ])),
+      ...result.rows.map((r) => {
+        const cells = [
+          r.lists ?? "", r.status, r.name, r.first_name, r.last_name, r.email, r.title, r.company,
+          r.street_address, r.city, r.state, r.zip_code, r.phone, r.work_phone_2, r.phone_2, r.mobile_phone_2,
+          r.business_email, r.email_2, r.personal_email_2, r.linkedin, r.website,
+          r.county, r.region, r.country, r.segments, r.notes, r.created_at,
+        ];
+        // Index 11 is ZIP — emit as text so Excel keeps leading zeros (02886).
+        return cells.map((v, i) => (i === 11 ? csvTextCell(v) : csvCell(v))).join(",");
+      }),
     ];
     return csv(lines, `${scopeLabel}-contacts-${date}.csv`);
   }

@@ -1,4 +1,5 @@
 import { createClient } from "@libsql/client/http";
+import { SEED_TEMPLATES } from "./seedTemplates";
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -124,6 +125,15 @@ db.batch([
     { sql: "UPDATE contacts SET name = 'TEST SEED - Patrick', tags = 'test_seed', title = 'Senior Recruiter', company = 'Metro Associates' WHERE email = 'fiveer840@gmail.com'", args: [] },
     { sql: "UPDATE contacts SET name = 'TEST SEED - Sender', tags = 'test_seed', title = 'Marketing Coordinator', company = 'Metro Associates' WHERE email = 'news@patricknovick.com'", args: [] },
   ], "write"))
+  // Seed built-in email templates once (idempotent: skip if the name exists).
+  .then(() => db.batch(
+    SEED_TEMPLATES.map((t) => ({
+      sql: `INSERT INTO email_templates (name, subject, body)
+            SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM email_templates WHERE name = ?)`,
+      args: [t.name, t.subject, t.body, t.name],
+    })),
+    "write",
+  ))
   .catch(console.error);
 
 export default db;

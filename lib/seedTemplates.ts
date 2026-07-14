@@ -1,0 +1,162 @@
+// Seeded email templates. These are inserted once (idempotently) on startup so
+// they appear ready-to-use on the Templates page. Bodies are full, standalone
+// HTML documents — the campaign sender detects that and delivers them verbatim
+// (only injecting the tracking pixel + unsubscribe), so the design is preserved.
+//
+// Personalization tokens: {{first_name}} {{last_name}} {{name}} {{title}}
+// {{company}} {{email}} {{unsubscribe_url}}.
+
+export interface SeedTemplate {
+  name: string;
+  subject: string;
+  body: string;
+}
+
+export const METRO_CLIENT_OUTREACH: SeedTemplate = {
+  name: "Metro Associates — Client Outreach (HTML)",
+  subject: "Need Engineering Talent for DOT, MEP, Bridge or Construction Projects?",
+  body: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Need Engineering Talent for DOT, MEP, Bridge or Construction Projects?</title>
+  <style>
+    body, table, td, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { -ms-interpolation-mode:bicubic; border:0; height:auto; line-height:100%; outline:none; text-decoration:none; }
+    table { border-collapse:collapse !important; }
+    body { margin:0 !important; padding:0 !important; width:100% !important; background:#eef2f5; }
+    a { color:#0a2745; }
+    @media screen and (max-width:700px) {
+      .email-shell { width:100% !important; }
+      .mobile-pad { padding-left:22px !important; padding-right:22px !important; }
+      .button-cell { display:block !important; width:100% !important; padding:0 0 12px 0 !important; }
+      .button-link { display:block !important; text-align:center !important; }
+      .service-cell { display:block !important; width:100% !important; padding:6px 0 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+    Metro Associates delivers inspectors, engineers, project managers, MEP specialists and construction experts.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef2f5;">
+    <tr>
+      <td align="center" style="padding:24px 10px;">
+        <table role="presentation" class="email-shell" width="680" cellpadding="0" cellspacing="0" border="0"
+               style="width:680px;max-width:680px;background:#ffffff;border-radius:10px;overflow:hidden;
+                      box-shadow:0 3px 16px rgba(7,27,49,.12);">
+
+          <tr>
+            <td style="background:#071b31;">
+              <img src="https://patricknovick.com/metro-header.jpg" width="680"
+                   alt="Metro Associates — People. Projects. Progress. Bridges, DOT, MEP and construction staffing."
+                   style="display:block;width:100%;max-width:680px;height:auto;border:0;">
+            </td>
+          </tr>
+
+          <tr>
+            <td class="mobile-pad" style="padding:34px 42px 16px 42px;font-family:Arial,Helvetica,sans-serif;color:#17283a;">
+              <div style="font-size:13px;line-height:18px;font-weight:700;letter-spacing:1.2px;color:#bf8f00;">
+                ENGINEERING &amp; CONSTRUCTION TALENT
+              </div>
+              <h1 style="margin:8px 0 16px 0;font-size:28px;line-height:35px;color:#071b31;">
+                Have an opening—or need more help on a current project?
+              </h1>
+              <p style="margin:0 0 15px 0;font-size:16px;line-height:25px;">
+                Hello {{first_name}},
+              </p>
+              <p style="margin:0 0 15px 0;font-size:16px;line-height:25px;">
+                When project deadlines move faster than hiring timelines, <strong>Metro Associates</strong> can help.
+                We recruit and deliver qualified professionals for DOT, bridge, civil, MEP, inspection,
+                project-management and construction needs.
+              </p>
+              <p style="margin:0 0 18px 0;font-size:16px;line-height:25px;">
+                Send me the position title, location and hiring timeline. Our team can quickly identify candidates
+                aligned with your technical, licensing, clearance, travel, onsite and project-specific requirements.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="mobile-pad" style="padding:0 42px 23px 42px;font-family:Arial,Helvetica,sans-serif;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background:#f5f7f9;border:1px solid #d9e0e7;border-radius:8px;">
+                <tr>
+                  <td class="service-cell" width="50%" style="padding:14px 18px;font-size:14px;line-height:21px;color:#26394b;">
+                    <strong style="color:#071b31;">✓</strong> DOT &amp; transportation inspectors<br>
+                    <strong style="color:#071b31;">✓</strong> Civil, structural &amp; bridge engineers<br>
+                    <strong style="color:#071b31;">✓</strong> MEP &amp; HVAC professionals
+                  </td>
+                  <td class="service-cell" width="50%" style="padding:14px 18px;font-size:14px;line-height:21px;color:#26394b;">
+                    <strong style="color:#071b31;">✓</strong> Project &amp; construction managers<br>
+                    <strong style="color:#071b31;">✓</strong> Field &amp; construction experts<br>
+                    <strong style="color:#071b31;">✓</strong> Hard-to-fill technical roles
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="mobile-pad" style="padding:0 42px 31px 42px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td class="button-cell" style="padding-right:12px;">
+                    <a class="button-link" href="mailto:patrick@metroassoc.com?subject=Engineering%20/%20Construction%20Staffing%20Need&body=Patrick,%0D%0A%0D%0AWe have an opening or project staffing need.%0D%0A%0D%0APosition title:%0D%0ALocation:%0D%0ATimeline:%0D%0AEmployment type:%0D%0AAdditional details:%0D%0A"
+                       style="display:inline-block;background:#f2b800;color:#071b31;text-decoration:none;
+                              font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;
+                              line-height:18px;padding:14px 20px;border-radius:6px;">
+                      Send Your Openings
+                    </a>
+                  </td>
+                  <td class="button-cell">
+                    <a class="button-link" href="tel:+12392555921"
+                       style="display:inline-block;background:#071b31;color:#ffffff;text-decoration:none;
+                              font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;
+                              line-height:18px;padding:14px 20px;border-radius:6px;">
+                      Call +1 (239) 255-5921
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="mobile-pad" style="padding:24px 42px;background:#071b31;
+                                        font-family:Arial,Helvetica,sans-serif;color:#ffffff;">
+              <div style="font-size:18px;line-height:23px;font-weight:700;">Patrick Novick</div>
+              <div style="font-size:14px;line-height:21px;color:#d7e0e9;">CEO, Metro Associates</div>
+              <div style="margin-top:10px;font-size:14px;line-height:23px;">
+                <a href="tel:+12392555921" style="color:#f2b800;text-decoration:none;font-weight:700;">+1 (239) 255-5921</a>
+                &nbsp;|&nbsp;
+                <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">patrick@metroassoc.com</a>
+              </div>
+              <div style="font-size:14px;line-height:23px;">
+                <a href="https://patricknovick.com" style="color:#ffffff;text-decoration:none;">patricknovick.com</a>
+                &nbsp;|&nbsp;
+                <a href="https://metroassoc.com" style="color:#ffffff;text-decoration:none;">metroassoc.com</a>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 28px;text-align:center;background:#031426;
+                       font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#9eacb9;">
+              Metro Associates &nbsp;•&nbsp; People. Projects. Progress.<br>
+              <a href="{{unsubscribe_url}}" style="color:#9eacb9;text-decoration:underline;">Unsubscribe</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+};
+
+export const SEED_TEMPLATES: SeedTemplate[] = [METRO_CLIENT_OUTREACH];

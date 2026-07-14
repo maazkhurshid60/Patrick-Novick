@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
+import { METRO_CLIENT_OUTREACH } from "@/lib/seedTemplates";
 
 interface Template {
   id: number;
@@ -24,7 +25,14 @@ Best,
 
 Patrick`;
 
+// A template body carrying its own HTML document/markup should be previewed and
+// sent as rendered HTML, not shown as source text.
+const isHtmlTemplate = (s: string) =>
+  /<!doctype html|<html[\s>]|<(table|div|p|a|img|span|body)[\s>]/i.test(s);
+
 const STARTER_TEMPLATES = [
+  // Full HTML template (the campaign sender delivers it as-is).
+  METRO_CLIENT_OUTREACH,
   {
     name: "CT Engineering — Email 1",
     subject: "engineering hiring in Connecticut",
@@ -141,11 +149,13 @@ export default function TemplatesClient() {
   }
 
   async function handleStarter(t: typeof STARTER_TEMPLATES[0]) {
+    // Don't create a second copy if a template with this name already exists.
+    if (templates.some((x) => x.name === t.name)) return;
     setLoading(true);
     await fetch("/api/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(t),
+      body: JSON.stringify({ name: t.name, subject: t.subject, body: t.body }),
     });
     fetchTemplates();
     setLoading(false);
@@ -164,7 +174,11 @@ export default function TemplatesClient() {
   }
 
   function useTemplate(t: Template) {
-    localStorage.setItem("campaign_draft", JSON.stringify({ subject: t.subject, body: t.body }));
+    localStorage.setItem("campaign_draft", JSON.stringify({
+      subject: t.subject,
+      body: t.body,
+      isHtml: isHtmlTemplate(t.body),
+    }));
     router.push("/bd825db8c738/campaigns");
   }
 
@@ -389,36 +403,52 @@ export default function TemplatesClient() {
                 </button>
               </div>
             </div>
-            {/* Plain text preview */}
+            {/* Preview: render HTML templates as the actual email; show plain-text
+                templates as formatted text with the signature. */}
             <div className="overflow-auto flex-1 p-4">
-              <div
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  fontFamily: "'Georgia', serif",
-                  fontSize: "14px",
-                  lineHeight: "1.8",
-                  color: "#1a1a2e",
-                  background: "#fff",
-                  borderRadius: "0.5rem",
-                  padding: "32px 40px",
-                  margin: 0,
-                  minHeight: "400px",
-                }}
-              >
-                <div style={{ marginBottom: "30px" }}>
-                  {previewing.body}
+              {isHtmlTemplate(previewing.body) ? (
+                <iframe
+                  title="Email preview"
+                  // Sent emails reference the public https://patricknovick.com URL;
+                  // for the local preview, point image/asset URLs at this origin so
+                  // /public files (e.g. metro-header.jpg) load before deploy.
+                  srcDoc={previewing.body.replace(
+                    /https:\/\/patricknovick\.com\//g,
+                    (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
+                  )}
+                  sandbox=""
+                  style={{ width: "100%", height: "70vh", border: 0, borderRadius: "0.5rem", background: "#fff", display: "block" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontFamily: "'Georgia', serif",
+                    fontSize: "14px",
+                    lineHeight: "1.8",
+                    color: "#1a1a2e",
+                    background: "#fff",
+                    borderRadius: "0.5rem",
+                    padding: "32px 40px",
+                    margin: 0,
+                    minHeight: "400px",
+                  }}
+                >
+                  <div style={{ marginBottom: "30px" }}>
+                    {previewing.body}
+                  </div>
+                  <div style={{ borderTop: "1px solid #eeeeee", paddingTop: "20px" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/signature.png"
+                      alt="Patrick Novick - CEO, Metro Associates LLC"
+                      width="550"
+                      style={{ display: "block", maxWidth: "100%", height: "auto", border: 0 }}
+                    />
+                  </div>
                 </div>
-                <div style={{ borderTop: "1px solid #eeeeee", paddingTop: "20px" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/signature.png"
-                    alt="Patrick Novick - CEO, Metro Associates LLC"
-                    width="550"
-                    style={{ display: "block", maxWidth: "100%", height: "auto", border: 0 }}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -428,17 +458,23 @@ export default function TemplatesClient() {
       {templates.length > 0 && !creating && (
         <div className="mt-5 pt-5 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <p className="w-full text-xs mb-1" style={{ color: "rgba(255,255,255,0.25)" }}>Add starter templates:</p>
-          {STARTER_TEMPLATES.map((t) => (
-            <button
-              key={t.name}
-              onClick={() => handleStarter(t)}
-              disabled={loading}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] disabled:opacity-50"
-              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              + {t.name}
-            </button>
-          ))}
+          {STARTER_TEMPLATES.map((t) => {
+            const added = templates.some((x) => x.name === t.name);
+            return (
+              <button
+                key={t.name}
+                onClick={() => handleStarter(t)}
+                disabled={loading || added}
+                title={added ? "Already in your templates" : undefined}
+                className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] disabled:hover:scale-100 disabled:cursor-not-allowed inline-flex items-center gap-1"
+                style={added
+                  ? { background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)" }
+                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)", opacity: loading ? 0.5 : 1 }}
+              >
+                {added ? <><Check size={12} /> {t.name} — added</> : <>+ {t.name}</>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

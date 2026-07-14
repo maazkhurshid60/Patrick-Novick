@@ -39,13 +39,38 @@ function personalize(template: string, contact: ContactRow): string {
     .replace(/\{\{company\}\}/gi, contact.company || "");
 }
 
+// A body that carries its own <html>/<body> is a complete, self-contained email
+// (e.g. a rich HTML template). It should be delivered as authored rather than
+// nested inside the standard wrapper below.
+function isFullHtmlDocument(s: string): boolean {
+  return /<!doctype html|<html[\s>]/i.test(s);
+}
+
 function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number, isHtml = false): string {
-  // Plain text: convert newlines to <br>. HTML: use the author's markup verbatim.
-  const formattedBody = isHtml ? bodyText : bodyText.trim().replace(/\n/g, "<br />");
   const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
   // base64-encode email for tracking pixel — decoded server-side on open
   const eid = encodeURIComponent(Buffer.from(email.toLowerCase()).toString("base64"));
   const trackingPixel = `https://patricknovick.com/api/track/open?cid=${campaignId}&eid=${eid}`;
+
+  // Full standalone HTML email: send the author's document verbatim. We only
+  // resolve the {{unsubscribe_url}} token, guarantee an unsubscribe link exists
+  // (CAN-SPAM), and add the open-tracking pixel — all just before </body> so the
+  // design is left untouched.
+  if (isFullHtmlDocument(bodyText)) {
+    const html = bodyText.replace(/\{\{unsubscribe_url\}\}/gi, unsubscribeUrl);
+    const pixel = `<img src="${trackingPixel}" width="1" height="1" style="display:none;width:1px;height:1px;opacity:0;" alt="" />`;
+    const unsubFallback = /unsubscribe/i.test(html)
+      ? ""
+      : `<div style="text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8a97a4;padding:16px;">` +
+        `<a href="${unsubscribeUrl}" style="color:#8a97a4;text-decoration:underline;">Unsubscribe</a></div>`;
+    const injection = `${unsubFallback}${pixel}`;
+    return /<\/body>/i.test(html)
+      ? html.replace(/<\/body>/i, `${injection}</body>`)
+      : `${html}${injection}`;
+  }
+
+  // Plain text: convert newlines to <br>. HTML fragment: use the author's markup verbatim.
+  const formattedBody = isHtml ? bodyText : bodyText.trim().replace(/\n/g, "<br />");
 
   return `<!DOCTYPE html>
 <html>
