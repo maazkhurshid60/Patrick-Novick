@@ -351,8 +351,8 @@ export default function SpreadsheetClient() {
   function confirmExport() {
     setShowExportModal(false);
     const url = exportListId === "all"
-      ? "/api/export/contacts?filter=all"
-      : `/api/export/contacts?list=${exportListId}`;
+      ? "/api/export/contacts?filter=all&full=1"
+      : `/api/export/contacts?list=${exportListId}&full=1`;
     triggerDownload(url);
   }
 
