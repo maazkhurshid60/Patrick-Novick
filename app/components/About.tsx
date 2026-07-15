@@ -53,12 +53,12 @@ function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
 }
 
 const expertise = [
+  { label: "MEP Engineering", pct: 80 },
+  { label: "Transportation / DOT", pct: 83 },
   { label: "Government & Defense", pct: 92 },
   { label: "Technical / Engineering", pct: 88 },
   { label: "Cleared Security Positions", pct: 95 },
   { label: "Fortune 100/500 Placements", pct: 85 },
-  { label: "MEP Engineering", pct: 80 },
-  { label: "Transportation / DOT", pct: 83 },
 ];
 
 const quickStats = [
@@ -125,11 +125,15 @@ export default function About() {
               className="text-base leading-relaxed mb-8"
               style={{ color: "var(--color-gray)" }}
             >
-              Specializing in Fortune 100 &amp; 500 companies, Patrick focuses
-              on technical and intelligence job placements across government,
-              defense, and commercial sectors — from software engineers and
-              DevOps professionals to cleared security personnel and senior
-              executives.
+              Specializing in Fortune 100 and Fortune 500 companies, Patrick
+              focuses primarily on DOT transportation, civil engineering,
+              construction inspection, and MEP placements. He recruits
+              professionals ranging from licensed engineers, project managers,
+              and inspectors to mechanical, electrical, plumbing, HVAC, and
+              construction leaders. His expertise also includes technical and
+              intelligence placements across government, defense, and commercial
+              sectors, including software engineers, DevOps professionals,
+              cleared security personnel, and senior executives.
             </motion.p>
 
             {/* Quick stats */}

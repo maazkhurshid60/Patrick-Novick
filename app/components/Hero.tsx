@@ -101,9 +101,11 @@ export default function Hero() {
               className="mt-6 text-lg leading-relaxed max-w-lg"
               style={{ color: "var(--color-gray)" }}
             >
-              35+ years connecting elite talent with Fortune 100/500 companies
-              across government, defense &amp; commercial sectors. Expertise in
-              technical, cleared, and executive placements.
+              35+ years connecting elite DOT, transportation, civil engineering,
+              construction inspection, and MEP talent with Fortune 100 and
+              Fortune 500 companies. Additional expertise includes technical,
+              cleared, executive, government, defense, and commercial-sector
+              placements.
             </motion.p>
 
             <motion.div
