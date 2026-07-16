@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X, UserCog } from "lucide-react";
+import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X, UserCog, Wand2 } from "lucide-react";
 
 const BASE = "/bd825db8c738";
 
@@ -14,6 +14,7 @@ const navItems = [
   { label: "Lists",           icon: List,      href: `${BASE}/lists`,     key: "lists" },
   { label: "Email Campaigns", icon: Mail,      href: `${BASE}/campaigns`, key: "campaigns" },
   { label: "Templates",       icon: Layout,    href: `${BASE}/templates`, key: "templates" },
+  { label: "Template Maker",  icon: Wand2,     href: `${BASE}/template-maker`, key: "template-maker" },
   { label: "Bounced",         icon: MailWarning, href: `${BASE}/bounced`,  key: "bounced" },
   { label: "Opt-Outs",        icon: UserMinus, href: `${BASE}/optouts`,   key: "optouts" },
 ];

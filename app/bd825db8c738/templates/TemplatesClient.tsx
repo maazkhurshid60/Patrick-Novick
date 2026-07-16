@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Wand2, Code } from "lucide-react";
 import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
 import { buildMetroEmail, DEFAULT_BUILDER, EmailBuilderInput } from "@/lib/emailBuilder";
+import EmailBuilderFields from "../EmailBuilderFields";
 
 interface Template {
   id: number;
@@ -92,27 +93,6 @@ const inputStyle = {
   outline: "none",
   width: "100%",
 };
-
-// A labeled input/textarea used by the branded email builder.
-function BField({ label, value, onChange, area, rows }: {
-  label: string; value: string; onChange: (v: string) => void; area?: boolean; rows?: number;
-}) {
-  return (
-    <div>
-      <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
-      {area ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={rows ?? 3}
-          style={{ ...inputStyle, resize: "vertical", fontSize: "0.82rem" }}
-        />
-      ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, fontSize: "0.82rem" }} />
-      )}
-    </div>
-  );
-}
 
 export default function TemplatesClient() {
   const router = useRouter();
@@ -311,43 +291,7 @@ export default function TemplatesClient() {
             </div>
 
             {!editing && mode === "builder" ? (
-              <div className="grid gap-5 lg:grid-cols-2">
-                {/* Builder fields */}
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                    Fill in the pieces — the branded HTML (680px layout, gold button, Patrick&apos;s
-                    signature &amp; unsubscribe) is generated automatically. Tokens like{" "}
-                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere.
-                  </p>
-                  <BField label="Eyebrow (small gold label)" value={builder.eyebrow} onChange={(v) => setB({ eyebrow: v })} />
-                  <BField label="Headline" value={builder.headline} onChange={(v) => setB({ headline: v })} />
-                  <BField label="Greeting" value={builder.greeting} onChange={(v) => setB({ greeting: v })} />
-                  <BField label="Intro paragraphs (blank line = new paragraph)" value={builder.intro} onChange={(v) => setB({ intro: v })} area rows={4} />
-                  <BField label="List heading (optional)" value={builder.listHeading} onChange={(v) => setB({ listHeading: v })} />
-                  <BField label="List items (one per line, optional)" value={builder.listItems.join("\n")} onChange={(v) => setB({ listItems: v.split("\n") })} area rows={4} />
-                  <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <BField label="Button text (blank = no button)" value={builder.ctaLabel} onChange={(v) => setB({ ctaLabel: v })} />
-                    <BField label="Button link (mailto: or https:)" value={builder.ctaHref} onChange={(v) => setB({ ctaHref: v })} />
-                  </div>
-                  <BField label="Hero image URL (optional)" value={builder.heroUrl} onChange={(v) => setB({ heroUrl: v })} />
-                  <BField label="Inbox preview text (optional)" value={builder.previewText} onChange={(v) => setB({ previewText: v })} />
-                </div>
-
-                {/* Live preview */}
-                <div className="lg:sticky lg:top-4 h-fit">
-                  <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
-                  <iframe
-                    title="Email builder preview"
-                    srcDoc={builderHtml.replace(
-                      /https:\/\/patricknovick\.com\//g,
-                      (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
-                    )}
-                    sandbox=""
-                    style={{ width: "100%", height: "62vh", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff" }}
-                  />
-                </div>
-              </div>
+              <EmailBuilderFields builder={builder} onChange={setB} />
             ) : (
               <div>
                 <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
