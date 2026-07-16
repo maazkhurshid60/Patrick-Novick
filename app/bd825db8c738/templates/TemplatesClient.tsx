@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
-import { METRO_CLIENT_OUTREACH } from "@/lib/seedTemplates";
+import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH } from "@/lib/seedTemplates";
 
 interface Template {
   id: number;
@@ -31,8 +31,9 @@ const isHtmlTemplate = (s: string) =>
   /<!doctype html|<html[\s>]|<(table|div|p|a|img|span|body)[\s>]/i.test(s);
 
 const STARTER_TEMPLATES = [
-  // Full HTML template (the campaign sender delivers it as-is).
+  // Full HTML templates (the campaign sender delivers them as-is).
   METRO_CLIENT_OUTREACH,
+  METRO_MEP_OUTREACH,
   {
     name: "CT Engineering — Email 1",
     subject: "engineering hiring in Connecticut",
