@@ -70,6 +70,16 @@ db.batch([
     email       TEXT NOT NULL,
     opened_at   INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Append-only log of EVERY email actually dispatched — one row per send, no
+  // dedup. campaign_recipients is keyed by (campaign_id, email) and so counts a
+  // person once per campaign; this table is the source of truth for the true
+  // number of emails sent (re-sends to the same person are counted each time).
+  `CREATE TABLE IF NOT EXISTS email_send_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL,
+    email       TEXT NOT NULL,
+    sent_at     INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   // Dashboard login accounts. The bootstrap super-admin still lives in the
   // ADMIN_USERNAME/ADMIN_PASSWORD env vars; these are additional accounts an
   // admin creates from the Users page. Passwords are scrypt-hashed with a salt.
@@ -134,6 +144,14 @@ db.batch([
     })),
     "write",
   ))
+  // Backfill the send log from historical campaign_recipients ONCE — only runs
+  // while the log is empty, so it preserves the existing "Emails Sent" baseline
+  // without ever double-counting on later startups.
+  .then(() => db.execute(`
+    INSERT INTO email_send_log (campaign_id, email, sent_at)
+    SELECT campaign_id, email, sent_at FROM campaign_recipients
+    WHERE NOT EXISTS (SELECT 1 FROM email_send_log LIMIT 1)
+  `))
   .catch(console.error);
 
 export default db;

@@ -36,6 +36,8 @@ interface BouncedContact {
   email: string;
   reason: string;
   created_at: number;
+  last_sent: number | null;
+  send_count: number;
   contact_id: number | null;
   name: string | null;
   company: string | null;
@@ -443,7 +445,8 @@ export default function BouncedClient() {
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Contact</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Email</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Reason</th>
-                  <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Date</th>
+                  <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Last Emailed</th>
+                  <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Bounced</th>
                   <th className="text-right px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Action</th>
                 </tr>
               </thead>
@@ -488,6 +491,18 @@ export default function BouncedClient() {
                         >
                           {r.reason}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {r.last_sent ? (
+                          <div>
+                            <span className="text-xs" style={{ color: "rgba(255,255,255,0.55)" }}>{fmtDate(r.last_sent)}</span>
+                            {r.send_count > 1 && (
+                              <span className="ml-1.5 text-[10px] font-semibold" style={{ color: "#4ade80" }}>×{r.send_count}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Never sent</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtDate(r.created_at)}</span>

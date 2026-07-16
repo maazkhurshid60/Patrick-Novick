@@ -326,6 +326,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     "write"
   );
 
+  // Append-only send log — one row for every email actually dispatched, no dedup.
+  // This is what "Emails Sent" counts, so re-sends to the same person are each
+  // counted (campaign_recipients above stays deduped for retry-safety).
+  await db.batch(
+    result.sent.map((email) => ({
+      sql: "INSERT INTO email_send_log (campaign_id, email) VALUES (?, ?)",
+      args: [campaignId, email],
+    })),
+    "write"
+  );
+
   // Send one verifier copy of what just went out (non-blocking to the result —
   // a failure here must never fail the campaign). Uses the first recipient's data
   // for a representative, personalized example; campaignId 0 so it isn't tracked.

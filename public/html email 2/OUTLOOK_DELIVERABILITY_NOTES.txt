@@ -1,0 +1,17 @@
+OUTLOOK AND DELIVERABILITY NOTES
+
+This package is designed to reduce avoidable spam-filter triggers, but no email can be guaranteed to reach every inbox.
+
+Before sending:
+1. Send from your normal Metro Associates business mailbox.
+2. Confirm SPF, DKIM and DMARC are configured for metroassoc.com.
+3. Use the recipient's real first name and company when possible.
+4. Send to current, permission-based or legitimate business contacts.
+5. Avoid large blasts from a new mailbox or domain.
+6. Do not add URL shorteners, excessive links, attachments or tracking pixels.
+7. Keep the included plain-text alternative.
+8. Send a small internal test to Outlook, Gmail and a mobile device.
+9. Use a real reply-to mailbox that is monitored.
+10. For marketing campaigns, include the sender's physical mailing address and an appropriate unsubscribe method.
+
+The .eml file embeds the hero image. The HTML file references the included PNG by filename.

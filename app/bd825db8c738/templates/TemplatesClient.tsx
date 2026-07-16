@@ -320,35 +320,33 @@ export default function TemplatesClient() {
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => setPreviewing(t)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
                   title="Preview"
                 >
-                  <Eye size={13} />
+                  <Eye size={14} />
                 </button>
                 <button
                   onClick={() => copyBody(t.id, t.body)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                  style={{ color: copied === t.id ? "#4ade80" : "rgba(255,255,255,0.25)" }}
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/10 ${
+                    copied === t.id ? "text-emerald-400" : "text-white/55 hover:text-white"
+                  }`}
                   title="Copy HTML"
                 >
-                  {copied === t.id ? <Check size={13} /> : <Copy size={13} />}
+                  {copied === t.id ? <Check size={14} /> : <Copy size={14} />}
                 </button>
                 <button
                   onClick={() => startEdit(t)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
                   title="Edit"
                 >
-                  <Edit2 size={13} />
+                  <Edit2 size={14} />
                 </button>
                 <button
                   onClick={() => handleDelete(t.id)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-red-500/10"
-                  style={{ color: "rgba(255,255,255,0.25)" }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-red-500/15 hover:text-red-400"
                   title="Delete"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>

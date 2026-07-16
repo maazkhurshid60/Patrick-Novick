@@ -14,7 +14,11 @@ export async function GET(): Promise<NextResponse> {
   try {
     const result = await db.execute(`
       SELECT s.email, s.reason, s.created_at,
-             c.id AS contact_id, c.name, c.company, c.title, c.status
+             c.id AS contact_id, c.name, c.company, c.title, c.status,
+             (SELECT MAX(cr.sent_at) FROM campaign_recipients cr
+               WHERE LOWER(cr.email) = LOWER(s.email)) AS last_sent,
+             (SELECT COUNT(*) FROM email_send_log l
+               WHERE LOWER(l.email) = LOWER(s.email)) AS send_count
       FROM suppression_list s
       LEFT JOIN contacts c ON LOWER(c.email) = LOWER(s.email)
       WHERE s.reason IN ('bounced', 'invalid') OR s.reason LIKE '%bounce%'
@@ -24,6 +28,8 @@ export async function GET(): Promise<NextResponse> {
       email: r.email,
       reason: r.reason,
       created_at: Number(r.created_at),
+      last_sent: r.last_sent != null ? Number(r.last_sent) : null,
+      send_count: Number(r.send_count ?? 0),
       contact_id: r.contact_id != null ? Number(r.contact_id) : null,
       name: r.name ?? null,
       company: r.company ?? null,

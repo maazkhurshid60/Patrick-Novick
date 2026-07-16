@@ -81,6 +81,14 @@ function fmtDateTime(iso: string): string {
   return d.toLocaleString("en-US", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// Unix seconds → "12 Jul 2026". Used for a contact's last-sent date.
+function fmtUnixDate(secs: number | null): string {
+  if (!secs) return "—";
+  const d = new Date(secs * 1000);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 const card = {
   background: "#1a1d23",
   border: "1px solid rgba(255,255,255,0.06)",
@@ -118,6 +126,7 @@ export default function AnalyticsClient() {
   const [eventPage, setEventPage] = useState(1);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all"); // by readable label, e.g. "Opened"
   const [activitySearch, setActivitySearch] = useState("");
+  const [engSearch, setEngSearch] = useState(""); // per-contact engagement search
   const EVENTS_PER_PAGE = 20;
 
   // Recent-activity feed — offset-paginated from Brevo via /api/analytics/events.
@@ -297,6 +306,98 @@ export default function AnalyticsClient() {
           </p>
         )}
       </div>
+
+      {/* Per-contact engagement — who you've emailed, how many times, and when last */}
+      {(() => {
+        const engagement = data?.contacts ?? [];
+        const q = engSearch.trim().toLowerCase();
+        const filteredEng = q
+          ? engagement.filter((c) => `${c.email} ${c.name} ${c.company} ${c.title}`.toLowerCase().includes(q))
+          : engagement;
+        const shown = filteredEng.slice(0, 100);
+        const th = "text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider";
+        const thR = "text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider";
+        return (
+          <div style={card} className="overflow-hidden">
+            <div className="px-5 py-4 flex items-start justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Contact Engagement</p>
+                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  Who you&apos;ve emailed · times sent &amp; last send date{rangeActive ? ` · ${from} → ${to}` : ""}
+                </p>
+              </div>
+              <input
+                value={engSearch}
+                onChange={(e) => setEngSearch(e.target.value)}
+                placeholder="Search name, email, company…"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 220 }}
+              />
+            </div>
+
+            {engagement.length === 0 ? (
+              <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+                No sends recorded in this window yet.
+              </div>
+            ) : filteredEng.length === 0 ? (
+              <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+                No contacts match your search.
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full" style={{ minWidth: 620 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <th className={th} style={{ color: "rgba(255,255,255,0.25)" }}>Contact</th>
+                        <th className={th} style={{ color: "rgba(255,255,255,0.25)" }}>Company</th>
+                        <th className={thR} style={{ color: "rgba(255,255,255,0.25)" }}>Times Sent</th>
+                        <th className={thR} style={{ color: "rgba(255,255,255,0.25)" }}>Opened</th>
+                        <th className={thR} style={{ color: "rgba(255,255,255,0.25)" }}>Last Sent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((c, i) => (
+                        <tr key={c.email} style={{ borderBottom: i < shown.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm truncate max-w-[220px]" style={{ color: "rgba(255,255,255,0.85)" }} title={c.email}>
+                                {c.name}
+                              </span>
+                              {c.suppressed === 1 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(248,113,113,0.12)", color: "#f87171" }}>opted out</span>
+                              )}
+                            </div>
+                            <span className="text-xs truncate inline-block max-w-[240px]" style={{ color: "rgba(255,255,255,0.35)" }}>{c.email}</span>
+                          </td>
+                          <td className="px-5 py-3 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                            <span className="truncate inline-block max-w-[200px] align-middle" title={c.title ? `${c.title} · ${c.company}` : c.company}>
+                              {c.company || "—"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: c.sends > 1 ? "#4ade80" : "rgba(255,255,255,0.7)" }}>
+                            {c.sends}{c.sends > 1 ? "×" : ""}
+                          </td>
+                          <td className="px-5 py-3 text-right text-sm" style={{ color: c.opens > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>
+                            {c.opens}
+                          </td>
+                          <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.5)" }}>
+                            {fmtUnixDate(c.last_sent)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-5 py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    Showing {shown.length} of {filteredEng.length}{filteredEng.length >= 200 ? "+ (most recent)" : ""} contacts emailed
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Recent email activity (live event log from Brevo, newest first) */}
       <div style={card} className="overflow-hidden">

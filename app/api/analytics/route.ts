@@ -120,7 +120,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     sql: `
       SELECT
         ${contactsSel} AS total_contacts,
-        (SELECT COUNT(*) FROM campaign_recipients ${sendWhere}) AS total_sends,
+        (SELECT COUNT(*) FROM email_send_log ${sendWhere}) AS total_sends,
         (SELECT COUNT(*) FROM (
            SELECT DISTINCT eo.campaign_id, eo.email FROM email_opens eo WHERE ${openConds.join(" AND ")}
         )) AS total_opens,
@@ -142,5 +142,42 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     total_suppressed: Number(t.total_suppressed ?? 0),
   };
 
-  return NextResponse.json({ brevo, events: [] as BrevoEvent[], contacts: [] as ContactEngagement[], totals });
+  // Per-contact engagement: who we've emailed, how many times, and when last —
+  // built from the append-only send log so re-sends to the same person count.
+  // Honours the same list/date scoping as the totals above (l = email_send_log).
+  const engRes = await db.execute({
+    sql: `
+      SELECT
+        l.email                                   AS email,
+        COALESCE(NULLIF(c.name,''), l.email)      AS name,
+        COALESCE(c.status, 'active')              AS status,
+        COALESCE(c.title, '')                     AS title,
+        COALESCE(c.company, '')                   AS company,
+        COUNT(*)                                  AS sends,
+        MAX(l.sent_at)                            AS last_sent,
+        (SELECT COUNT(DISTINCT eo.campaign_id) FROM email_opens eo WHERE eo.email = l.email) AS opens,
+        (SELECT COUNT(*) FROM suppression_list s WHERE s.email = l.email)                    AS suppressed
+      FROM email_send_log l
+      LEFT JOIN contacts c ON c.email = l.email
+      ${sendWhere ? sendWhere.replace(/\bcampaign_id\b/g, "l.campaign_id").replace(/\bsent_at\b/g, "l.sent_at") : ""}
+      GROUP BY l.email
+      ORDER BY last_sent DESC
+      LIMIT 200
+    `,
+    args: [...sendArgs],
+  });
+
+  const contacts: ContactEngagement[] = engRes.rows.map((r) => ({
+    email: String(r.email),
+    name: String(r.name ?? r.email),
+    status: String(r.status ?? "active"),
+    title: String(r.title ?? ""),
+    company: String(r.company ?? ""),
+    sends: Number(r.sends ?? 0),
+    opens: Number(r.opens ?? 0),
+    last_sent: r.last_sent != null ? Number(r.last_sent) : null,
+    suppressed: Number(r.suppressed ?? 0) > 0 ? 1 : 0,
+  }));
+
+  return NextResponse.json({ brevo, events: [] as BrevoEvent[], contacts, totals });
 }
