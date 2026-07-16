@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useMemo, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
-import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH } from "@/lib/seedTemplates";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Wand2, Code } from "lucide-react";
+import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
+import { buildMetroEmail, DEFAULT_BUILDER, EmailBuilderInput } from "@/lib/emailBuilder";
 
 interface Template {
   id: number;
@@ -34,6 +35,7 @@ const STARTER_TEMPLATES = [
   // Full HTML templates (the campaign sender delivers them as-is).
   METRO_CLIENT_OUTREACH,
   METRO_MEP_OUTREACH,
+  METRO_NYC_EMPLOYER_OUTREACH,
   {
     name: "CT Engineering — Email 1",
     subject: "engineering hiring in Connecticut",
@@ -91,6 +93,27 @@ const inputStyle = {
   width: "100%",
 };
 
+// A labeled input/textarea used by the branded email builder.
+function BField({ label, value, onChange, area, rows }: {
+  label: string; value: string; onChange: (v: string) => void; area?: boolean; rows?: number;
+}) {
+  return (
+    <div>
+      <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+      {area ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={rows ?? 3}
+          style={{ ...inputStyle, resize: "vertical", fontSize: "0.82rem" }}
+        />
+      ) : (
+        <input value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, fontSize: "0.82rem" }} />
+      )}
+    </div>
+  );
+}
+
 export default function TemplatesClient() {
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -102,6 +125,13 @@ export default function TemplatesClient() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Template | null>(null);
+
+  // Branded email builder: "builder" assembles house-style HTML from fields;
+  // "blank" is the raw name/subject/body form (plain text or pasted HTML).
+  const [mode, setMode] = useState<"builder" | "blank">("builder");
+  const [builder, setBuilder] = useState<EmailBuilderInput>(DEFAULT_BUILDER);
+  const builderHtml = useMemo(() => buildMetroEmail(builder), [builder]);
+  const setB = (patch: Partial<EmailBuilderInput>) => setBuilder((b) => ({ ...b, ...patch }));
 
   async function fetchTemplates() {
     const res = await fetch("/api/templates");
@@ -121,17 +151,19 @@ export default function TemplatesClient() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
+    // In builder mode the body is the generated house-style HTML, not the textarea.
+    const payload = !editing && mode === "builder" ? { ...form, body: builderHtml } : form;
     if (editing) {
       await fetch("/api/templates", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, id: editing.id }),
+        body: JSON.stringify({ ...payload, id: editing.id }),
       });
     } else {
       await fetch("/api/templates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
     }
     setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "", list_id: null });
@@ -164,7 +196,16 @@ export default function TemplatesClient() {
 
   function startEdit(t: Template) {
     setEditing(t);
+    setMode("blank"); // editing works on the raw stored body
     setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null });
+    setCreating(true);
+  }
+
+  function openCreate() {
+    setEditing(null);
+    setMode("builder");
+    setBuilder(DEFAULT_BUILDER);
+    setForm({ name: "", subject: "", body: "", list_id: null });
     setCreating(true);
   }
 
@@ -225,13 +266,33 @@ export default function TemplatesClient() {
               {editing ? "Edit Template" : "New Template"}
             </p>
             <button
-              onClick={() => { setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "", list_id: null }); }}
+              onClick={() => { setCreating(false); setEditing(null); setMode("builder"); setForm({ name: "", subject: "", body: "", list_id: null }); }}
               className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
               style={{ color: "rgba(255,255,255,0.3)" }}
             >
               <X size={15} />
             </button>
           </div>
+
+          {/* Mode toggle — only for a new template */}
+          {!editing && (
+            <div className="flex gap-2 mb-5">
+              {([["builder", Wand2, "Branded builder"], ["blank", Code, "Blank / paste HTML"]] as const).map(([m, Icon, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all"
+                  style={mode === m
+                    ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
+                    : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <Icon size={13} /> {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <input style={inputStyle} placeholder="Template name (e.g. Job Outreach)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             <input style={inputStyle} placeholder="Email subject line" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
@@ -248,21 +309,63 @@ export default function TemplatesClient() {
                 ))}
               </select>
             </div>
-            <div>
-              <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-                Body — plain text only. Use{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
-              </p>
-              <textarea
-                style={{ ...inputStyle, minHeight: "260px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
-                placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
-                value={form.body}
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-                required
-              />
-            </div>
+
+            {!editing && mode === "builder" ? (
+              <div className="grid gap-5 lg:grid-cols-2">
+                {/* Builder fields */}
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    Fill in the pieces — the branded HTML (680px layout, gold button, Patrick&apos;s
+                    signature &amp; unsubscribe) is generated automatically. Tokens like{" "}
+                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere.
+                  </p>
+                  <BField label="Eyebrow (small gold label)" value={builder.eyebrow} onChange={(v) => setB({ eyebrow: v })} />
+                  <BField label="Headline" value={builder.headline} onChange={(v) => setB({ headline: v })} />
+                  <BField label="Greeting" value={builder.greeting} onChange={(v) => setB({ greeting: v })} />
+                  <BField label="Intro paragraphs (blank line = new paragraph)" value={builder.intro} onChange={(v) => setB({ intro: v })} area rows={4} />
+                  <BField label="List heading (optional)" value={builder.listHeading} onChange={(v) => setB({ listHeading: v })} />
+                  <BField label="List items (one per line, optional)" value={builder.listItems.join("\n")} onChange={(v) => setB({ listItems: v.split("\n") })} area rows={4} />
+                  <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <BField label="Button text (blank = no button)" value={builder.ctaLabel} onChange={(v) => setB({ ctaLabel: v })} />
+                    <BField label="Button link (mailto: or https:)" value={builder.ctaHref} onChange={(v) => setB({ ctaHref: v })} />
+                  </div>
+                  <BField label="Hero image URL (optional)" value={builder.heroUrl} onChange={(v) => setB({ heroUrl: v })} />
+                  <BField label="Inbox preview text (optional)" value={builder.previewText} onChange={(v) => setB({ previewText: v })} />
+                </div>
+
+                {/* Live preview */}
+                <div className="lg:sticky lg:top-4 h-fit">
+                  <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+                  <iframe
+                    title="Email builder preview"
+                    srcDoc={builderHtml.replace(
+                      /https:\/\/patricknovick\.com\//g,
+                      (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
+                    )}
+                    sandbox=""
+                    style={{ width: "100%", height: "62vh", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff" }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  Body — plain text, or paste full HTML. Use{" "}
+                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
+                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
+                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
+                </p>
+                <textarea
+                  style={{ ...inputStyle, minHeight: "260px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
+                  placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  required
+                />
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 type="submit" disabled={loading}
@@ -294,7 +397,7 @@ export default function TemplatesClient() {
             </select>
           </div>
           <button
-            onClick={() => setCreating(true)}
+            onClick={openCreate}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
             style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
           >
