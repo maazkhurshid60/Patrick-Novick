@@ -4,7 +4,7 @@ import {
   Trash2, Plus, Upload, Users, FileText, UserMinus, UserCheck,
   ShieldCheck, Pencil, Download, X, Phone, MapPin, Tag, StickyNote,
   ChevronRight, Mail, Building2, User, Star, Send, Eye, Settings2, Search,
-  List as ListIcon,
+  List as ListIcon, CornerDownRight,
 } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay, Pagination } from "../Toast";
 import ContactImportModal, { ImportSummary } from "../ContactImportModal";
@@ -115,6 +115,22 @@ function cityState(c: { city?: string; state?: string }) {
 // Parse a contact's comma-separated segments into display tags
 function contactTags(c: { segments?: string }): string[] {
   return (c.segments || "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// Split a value that crams several email addresses into one field
+// (e.g. "a@x.com; b@y.com") into a de-duplicated list. The first is the primary.
+function splitEmails(value: string): string[] {
+  const seen = new Set<string>();
+  return value
+    .split(/[;,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => {
+      if (!s) return false;
+      const key = s.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }
 
 // ─── Blank form state ─────────────────────────────────────────────────────────
@@ -656,6 +672,46 @@ export default function ContactsClient() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
                     <Field label="Email Address"><input style={inp} type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></Field>
+                    {(() => {
+                      const addrs = splitEmails(editForm.email);
+                      if (addrs.length < 2) return null;
+                      const extras = addrs.slice(1);
+                      const removeAddr = (addr: string) =>
+                        setEditForm({ ...editForm, email: addrs.filter((a) => a !== addr).join("; ") });
+                      const moveToSecondary = (addr: string) => {
+                        const remaining = addrs.filter((a) => a !== addr).join("; ");
+                        if (!editForm.business_email.trim())
+                          setEditForm({ ...editForm, email: remaining, business_email: addr });
+                        else if (!editForm.email_2.trim())
+                          setEditForm({ ...editForm, email: remaining, email_2: addr });
+                        else if (!editForm.personal_email_2.trim())
+                          setEditForm({ ...editForm, email: remaining, personal_email_2: addr });
+                        else {
+                          setEditForm({ ...editForm, email: remaining });
+                          toast.error("Secondary email slots are full — removed from primary only");
+                        }
+                      };
+                      return (
+                        <div className="mt-2 rounded-xl p-3" style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.2)" }}>
+                          <p className="text-xs mb-2" style={{ color: "#fbbf24" }}>
+                            This field holds {addrs.length} email addresses. Only the first (<span style={{ fontWeight: 700 }}>{addrs[0]}</span>) is used as the primary. Move or delete the extras:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {extras.map((addr) => (
+                              <span key={addr} className="inline-flex items-center gap-2 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                                {addr}
+                                <button type="button" title="Keep as a secondary email" onClick={() => moveToSecondary(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-white/10" style={{ color: "rgba(255,255,255,0.5)" }}>
+                                  <CornerDownRight size={11} />
+                                </button>
+                                <button type="button" title="Delete this email" onClick={() => removeAddr(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-red-500/15" style={{ color: "#f87171" }}>
+                                  <X size={11} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <Field label="Business Email"><input style={inp} type="email" value={editForm.business_email} onChange={(e) => setEditForm({ ...editForm, business_email: e.target.value })} placeholder="j.smith@work.com" /></Field>
                   <Field label="Personal Email 1"><input style={inp} type="email" value={editForm.email_2} onChange={(e) => setEditForm({ ...editForm, email_2: e.target.value })} placeholder="personal@gmail.com" /></Field>
