@@ -80,6 +80,17 @@ db.batch([
     email       TEXT NOT NULL,
     sent_at     INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Uploaded email images (header/hero graphics). Stored base64 and served by
+  // /api/images/[id] so they have a stable public URL that works on any host —
+  // email clients require a real URL and strip embedded data: images.
+  `CREATE TABLE IF NOT EXISTS images (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL DEFAULT '',
+    mime       TEXT NOT NULL,
+    data       TEXT NOT NULL,
+    size       INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
   // Dashboard login accounts. The bootstrap super-admin still lives in the
   // ADMIN_USERNAME/ADMIN_PASSWORD env vars; these are additional accounts an
   // admin creates from the Users page. Passwords are scrypt-hashed with a salt.

@@ -69,6 +69,13 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // Protect all API routes except the explicitly public ones. Unauthenticated
   // API calls get a 401 (not a redirect — these are fetch/XHR, not navigations).
   if (pathname.startsWith("/api/")) {
+    // Serving an uploaded email image by id must be public — recipients' mail
+    // clients fetch these with no session. Only the GET-by-id serve route is
+    // opened up; upload/list/delete on /api/images stay protected below.
+    if (req.method === "GET" && /^\/api\/images\/\d+$/.test(pathname)) {
+      return NextResponse.next();
+    }
+
     const isPublic = PUBLIC_API.some((p) => pathname === p || pathname.startsWith(p + "/"));
     if (isPublic) return NextResponse.next();
 

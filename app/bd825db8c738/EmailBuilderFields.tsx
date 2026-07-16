@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Upload, Loader2, X } from "lucide-react";
 import { EmailBuilderInput, buildMetroEmail } from "@/lib/emailBuilder";
 
 const inputStyle = {
@@ -48,11 +50,40 @@ export default function EmailBuilderFields({
   previewHeight?: string;
 }) {
   const setB = onChange;
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState("");
   const html = buildMetroEmail(builder);
   const previewSrc = html.replace(
     /https:\/\/patricknovick\.com\//g,
     (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
   );
+
+  async function uploadImage(file: File) {
+    setUploadErr("");
+    if (!file.type.startsWith("image/")) { setUploadErr("Please choose an image file."); return; }
+    setUploading(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = () => reject(new Error("read failed"));
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, mime: file.type, dataBase64: base64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setUploadErr(data.error || "Upload failed"); return; }
+      setB({ heroUrl: data.url });
+    } catch {
+      setUploadErr("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -74,7 +105,50 @@ export default function EmailBuilderFields({
           <BField label="Button text (blank = no button)" value={builder.ctaLabel} onChange={(v) => setB({ ctaLabel: v })} />
           <BField label="Button link (mailto: or https:)" value={builder.ctaHref} onChange={(v) => setB({ ctaHref: v })} />
         </div>
-        <BField label="Hero image URL (optional)" value={builder.heroUrl} onChange={(v) => setB({ heroUrl: v })} />
+        {/* Header / hero image — upload one or paste a URL */}
+        <div>
+          <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Header / hero image (optional)</p>
+          <div className="flex gap-2">
+            <input
+              value={builder.heroUrl}
+              onChange={(e) => setB({ heroUrl: e.target.value })}
+              placeholder="Paste an image URL, or upload →"
+              style={inputStyle}
+            />
+            <label
+              className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-white/5"
+              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+            >
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+              {uploading ? "Uploading…" : "Upload"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                style={{ display: "none" }}
+                disabled={uploading}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); e.target.value = ""; }}
+              />
+            </label>
+          </div>
+          {uploadErr && <p className="text-xs mt-1" style={{ color: "#f87171" }}>{uploadErr}</p>}
+          {builder.heroUrl && (
+            <div className="mt-2 flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={builder.heroUrl} alt="Header preview" style={{ height: 44, width: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }} />
+              <button
+                type="button"
+                onClick={() => setB({ heroUrl: "" })}
+                className="flex items-center gap-1 text-xs transition-colors hover:text-white"
+                style={{ color: "rgba(255,255,255,0.4)" }}
+              >
+                <X size={12} /> Remove
+              </button>
+            </div>
+          )}
+          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>
+            Uploaded images are saved to your database and served from this app — no external host needed.
+          </p>
+        </div>
         <BField label="Inbox preview text (optional)" value={builder.previewText} onChange={(v) => setB({ previewText: v })} />
       </div>
 
