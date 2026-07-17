@@ -105,6 +105,10 @@ export default function EmailBuilderFields({
           <BField label="Button text (blank = no button)" value={builder.ctaLabel} onChange={(v) => setB({ ctaLabel: v })} />
           <BField label="Button link (mailto: or https:)" value={builder.ctaHref} onChange={(v) => setB({ ctaHref: v })} />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <BField label="Second button text (optional)" value={builder.ctaLabel2} onChange={(v) => setB({ ctaLabel2: v })} />
+          <BField label="Second button link" value={builder.ctaHref2} onChange={(v) => setB({ ctaHref2: v })} />
+        </div>
         {/* Header / hero image — upload one or paste a URL */}
         <div>
           <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Header / hero image (optional)</p>
