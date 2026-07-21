@@ -5,6 +5,7 @@ import {
   listUsers,
   createUser,
   setUserActive,
+  deleteUser,
   type SessionUser,
 } from "@/lib/users";
 
@@ -62,5 +63,25 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   }
 
   await setUserActive(id, body.active);
+  return NextResponse.json({ success: true });
+}
+
+// DELETE /api/users — permanently remove a dashboard account (admin only)
+export async function DELETE(req: NextRequest): Promise<NextResponse> {
+  const me = await requireAdmin(req);
+  if (me instanceof NextResponse) return me;
+
+  const body = await req.json().catch(() => ({}));
+  const id = Number(body.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+  }
+
+  // Don't let an admin delete their own DB account (would lock themselves out).
+  if (me.id === String(id)) {
+    return NextResponse.json({ error: "You can't delete your own account." }, { status: 400 });
+  }
+
+  await deleteUser(id);
   return NextResponse.json({ success: true });
 }

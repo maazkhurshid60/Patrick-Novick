@@ -120,3 +120,7 @@ export async function setUserActive(id: number, active: boolean): Promise<void> 
     args: [active ? 1 : 0, id],
   });
 }
+
+export async function deleteUser(id: number): Promise<void> {
+  await db.execute({ sql: "DELETE FROM admin_users WHERE id = ?", args: [id] });
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, FormEvent } from "react";
-import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock, UserPlus, Eye, EyeOff, Check, AtSign } from "lucide-react";
+import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock, UserPlus, Eye, EyeOff, Check, AtSign, Trash2 } from "lucide-react";
 import { ToastProvider, toast, Spinner } from "../Toast";
 
 type Role = "admin" | "member";
@@ -52,6 +52,7 @@ export default function UsersClient() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null); // row toggling
 
+  const [confirmDelete, setConfirmDelete] = useState<AdminUser | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", role: "member" as Role });
   const [showPw, setShowPw] = useState(false);
@@ -141,6 +142,26 @@ export default function UsersClient() {
       toast.error("Couldn't reach the server. Please try again.");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function removeUser(u: AdminUser) {
+    setBusyId(u.id);
+    try {
+      const res = await fetch("/api/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: u.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error ?? "Failed to delete user"); return; }
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      toast.success(`${u.username} deleted`);
+    } catch {
+      toast.error("Couldn't reach the server. Please try again.");
+    } finally {
+      setBusyId(null);
+      setConfirmDelete(null);
     }
   }
 
@@ -245,17 +266,28 @@ export default function UsersClient() {
                     </td>
                     <td style={{ padding: "0.75rem 1rem", color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>{fmtDate(u.created_at)}</td>
                     <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>
-                      <button
-                        onClick={() => toggleActive(u)}
-                        disabled={busyId === u.id}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
-                        style={u.active
-                          ? { background: "rgba(234,179,8,0.1)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.2)" }
-                          : { background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
-                      >
-                        {busyId === u.id ? <Loader2 size={12} className="animate-spin" /> : null}
-                        {u.active ? "Disable" : "Enable"}
-                      </button>
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => toggleActive(u)}
+                          disabled={busyId === u.id}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
+                          style={u.active
+                            ? { background: "rgba(234,179,8,0.1)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.2)" }
+                            : { background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}
+                        >
+                          {busyId === u.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                          {u.active ? "Disable" : "Enable"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(u)}
+                          disabled={busyId === u.id}
+                          title="Delete user"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer inline-flex items-center"
+                          style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -264,6 +296,33 @@ export default function UsersClient() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}>
+          <div className="w-full max-w-md rounded-2xl border p-6" style={{ background: "#16181e", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 30px 60px -12px rgba(0,0,0,0.6)" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(239,68,68,0.14)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                <Trash2 size={19} style={{ color: "#f87171" }} />
+              </div>
+              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Delete user</p>
+            </div>
+            <p className="text-sm mb-1" style={{ color: "rgba(255,255,255,0.75)" }}>
+              Permanently delete <span className="font-semibold text-white">{confirmDelete.username}</span>?
+            </p>
+            <p className="text-xs mb-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+              Their account and access are removed immediately. This can&apos;t be undone — you&apos;d have to recreate the account.
+            </p>
+            <div className="flex justify-end gap-2 text-sm font-bold">
+              <button onClick={() => setConfirmDelete(null)} disabled={busyId === confirmDelete.id} className="px-4 py-2 rounded-full text-slate-400 hover:bg-white/5 cursor-pointer transition-colors disabled:opacity-50" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>Cancel</button>
+              <button onClick={() => removeUser(confirmDelete)} disabled={busyId === confirmDelete.id} className="px-5 py-2 rounded-full text-white cursor-pointer flex items-center gap-2 disabled:opacity-50 transition-all hover:brightness-110" style={{ background: "linear-gradient(135deg, #ef4444, #b91c1c)", boxShadow: "0 6px 20px rgba(239,68,68,0.35)" }}>
+                {busyId === confirmDelete.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete user
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User modal */}
       {showAdd && (
