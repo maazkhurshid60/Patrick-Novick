@@ -98,8 +98,49 @@ export default function EmailBuilderFields({
         <BField label="Headline" value={builder.headline} onChange={(v) => setB({ headline: v })} />
         <BField label="Greeting" value={builder.greeting} onChange={(v) => setB({ greeting: v })} />
         <BField label="Intro paragraphs (blank line = new paragraph)" value={builder.intro} onChange={(v) => setB({ intro: v })} area rows={4} />
-        <BField label="List heading (optional)" value={builder.listHeading} onChange={(v) => setB({ listHeading: v })} />
-        <BField label="List items (one per line, optional)" value={builder.listItems.join("\n")} onChange={(v) => setB({ listItems: v.split("\n") })} area rows={4} />
+        {/* Check-lists — add as many labelled lists as needed */}
+        <div className="flex flex-col gap-2.5">
+          {builder.lists.map((list, i) => (
+            <div key={i} className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  {i === 0 ? "List heading (optional)" : `List ${i + 1} heading (optional)`}
+                </p>
+                {builder.lists.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setB({ lists: builder.lists.filter((_, idx) => idx !== i) })}
+                    className="flex items-center gap-1 text-xs transition-colors hover:text-white"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    <X size={12} /> Remove
+                  </button>
+                )}
+              </div>
+              <input
+                value={list.heading}
+                onChange={(e) => setB({ lists: builder.lists.map((l, idx) => idx === i ? { ...l, heading: e.target.value } : l) })}
+                placeholder="e.g. Recruiting focus:"
+                style={inputStyle}
+              />
+              <textarea
+                value={list.items.join("\n")}
+                onChange={(e) => setB({ lists: builder.lists.map((l, idx) => idx === i ? { ...l, items: e.target.value.split("\n") } : l) })}
+                rows={4}
+                placeholder="List items (one per line)"
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setB({ lists: [...builder.lists, { heading: "", items: [] }] })}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/5"
+            style={{ border: "1px dashed rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.6)" }}
+          >
+            <Plus size={13} /> Add another list
+          </button>
+        </div>
         <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
         {/* Call-to-action buttons — add as many as needed. The first is styled
             gold (primary), the rest navy (secondary). */}

@@ -11,8 +11,9 @@ export interface EmailBuilderInput {
   headline: string;     // the H1
   greeting: string;     // e.g. "Hello {{first_name}},"
   intro: string;        // one or more paragraphs, separated by a blank line
-  listHeading: string;  // bold lead-in for the checklist box (optional)
-  listItems: string[];  // gold-checkmark bullet list (optional)
+  // One or more labelled check-lists (gold-checkmark boxes). Each has an optional
+  // bold heading and its own bullet items. Empty array = no list boxes.
+  lists: { heading: string; items: string[] }[];
   bodyAfter: string;    // paragraph shown after the list (optional)
   // CTA buttons, in order. The first is styled gold (primary), the rest navy
   // (secondary). A button with an empty label is skipped. Empty array = no buttons.
@@ -27,12 +28,16 @@ export const DEFAULT_BUILDER: EmailBuilderInput = {
   greeting: "Hello {{first_name}},",
   intro:
     "Metro Associates helps employers identify qualified professionals for permanent, contract and project-based needs.\n\nWe can run a targeted local search or expand nationally when relocation is available.",
-  listHeading: "Recruiting focus:",
-  listItems: [
-    "MEP, HVAC, electrical, plumbing, Revit and BIM",
-    "Civil, structural, transportation and infrastructure",
-    "Bridge, construction and DOT inspection",
-    "Project managers, construction managers and field professionals",
+  lists: [
+    {
+      heading: "Recruiting focus:",
+      items: [
+        "MEP, HVAC, electrical, plumbing, Revit and BIM",
+        "Civil, structural, transportation and infrastructure",
+        "Bridge, construction and DOT inspection",
+        "Project managers, construction managers and field professionals",
+      ],
+    },
   ],
   bodyAfter:
     "Send me the position title, location, compensation range and hiring timeline, and I will respond with the best search approach.",
@@ -60,7 +65,7 @@ const paragraphs = (text: string, style: string) =>
 
 export function buildMetroEmail(input: EmailBuilderInput): string {
   const {
-    eyebrow, headline, greeting, intro, listHeading, listItems,
+    eyebrow, headline, greeting, intro,
     bodyAfter, heroUrl, previewText,
   } = input;
 
@@ -78,23 +83,27 @@ export function buildMetroEmail(input: EmailBuilderInput): string {
           </tr>`
     : "";
 
-  const cleanItems = listItems.map((i) => i.trim()).filter(Boolean);
-  const listBox = cleanItems.length
-    ? `
+  // Render one gold-checkmark list box (or "" when it has no items), then stack
+  // however many lists the user added.
+  const makeListBox = (heading: string, items: string[]) => {
+    const cleanItems = items.map((i) => i.trim()).filter(Boolean);
+    if (!cleanItems.length) return "";
+    return `
           <tr>
             <td style="padding:0 40px 23px 40px;font-family:Arial,Helvetica,sans-serif;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
                      style="width:100%;background:#f5f7f9;border:1px solid #d9e0e7;border-collapse:collapse;">
                 <tr>
                   <td style="padding:18px 20px;font-size:15px;line-height:24px;color:#26384b;">
-                    ${listHeading.trim() ? `<strong style="color:#071b31;">${esc(listHeading.trim())}</strong><br>` : ""}
+                    ${heading.trim() ? `<strong style="color:#071b31;">${esc(heading.trim())}</strong><br>` : ""}
                     ${cleanItems.map((i) => `<span style="color:#b98500;">&#10003;</span> ${esc(i)}`).join("<br>\n                    ")}
                   </td>
                 </tr>
               </table>
             </td>
-          </tr>`
-    : "";
+          </tr>`;
+  };
+  const listBox = (input.lists ?? []).map((l) => makeListBox(l.heading, l.items)).join("");
 
   const afterBox = bodyAfter.trim()
     ? `
