@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, Loader2, X } from "lucide-react";
+import { Upload, Loader2, X, Plus } from "lucide-react";
 import { EmailBuilderInput, buildMetroEmail } from "@/lib/emailBuilder";
 
 const inputStyle = {
@@ -101,13 +101,52 @@ export default function EmailBuilderFields({
         <BField label="List heading (optional)" value={builder.listHeading} onChange={(v) => setB({ listHeading: v })} />
         <BField label="List items (one per line, optional)" value={builder.listItems.join("\n")} onChange={(v) => setB({ listItems: v.split("\n") })} area rows={4} />
         <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
-        <div className="grid grid-cols-2 gap-3">
-          <BField label="Button text (blank = no button)" value={builder.ctaLabel} onChange={(v) => setB({ ctaLabel: v })} />
-          <BField label="Button link (mailto: or https:)" value={builder.ctaHref} onChange={(v) => setB({ ctaHref: v })} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <BField label="Second button text (optional)" value={builder.ctaLabel2} onChange={(v) => setB({ ctaLabel2: v })} />
-          <BField label="Second button link" value={builder.ctaHref2} onChange={(v) => setB({ ctaHref2: v })} />
+        {/* Call-to-action buttons — add as many as needed. The first is styled
+            gold (primary), the rest navy (secondary). */}
+        <div className="flex flex-col gap-2.5">
+          {builder.buttons.map((btn, i) => (
+            <div key={i}>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                  {i === 0 ? "Button (blank = no button)" : `Button ${i + 1}`}
+                  {i === 0 && <span style={{ color: "rgba(255,255,255,0.25)" }}> · gold</span>}
+                  {i > 0 && <span style={{ color: "rgba(255,255,255,0.25)" }}> · navy</span>}
+                </p>
+                {builder.buttons.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setB({ buttons: builder.buttons.filter((_, idx) => idx !== i) })}
+                    className="flex items-center gap-1 text-xs transition-colors hover:text-white"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    <X size={12} /> Remove
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  value={btn.label}
+                  onChange={(e) => setB({ buttons: builder.buttons.map((b, idx) => idx === i ? { ...b, label: e.target.value } : b) })}
+                  placeholder="Button text"
+                  style={inputStyle}
+                />
+                <input
+                  value={btn.href}
+                  onChange={(e) => setB({ buttons: builder.buttons.map((b, idx) => idx === i ? { ...b, href: e.target.value } : b) })}
+                  placeholder="mailto: or https:"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setB({ buttons: [...builder.buttons, { label: "", href: "" }] })}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/5"
+            style={{ border: "1px dashed rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.6)" }}
+          >
+            <Plus size={13} /> Add another button
+          </button>
         </div>
         {/* Header / hero image — upload one or paste a URL */}
         <div>

@@ -396,7 +396,25 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
 // pollute the opt-out list or silently block re-importing the same person).
 // Pass { suppress: true } to also block the email from future imports/sends.
 export async function DELETE(req: NextRequest): Promise<NextResponse> {
-  const { id, suppress } = await req.json() as { id: number; suppress?: boolean };
+  const body = await req.json() as { id?: number; suppress?: boolean; noList?: boolean };
+
+  // Bulk cleanup: delete every contact that isn't a member of any list.
+  // Uses NOT EXISTS (not NOT IN) so a NULL contact_id could never swallow the set.
+  if (body.noList) {
+    const countRes = await db.execute(
+      "SELECT COUNT(*) AS n FROM contacts WHERE NOT EXISTS (SELECT 1 FROM contact_list_members clm WHERE clm.contact_id = contacts.id)"
+    );
+    const deleted = Number(countRes.rows[0]?.n ?? 0);
+    await db.execute(
+      "DELETE FROM contacts WHERE NOT EXISTS (SELECT 1 FROM contact_list_members clm WHERE clm.contact_id = contacts.id)"
+    );
+    return NextResponse.json({ success: true, deleted });
+  }
+
+  const { id, suppress } = body;
+  if (!id) {
+    return NextResponse.json({ error: "Missing contact id" }, { status: 400 });
+  }
 
   const emailResult = await db.execute({ sql: "SELECT email FROM contacts WHERE id = ?", args: [id] });
   const email = emailResult.rows[0]?.email as string | undefined;

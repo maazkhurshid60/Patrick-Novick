@@ -88,7 +88,7 @@ export default function CampaignClient({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dailyLimit, setDailyLimit] = useState(50);
   const [sendOffset, setSendOffset] = useState(0);
-  const [excludeRecent, setExcludeRecent] = useState(false);
+  const [excludeRecent, setExcludeRecent] = useState(true);
   const [excludeDays, setExcludeDays] = useState(7);
   const [replyTo, setReplyTo] = useState("");
   const [isTestSend, setIsTestSend] = useState(false);

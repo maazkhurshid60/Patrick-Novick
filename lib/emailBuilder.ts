@@ -14,10 +14,9 @@ export interface EmailBuilderInput {
   listHeading: string;  // bold lead-in for the checklist box (optional)
   listItems: string[];  // gold-checkmark bullet list (optional)
   bodyAfter: string;    // paragraph shown after the list (optional)
-  ctaLabel: string;     // primary button text (empty = no button)
-  ctaHref: string;      // primary button link (mailto: or https:)
-  ctaLabel2: string;    // optional second button text (empty = no second button)
-  ctaHref2: string;     // optional second button link
+  // CTA buttons, in order. The first is styled gold (primary), the rest navy
+  // (secondary). A button with an empty label is skipped. Empty array = no buttons.
+  buttons: { label: string; href: string }[];
   heroUrl: string;      // optional hero image URL (empty = no hero)
   previewText: string;  // hidden inbox-preview snippet (optional)
 }
@@ -37,10 +36,9 @@ export const DEFAULT_BUILDER: EmailBuilderInput = {
   ],
   bodyAfter:
     "Send me the position title, location, compensation range and hiring timeline, and I will respond with the best search approach.",
-  ctaLabel: "Discuss Your Opening",
-  ctaHref: "mailto:patrick@metroassoc.com?subject=Engineering%20%2F%20Construction%20Hiring%20Need",
-  ctaLabel2: "",
-  ctaHref2: "",
+  buttons: [
+    { label: "Discuss Your Opening", href: "mailto:patrick@metroassoc.com?subject=Engineering%20%2F%20Construction%20Hiring%20Need" },
+  ],
   heroUrl: "",
   previewText: "",
 };
@@ -63,7 +61,7 @@ const paragraphs = (text: string, style: string) =>
 export function buildMetroEmail(input: EmailBuilderInput): string {
   const {
     eyebrow, headline, greeting, intro, listHeading, listItems,
-    bodyAfter, ctaLabel, ctaHref, ctaLabel2, ctaHref2, heroUrl, previewText,
+    bodyAfter, heroUrl, previewText,
   } = input;
 
   const preview = (previewText || headline || "").trim();
@@ -108,52 +106,46 @@ export function buildMetroEmail(input: EmailBuilderInput): string {
     : "";
 
   // Render one button (VML for Outlook + a normal anchor for everyone else). The
-  // first/primary button is gold; a second is navy so the two read as primary +
-  // secondary. Returns the inner markup only — the caller wraps it in a cell.
+  // first/primary button is gold; the rest are navy so they read as primary +
+  // secondary. Each unit is inline-block with right/bottom margin, so any number
+  // of buttons flow side-by-side and wrap to the next line when they run out of
+  // room. In Outlook the VML shapes stack, which is a fine fallback.
   const makeButton = (label: string, href: string, primary: boolean) => {
     const bg = primary ? "#f2b800" : "#071b31";
     const fg = primary ? "#071b31" : "#ffffff";
     const l = esc(label);
     const h = escAttr(href);
     return `<!--[if mso]>
-                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
-                      xmlns:w="urn:schemas-microsoft-com:office:word"
-                      href="${h}" style="height:48px;v-text-anchor:middle;width:220px;"
-                      arcsize="8%" stroke="f" fillcolor="${bg}">
-                      <w:anchorlock/>
-                      <center style="color:${fg};font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">
-                        ${l}
-                      </center>
-                    </v:roundrect>
-                    <![endif]-->
-                    <!--[if !mso]><!-- -->
-                    <a href="${h}"
-                       style="display:inline-block;background:${bg};color:${fg};text-decoration:none;
-                              font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;
-                              line-height:48px;text-align:center;min-width:220px;padding:0 24px;border-radius:5px;">
-                      ${l}
-                    </a>
-                    <!--<![endif]-->`;
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns:w="urn:schemas-microsoft-com:office:word"
+                href="${h}" style="height:48px;v-text-anchor:middle;width:210px;margin-right:12px;margin-bottom:12px;"
+                arcsize="8%" stroke="f" fillcolor="${bg}">
+                <w:anchorlock/>
+                <center style="color:${fg};font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">
+                  ${l}
+                </center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-- -->
+              <a href="${h}"
+                 style="display:inline-block;background:${bg};color:${fg};text-decoration:none;
+                        font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;
+                        line-height:48px;text-align:center;min-width:200px;padding:0 24px;border-radius:5px;
+                        margin:0 12px 12px 0;">
+                ${l}
+              </a>
+              <!--<![endif]-->`;
   };
 
-  const buttons = [
-    { label: ctaLabel, href: ctaHref },
-    { label: ctaLabel2, href: ctaHref2 },
-  ].filter((b) => b.label.trim());
+  const activeButtons = (input.buttons ?? []).filter((b) => b.label.trim());
 
-  // Lay the buttons out in a table so they sit side-by-side even in Outlook,
-  // separated by a fixed-width spacer cell. Wraps to stacked on narrow screens.
-  const button = buttons.length
+  // Negative bottom margin on the cell absorbs the last row's 12px button margin
+  // so spacing below the buttons stays consistent no matter how many there are.
+  const button = activeButtons.length
     ? `
           <tr>
-            <td align="left" style="padding:8px 40px 32px 40px;">
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
-                <tr>
-                  ${buttons
-                    .map((b, i) => `<td valign="top">${makeButton(b.label.trim(), b.href, i === 0)}</td>`)
-                    .join('\n                  <td style="width:12px;line-height:1px;font-size:1px;">&nbsp;</td>\n                  ')}
-                </tr>
-              </table>
+            <td align="left" style="padding:8px 40px 20px 40px;font-family:Arial,Helvetica,sans-serif;">
+              ${activeButtons.map((b, i) => makeButton(b.label.trim(), b.href, i === 0)).join("\n              ")}
             </td>
           </tr>`
     : "";

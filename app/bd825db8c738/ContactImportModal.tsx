@@ -9,7 +9,7 @@
 // or a default button) plus the mapping modal, and reports the result back
 // through onImported so the parent can refresh and show a message.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FileText, X, Loader2 } from "lucide-react";
 
 interface ContactList { id: number; name: string; member_count?: number }
@@ -86,6 +86,13 @@ const MAPPABLE_FIELDS = [
   { key: "segments", label: "Segments" },
 ];
 
+// A real single email address (no spaces, one @, dotted domain).
+const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s ?? "").trim());
+
+// When a row has no valid primary email, these fields are tried in order and the
+// first valid one is promoted to be the primary (so the contact still imports).
+const EMAIL_FALLBACK_KEYS = ["business_email", "email_2", "personal_email_2"] as const;
+
 function autoMapHeader(header: string): string {
   const h = header.toLowerCase().replace(/[^a-z0-9]/g, "");
   // Primary email = business/work email (the campaign send target)
@@ -130,8 +137,30 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
   const [showPreview, setShowPreview] = useState(false); // mapping view vs full data preview
 
   // List association
-  const [selectedListId, setSelectedListId] = useState<number | "new" | "">("");
+  // "unset" = the required placeholder (no choice made yet). The client requires
+  // an explicit pick on every import, so this can never fall through to a default.
+  const [selectedListId, setSelectedListId] = useState<number | "new" | "" | "unset">("unset");
   const [newListName, setNewListName] = useState("");
+
+  // Live email coverage for the current mapping — drives the info banner so the
+  // user can see how many rows will fall back to a secondary email or be skipped.
+  const emailStats = useMemo(() => {
+    if (!showMapping || sheetRows.length === 0) return null;
+    const idxOf = (sysKey: string) => {
+      const h = Object.keys(mappings).find((hh) => mappings[hh] === sysKey);
+      return h ? sheetHeaders.indexOf(h) : -1;
+    };
+    const primaryIdx = idxOf("email");
+    const fbIdx = EMAIL_FALLBACK_KEYS.map(idxOf);
+    let primary = 0, fallback = 0, none = 0;
+    for (const row of sheetRows) {
+      const cell = (i: number) => (i >= 0 ? String(row[i] ?? "").trim() : "");
+      if (isValidEmail(cell(primaryIdx))) { primary++; continue; }
+      if (fbIdx.some((i) => isValidEmail(cell(i)))) { fallback++; continue; }
+      none++;
+    }
+    return { primary, fallback, none };
+  }, [showMapping, sheetRows, sheetHeaders, mappings]);
 
   // Launch the file picker via a transient input (no ref needed), then parse.
   function open() {
@@ -200,7 +229,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
             if (match) initialMappings[label] = match;
           });
           setMappings(initialMappings);
-          setSelectedListId(defaultListId != null ? defaultListId : "");
+          setSelectedListId(defaultListId != null ? defaultListId : "unset");
           setNewListName("");
           setShowPreview(false);
           setShowMapping(true);
@@ -233,15 +262,26 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
 
   async function handleImportSpreadsheet() {
     const emailHeader = Object.keys(mappings).find((h) => mappings[h] === "email");
-    if (!emailHeader) {
-      setNote("Please map at least one column to 'Email Address *'.");
+    const hasFallbackMapped = EMAIL_FALLBACK_KEYS.some((k) => Object.values(mappings).includes(k));
+    if (!emailHeader && !hasFallbackMapped) {
+      setNote("Please map a column to an email field — primary, business, or personal.");
+      return;
+    }
+
+    // A Contact List choice is mandatory — the user must pick a list, create one,
+    // or explicitly choose "Do not add to a list". No silent default.
+    if (selectedListId === "unset") {
+      setNote("Please choose a Contact List — or explicitly pick “Do not add to a list” — before importing.");
+      return;
+    }
+    if (selectedListId === "new" && !newListName.trim()) {
+      setNote("Please enter a name for the new list.");
       return;
     }
 
     setBusy(true);
     setNote("");
 
-    const isValidEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
     const mappedEntries = sheetRows.map((row) => {
       const entry: Record<string, string> = {};
       sheetHeaders.forEach((header, index) => {
@@ -251,8 +291,15 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
           entry[systemKey] = val !== undefined && val !== null ? val.toString().trim() : "";
         }
       });
+      // No valid primary email? Promote the first available business/personal
+      // email so the contact still imports and stays emailable.
+      if (!isValidEmail(entry.email || "")) {
+        for (const k of EMAIL_FALLBACK_KEYS) {
+          if (isValidEmail(entry[k] || "")) { entry.email = entry[k]; break; }
+        }
+      }
       return entry;
-    }).filter((entry) => isValidEmail((entry.email || "").trim()));
+    }).filter((entry) => isValidEmail(entry.email || ""));
 
     if (mappedEntries.length === 0) {
       setNote("No contacts with valid email addresses were found using the current mapping.");
@@ -283,7 +330,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
         skipped: data.skipped ?? 0,
         invalid: data.invalid ?? 0,
       });
-      setSelectedListId("");
+      setSelectedListId("unset");
       setNewListName("");
       closeModal();
     } catch {
@@ -487,20 +534,23 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
 
               {/* ── Add to list ── */}
               <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-heading)" }}>Add to Contact List (Optional)</p>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-heading)" }}>Add to Contact List <span style={{ color: "#f87171" }}>(required — pick one)</span></p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label style={labelStyle}>Select List</label>
                     <select
                       value={selectedListId}
                       onChange={(e) => {
-                        setSelectedListId(e.target.value === "" ? "" : e.target.value === "new" ? "new" : Number(e.target.value));
-                        if (e.target.value !== "new") setNewListName("");
+                        const v = e.target.value;
+                        setSelectedListId(v === "unset" ? "unset" : v === "" ? "" : v === "new" ? "new" : Number(v));
+                        if (v !== "new") setNewListName("");
+                        if (v !== "unset") setNote("");
                       }}
-                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
-                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border w-full"
+                      style={{ background: "rgba(255,255,255,0.04)", borderColor: selectedListId === "unset" ? "rgba(230,57,70,0.5)" : "rgba(255,255,255,0.1)" }}
                     >
-                      <option value="" style={{ background: "#16181e" }}>— Do Not Add to List —</option>
+                      <option value="unset" style={{ background: "#16181e" }}>— Choose one (required) —</option>
+                      <option value="" style={{ background: "#16181e" }}>— Do not add to a list —</option>
                       <option value="new" style={{ background: "#16181e" }}>[+ Create New List]</option>
                       {lists.map((l) => (
                         <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}{l.member_count != null ? ` (${l.member_count} members)` : ""}</option>
@@ -523,6 +573,23 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                 )}
                 </div>{/* end grid cols-2 */}
               </div>{/* end add-to-list */}
+
+              {/* Email fallback summary for the current mapping */}
+              {emailStats && (emailStats.fallback > 0 || emailStats.none > 0) && (
+                <div className="px-4 py-3 rounded-xl text-xs mt-4 leading-relaxed" style={{ background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                  <p className="font-bold mb-1" style={{ color: "#93c5fd" }}>Email fallback</p>
+                  {emailStats.fallback > 0 && (
+                    <p style={{ color: "#93c5fd" }}>
+                      <span className="font-semibold text-white">{emailStats.fallback}</span> contact{emailStats.fallback === 1 ? "" : "s"} have no primary email — their business or personal email will be used instead.
+                    </p>
+                  )}
+                  {emailStats.none > 0 && (
+                    <p style={{ color: "#f8b4b4" }}>
+                      <span className="font-semibold text-white">{emailStats.none}</span> row{emailStats.none === 1 ? "" : "s"} have no usable email at all and will be skipped.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {note && (
                 <div className="px-4 py-3 rounded-xl text-xs font-medium mt-4" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{note}</div>

@@ -275,7 +275,7 @@ const PER_PAGE = 100;
 export default function SpreadsheetClient() {
   const [all, setAll] = useState<Contact[]>([]);
   const [lists, setLists] = useState<ContactList[]>([]);
-  const [listFilter, setListFilter] = useState<number | "all">("all");
+  const [listFilter, setListFilter] = useState<number | "all" | "none">("all");
   const [memberIds, setMemberIds] = useState<Set<number> | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -294,6 +294,8 @@ export default function SpreadsheetClient() {
   const [exportFormat, setExportFormat] = useState<"csv" | "xlsx">("csv");
   const [exportBusy, setExportBusy] = useState(false);
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ id: number; name: string } | null>(null);
+  const [showBulkDeleteNoList, setShowBulkDeleteNoList] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Sorting (click a header) and column order (drag a header, persisted per browser)
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -400,7 +402,7 @@ export default function SpreadsheetClient() {
 
   // Export CSV: let the user pick a list (defaults to the one they're viewing) or all.
   function openExport() {
-    setExportListId(listFilter);
+    setExportListId(listFilter === "none" ? "all" : listFilter);
     setShowExportModal(true);
   }
   const exportScopeLabel = () =>
@@ -464,7 +466,7 @@ export default function SpreadsheetClient() {
     setTimeout(() => setBanner(""), 5000);
     await loadAll();
     await loadLists();
-    if (listFilter !== "all") {
+    if (listFilter !== "all" && listFilter !== "none") {
       try {
         const r = await fetch(`/api/lists/${listFilter}/members`);
         const rows = await r.json();
@@ -474,7 +476,7 @@ export default function SpreadsheetClient() {
   }, [loadAll, loadLists, listFilter]);
 
   useEffect(() => {
-    if (listFilter === "all") { setMemberIds(null); return; }
+    if (listFilter === "all" || listFilter === "none") { setMemberIds(null); return; }
     fetch(`/api/lists/${listFilter}/members`)
       .then((r) => r.json())
       .then((rows: { id: number }[]) => setMemberIds(new Set(rows.map((r) => r.id))))
@@ -509,13 +511,23 @@ export default function SpreadsheetClient() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return all.filter((c) => {
-      if (memberIds && !memberIds.has(c.id)) return false;
+      if (listFilter === "none") {
+        if (String(c.list_ids ?? "").trim() !== "") return false;
+      } else if (memberIds && !memberIds.has(c.id)) {
+        return false;
+      }
       if (!q) return true;
       return ["name", "email", "company", "title", "city", "state"].some((k) =>
         String(c[k] ?? "").toLowerCase().includes(q)
       );
     });
-  }, [all, memberIds, search]);
+  }, [all, memberIds, search, listFilter]);
+
+  // How many contacts belong to no list at all — drives the bulk-delete action.
+  const noListCount = useMemo(
+    () => all.filter((c) => String(c.list_ids ?? "").trim() === "").length,
+    [all]
+  );
 
   // Columns in the user's chosen order
   const orderedCols = useMemo(
@@ -700,9 +712,32 @@ export default function SpreadsheetClient() {
     }
   }
 
+  async function executeDeleteNoList() {
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noList: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Bulk delete failed");
+      setShowBulkDeleteNoList(false);
+      await loadAll();
+      await loadLists();
+      const n = Number(data.deleted ?? 0);
+      setBanner(`Deleted ${n} contact${n === 1 ? "" : "s"} that had no list.`);
+      setTimeout(() => setBanner(""), 4000);
+    } catch (err) {
+      setBanner((err as Error).message || "Bulk delete failed");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   async function executeRemoveFromList(contactId: number) {
     setDeleteContactInfo(null);
-    if (listFilter === "all") return;
+    if (listFilter === "all" || listFilter === "none") return;
 
     setPendingEdits((prev) => {
       const next = { ...prev };
@@ -753,14 +788,14 @@ export default function SpreadsheetClient() {
   }
 
   function addRow() {
-    setSelectedAddListId(listFilter);
+    setSelectedAddListId(listFilter === "none" ? "all" : listFilter);
     setShowAddRowModal(true);
   }
 
   // Quick add: pick which list first (defaults to the list you're viewing), then
   // drop a blank NEW row at the top and jump straight into editing it.
   function openQuickAdd() {
-    setQuickAddListId(listFilter);
+    setQuickAddListId(listFilter === "none" ? "all" : listFilter);
     setShowQuickAddModal(true);
   }
 
@@ -821,7 +856,7 @@ export default function SpreadsheetClient() {
       const data = await loadAll();
       const created = data.find((c) => String(c.email) === email);
       if (created) setNewRowIds((prev) => new Set(prev).add(created.id));
-      if (listFilter !== "all") {
+      if (listFilter !== "all" && listFilter !== "none") {
         const r = await fetch(`/api/lists/${listFilter}/members`);
         const rows = await r.json();
         setMemberIds(new Set(rows.map((x: { id: number }) => x.id)));
@@ -839,7 +874,12 @@ export default function SpreadsheetClient() {
     }
   }
 
-  const selectedName = listFilter === "all" ? null : lists.find((l) => l.id === listFilter)?.name;
+  const selectedName =
+    listFilter === "all"
+      ? null
+      : listFilter === "none"
+        ? "Contacts with no list"
+        : lists.find((l) => l.id === listFilter)?.name;
 
   return (
     <div className="flex flex-col gap-4 w-full max-w-full overflow-hidden flex-1">
@@ -859,14 +899,22 @@ export default function SpreadsheetClient() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem 0.45rem 2rem", outline: "none", width: 200 }} />
           </div>
-          <select value={listFilter} onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+          <select value={listFilter} onChange={(e) => { const v = e.target.value; setListFilter(v === "all" ? "all" : v === "none" ? "none" : Number(v)); }}
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem", outline: "none", cursor: "pointer", maxWidth: 220 }}>
             <option value="all" style={{ background: "#16181e" }}>All contacts</option>
+            <option value="none" style={{ background: "#16181e" }}>— No list —</option>
             {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
           </select>
+          {listFilter === "none" && noListCount > 0 && (
+            <button onClick={() => setShowBulkDeleteNoList(true)} title="Permanently delete every contact that isn't in any list"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
+              style={{ background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}>
+              <Trash2 size={14} /> Delete all with no list ({noListCount})
+            </button>
+          )}
           <ContactImportModal
             lists={lists}
-            defaultListId={listFilter === "all" ? null : listFilter}
+            defaultListId={listFilter === "all" || listFilter === "none" ? null : listFilter}
             onImported={afterImport}
             renderTrigger={(open, busy) => (
               <button onClick={open} disabled={busy} title="Upload a CSV/Excel file and map its columns to contact fields"
@@ -1196,7 +1244,7 @@ export default function SpreadsheetClient() {
               You are about to delete <span className="font-semibold text-white">{deleteContactInfo.name}</span>.
             </p>
 
-            {listFilter === "all" ? (
+            {listFilter === "all" || listFilter === "none" ? (
               <p className="text-xs text-slate-400 mb-5">
                 This will permanently delete the contact entirely from the database and remove them from all lists. This action cannot be undone.
               </p>
@@ -1214,7 +1262,7 @@ export default function SpreadsheetClient() {
                 Cancel
               </button>
               
-              {listFilter !== "all" && (
+              {listFilter !== "all" && listFilter !== "none" && (
                 <button
                   onClick={() => executeRemoveFromList(deleteContactInfo.id)}
                   className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 cursor-pointer"
@@ -1228,6 +1276,28 @@ export default function SpreadsheetClient() {
                 className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer"
               >
                 Delete Entirely
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete — every contact that isn't in any list */}
+      {showBulkDeleteNoList && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowBulkDeleteNoList(false); }}>
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(248,113,113,0.3)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5"><Trash2 size={14} className="text-red-400" /> Delete contacts with no list</h3>
+            <p className="text-xs text-slate-300 mb-2">
+              This permanently deletes all <span className="font-semibold text-white">{noListCount}</span> contact{noListCount === 1 ? "" : "s"} that aren&apos;t in any list.
+            </p>
+            <p className="text-xs text-slate-400 mb-5">
+              They&apos;ll be removed from the database entirely and this cannot be undone. Contacts that belong to at least one list are not affected.
+            </p>
+            <div className="flex justify-end gap-2 text-xs font-bold">
+              <button onClick={() => setShowBulkDeleteNoList(false)} disabled={bulkDeleting} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={executeDeleteNoList} disabled={bulkDeleting} className="px-4 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+                {bulkDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />} Delete {noListCount} contact{noListCount === 1 ? "" : "s"}
               </button>
             </div>
           </div>
