@@ -134,6 +134,9 @@ db.batch([
     // List scoping — tie campaigns & templates to a contact list (null = all / general)
     db.execute("ALTER TABLE campaigns ADD COLUMN list_id INTEGER").catch(() => {}),
     db.execute("ALTER TABLE email_templates ADD COLUMN list_id INTEGER").catch(() => {}),
+    // Branded-builder field state (JSON). Present = the template was built with the
+    // field builder and can be reopened in it; null = plain / pasted-HTML template.
+    db.execute("ALTER TABLE email_templates ADD COLUMN builder_json TEXT").catch(() => {}),
     // Extra phone / email slots (work & mobile secondary numbers, second personal email)
     db.execute("ALTER TABLE contacts ADD COLUMN work_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN mobile_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),

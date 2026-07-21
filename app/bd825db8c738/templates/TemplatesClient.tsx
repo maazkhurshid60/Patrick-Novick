@@ -14,6 +14,7 @@ interface Template {
   body: string;
   updated_at: number;
   list_id: number | null;
+  builder_json?: string | null;
 }
 
 interface ContactList {
@@ -131,8 +132,14 @@ export default function TemplatesClient() {
   async function handleSave(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // In builder mode the body is the generated house-style HTML, not the textarea.
-    const payload = !editing && mode === "builder" ? { ...form, body: builderHtml } : form;
+    // In builder mode the body is the generated house-style HTML (not the textarea),
+    // and we persist the builder fields so the template can be re-edited in the builder.
+    const isBuilder = mode === "builder";
+    const payload = {
+      ...form,
+      body: isBuilder ? builderHtml : form.body,
+      builder_json: isBuilder ? JSON.stringify(builder) : null,
+    };
     if (editing) {
       await fetch("/api/templates", {
         method: "PUT",
@@ -176,7 +183,14 @@ export default function TemplatesClient() {
 
   function startEdit(t: Template) {
     setEditing(t);
-    setMode("blank"); // editing works on the raw stored body
+    // If the template was built with the field builder, reopen it there so editing
+    // stays reliable; otherwise fall back to the raw body + live-preview editor.
+    let builderMode = false;
+    if (t.builder_json) {
+      try { setBuilder({ ...DEFAULT_BUILDER, ...JSON.parse(t.builder_json) }); builderMode = true; }
+      catch { builderMode = false; }
+    }
+    setMode(builderMode ? "builder" : "blank");
     setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null });
     setCreating(true);
   }
@@ -254,14 +268,14 @@ export default function TemplatesClient() {
             </button>
           </div>
 
-          {/* Mode toggle — only for a new template */}
-          {!editing && (
+          {/* Mode toggle — for new templates, and for builder-made templates being edited */}
+          {(!editing || !!editing.builder_json) && (
             <div className="flex gap-2 mb-5">
               {([["builder", Wand2, "Branded builder"], ["blank", Code, "Blank / paste HTML"]] as const).map(([m, Icon, label]) => (
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => { if (m === "blank" && mode === "builder") setForm((f) => ({ ...f, body: builderHtml })); setMode(m); }}
                   className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all"
                   style={mode === m
                     ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
@@ -290,23 +304,61 @@ export default function TemplatesClient() {
               </select>
             </div>
 
-            {!editing && mode === "builder" ? (
+            {mode === "builder" ? (
               <EmailBuilderFields builder={builder} onChange={setB} />
             ) : (
-              <div>
-                <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-                  Body — plain text, or paste full HTML. Use{" "}
-                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
-                  <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
-                </p>
-                <textarea
-                  style={{ ...inputStyle, minHeight: "260px", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem" }}
-                  placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
-                  value={form.body}
-                  onChange={(e) => setForm({ ...form, body: e.target.value })}
-                  required
-                />
+              <div className="grid gap-4 lg:grid-cols-2">
+                {/* Editor */}
+                <div className="flex flex-col">
+                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    Body — plain text, or paste full HTML. Use{" "}
+                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
+                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
+                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
+                  </p>
+                  <textarea
+                    style={{ ...inputStyle, minHeight: "62vh", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem", flex: 1 }}
+                    placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
+                    value={form.body}
+                    onChange={(e) => setForm({ ...form, body: e.target.value })}
+                    required
+                  />
+                </div>
+
+                {/* Live preview / review */}
+                <div className="lg:sticky lg:top-4 h-fit">
+                  <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+                  {form.subject.trim() && (
+                    <p className="text-xs mb-1.5 truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      Subject: <span style={{ color: "rgba(255,255,255,0.6)" }}>{form.subject}</span>
+                    </p>
+                  )}
+                  {form.body.trim() ? (
+                    isHtmlTemplate(form.body) ? (
+                      <iframe
+                        title="Template live preview"
+                        srcDoc={form.body.replace(
+                          /https:\/\/patricknovick\.com\//g,
+                          (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
+                        )}
+                        sandbox=""
+                        style={{ width: "100%", height: "62vh", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff", display: "block" }}
+                      />
+                    ) : (
+                      <div style={{ background: "#fff", borderRadius: "0.5rem", height: "62vh", overflow: "auto", padding: "28px 32px", fontFamily: "'Georgia', serif", fontSize: 14, lineHeight: 1.8, color: "#1a1a2e" }}>
+                        <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 30 }}>{form.body}</div>
+                        <div style={{ borderTop: "1px solid #eeeeee", paddingTop: 20 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/signature.png" alt="Patrick Novick - CEO, Metro Associates LLC" width={550} style={{ display: "block", maxWidth: "100%", height: "auto", border: 0 }} />
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex items-center justify-center text-xs" style={{ height: "62vh", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: "0.5rem", color: "rgba(255,255,255,0.3)" }}>
+                      Start typing to see a live preview
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

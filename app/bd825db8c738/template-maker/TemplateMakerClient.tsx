@@ -42,7 +42,7 @@ export default function TemplateMakerClient() {
     const res = await fetch("/api/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, subject, body: html, list_id: listId }),
+      body: JSON.stringify({ name, subject, body: html, list_id: listId, builder_json: JSON.stringify(builder) }),
     });
     setLoading(false);
     if (res.ok) {
