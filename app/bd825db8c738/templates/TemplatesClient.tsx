@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo, FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Wand2, Code } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
 import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
-import { buildMetroEmail, DEFAULT_BUILDER, EmailBuilderInput } from "@/lib/emailBuilder";
-import EmailBuilderFields from "../EmailBuilderFields";
 
 interface Template {
   id: number;
@@ -14,7 +12,6 @@ interface Template {
   body: string;
   updated_at: number;
   list_id: number | null;
-  builder_json?: string | null;
 }
 
 interface ContactList {
@@ -100,19 +97,9 @@ export default function TemplatesClient() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [listFilter, setListFilter] = useState<number | "all">("all");
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Template | null>(null);
-  const [form, setForm] = useState<{ name: string; subject: string; body: string; list_id: number | null }>({ name: "", subject: "", body: "", list_id: null });
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Template | null>(null);
-
-  // Branded email builder: "builder" assembles house-style HTML from fields;
-  // "blank" is the raw name/subject/body form (plain text or pasted HTML).
-  const [mode, setMode] = useState<"builder" | "blank">("builder");
-  const [builder, setBuilder] = useState<EmailBuilderInput>(DEFAULT_BUILDER);
-  const builderHtml = useMemo(() => buildMetroEmail(builder), [builder]);
-  const setB = (patch: Partial<EmailBuilderInput>) => setBuilder((b) => ({ ...b, ...patch }));
 
   async function fetchTemplates() {
     const res = await fetch("/api/templates");
@@ -128,35 +115,6 @@ export default function TemplatesClient() {
 
   const listName = (id: number | null) => (id == null ? null : lists.find((l) => l.id === id)?.name ?? null);
   const shownTemplates = listFilter === "all" ? templates : templates.filter((t) => t.list_id === listFilter);
-
-  async function handleSave(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    // In builder mode the body is the generated house-style HTML (not the textarea),
-    // and we persist the builder fields so the template can be re-edited in the builder.
-    const isBuilder = mode === "builder";
-    const payload = {
-      ...form,
-      body: isBuilder ? builderHtml : form.body,
-      builder_json: isBuilder ? JSON.stringify(builder) : null,
-    };
-    if (editing) {
-      await fetch("/api/templates", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, id: editing.id }),
-      });
-    } else {
-      await fetch("/api/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    }
-    setCreating(false); setEditing(null); setForm({ name: "", subject: "", body: "", list_id: null });
-    fetchTemplates();
-    setLoading(false);
-  }
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this template?")) return;
@@ -181,28 +139,6 @@ export default function TemplatesClient() {
     setLoading(false);
   }
 
-  function startEdit(t: Template) {
-    setEditing(t);
-    // If the template was built with the field builder, reopen it there so editing
-    // stays reliable; otherwise fall back to the raw body + live-preview editor.
-    let builderMode = false;
-    if (t.builder_json) {
-      try { setBuilder({ ...DEFAULT_BUILDER, ...JSON.parse(t.builder_json) }); builderMode = true; }
-      catch { builderMode = false; }
-    }
-    setMode(builderMode ? "builder" : "blank");
-    setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null });
-    setCreating(true);
-  }
-
-  function openCreate() {
-    setEditing(null);
-    setMode("builder");
-    setBuilder(DEFAULT_BUILDER);
-    setForm({ name: "", subject: "", body: "", list_id: null });
-    setCreating(true);
-  }
-
   function copyBody(id: number, body: string) {
     navigator.clipboard.writeText(body);
     setCopied(id);
@@ -221,7 +157,7 @@ export default function TemplatesClient() {
   return (
     <div>
       {/* Starter templates banner */}
-      {templates.length === 0 && !creating && (
+      {templates.length === 0 && (
         <div className="rounded-2xl p-6 mb-6" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(124,58,237,0.1)" }}>
@@ -252,155 +188,33 @@ export default function TemplatesClient() {
         </div>
       )}
 
-      {/* Create/Edit form */}
-      {creating ? (
-        <div className="rounded-2xl p-7 mb-6" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
-              {editing ? "Edit Template" : "New Template"}
-            </p>
-            <button
-              onClick={() => { setCreating(false); setEditing(null); setMode("builder"); setForm({ name: "", subject: "", body: "", list_id: null }); }}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-              style={{ color: "rgba(255,255,255,0.3)" }}
-            >
-              <X size={15} />
-            </button>
-          </div>
-
-          {/* Mode toggle — for new templates, and for builder-made templates being edited */}
-          {(!editing || !!editing.builder_json) && (
-            <div className="flex gap-2 mb-5">
-              {([["builder", Wand2, "Branded builder"], ["blank", Code, "Blank / paste HTML"]] as const).map(([m, Icon, label]) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => { if (m === "blank" && mode === "builder") setForm((f) => ({ ...f, body: builderHtml })); setMode(m); }}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all"
-                  style={mode === m
-                    ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                    : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <Icon size={13} /> {label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <form onSubmit={handleSave} className="flex flex-col gap-4">
-            <input style={inputStyle} placeholder="Template name (e.g. Job Outreach)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <input style={inputStyle} placeholder="Email subject line" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
-            <div>
-              <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional — which list this template is for)</span></p>
-              <select
-                style={{ ...inputStyle, cursor: "pointer" }}
-                value={form.list_id ?? ""}
-                onChange={(e) => setForm({ ...form, list_id: e.target.value ? Number(e.target.value) : null })}
-              >
-                <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
-                {lists.map((l) => (
-                  <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {mode === "builder" ? (
-              <EmailBuilderFields builder={builder} onChange={setB} />
-            ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {/* Editor */}
-                <div className="flex flex-col">
-                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-                    Body — plain text, or paste full HTML. Use{" "}
-                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
-                    <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
-                  </p>
-                  <textarea
-                    style={{ ...inputStyle, minHeight: "62vh", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem", flex: 1 }}
-                    placeholder={"Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
-                    value={form.body}
-                    onChange={(e) => setForm({ ...form, body: e.target.value })}
-                    required
-                  />
-                </div>
-
-                {/* Live preview / review */}
-                <div className="lg:sticky lg:top-4 h-fit">
-                  <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
-                  {form.subject.trim() && (
-                    <p className="text-xs mb-1.5 truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
-                      Subject: <span style={{ color: "rgba(255,255,255,0.6)" }}>{form.subject}</span>
-                    </p>
-                  )}
-                  {form.body.trim() ? (
-                    isHtmlTemplate(form.body) ? (
-                      <iframe
-                        title="Template live preview"
-                        srcDoc={form.body.replace(
-                          /https:\/\/patricknovick\.com\//g,
-                          (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
-                        )}
-                        sandbox=""
-                        style={{ width: "100%", height: "62vh", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff", display: "block" }}
-                      />
-                    ) : (
-                      <div style={{ background: "#fff", borderRadius: "0.5rem", height: "62vh", overflow: "auto", padding: "28px 32px", fontFamily: "'Georgia', serif", fontSize: 14, lineHeight: 1.8, color: "#1a1a2e" }}>
-                        <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginBottom: 30 }}>{form.body}</div>
-                        <div style={{ borderTop: "1px solid #eeeeee", paddingTop: 20 }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src="/signature.png" alt="Patrick Novick - CEO, Metro Associates LLC" width={550} style={{ display: "block", maxWidth: "100%", height: "auto", border: 0 }} />
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex items-center justify-center text-xs" style={{ height: "62vh", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: "0.5rem", color: "rgba(255,255,255,0.3)" }}>
-                      Start typing to see a live preview
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                type="submit" disabled={loading}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-                style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
-              >
-                <Check size={14} /> {editing ? "Save Changes" : "Save Template"}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
-          <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
-            </p>
-            <select
-              value={listFilter}
-              onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-              style={{ ...inputStyle, width: "auto", fontSize: "0.78rem", padding: "0.4rem 0.7rem", borderRadius: "0.625rem", cursor: "pointer" }}
-              title="Filter templates by list"
-            >
-              <option value="all" style={{ background: "#16181e" }}>All lists</option>
-              <option value="" disabled style={{ background: "#16181e" }}>──────</option>
-              {lists.map((l) => (
-                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+      {/* Toolbar: filter + New Template (opens the dedicated editor page) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
+          </p>
+          <select
+            value={listFilter}
+            onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+            style={{ ...inputStyle, width: "auto", fontSize: "0.78rem", padding: "0.4rem 0.7rem", borderRadius: "0.625rem", cursor: "pointer" }}
+            title="Filter templates by list"
           >
-            <Plus size={14} /> New Template
-          </button>
+            <option value="all" style={{ background: "#16181e" }}>All lists</option>
+            <option value="" disabled style={{ background: "#16181e" }}>──────</option>
+            {lists.map((l) => (
+              <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+            ))}
+          </select>
         </div>
-      )}
+        <button
+          onClick={() => router.push("/bd825db8c738/templates/new")}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
+          style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+        >
+          <Plus size={14} /> New Template
+        </button>
+      </div>
 
       {/* Template grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -434,7 +248,7 @@ export default function TemplatesClient() {
                   {copied === t.id ? <Check size={14} /> : <Copy size={14} />}
                 </button>
                 <button
-                  onClick={() => startEdit(t)}
+                  onClick={() => router.push(`/bd825db8c738/templates/${t.id}`)}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
                   title="Edit"
                 >
@@ -507,9 +321,6 @@ export default function TemplatesClient() {
               {isHtmlTemplate(previewing.body) ? (
                 <iframe
                   title="Email preview"
-                  // Sent emails reference the public https://patricknovick.com URL;
-                  // for the local preview, point image/asset URLs at this origin so
-                  // /public files (e.g. metro-header.jpg) load before deploy.
                   srcDoc={previewing.body.replace(
                     /https:\/\/patricknovick\.com\//g,
                     (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
@@ -553,7 +364,7 @@ export default function TemplatesClient() {
       )}
 
       {/* Starter buttons when templates exist */}
-      {templates.length > 0 && !creating && (
+      {templates.length > 0 && (
         <div className="mt-5 pt-5 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <p className="w-full text-xs mb-1" style={{ color: "rgba(255,255,255,0.25)" }}>Add starter templates:</p>
           {STARTER_TEMPLATES.map((t) => {
