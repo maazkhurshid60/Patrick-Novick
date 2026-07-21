@@ -18,7 +18,14 @@ export async function GET(): Promise<NextResponse> {
              (SELECT MAX(cr.sent_at) FROM campaign_recipients cr
                WHERE LOWER(cr.email) = LOWER(s.email)) AS last_sent,
              (SELECT COUNT(*) FROM email_send_log l
-               WHERE LOWER(l.email) = LOWER(s.email)) AS send_count
+               WHERE LOWER(l.email) = LOWER(s.email)) AS send_count,
+             (SELECT GROUP_CONCAT(cl.name, ', ')
+                FROM contact_list_members clm
+                JOIN contact_lists cl ON clm.list_id = cl.id
+               WHERE clm.contact_id = c.id) AS lists,
+             (SELECT GROUP_CONCAT(clm.list_id, ', ')
+                FROM contact_list_members clm
+               WHERE clm.contact_id = c.id) AS list_ids
       FROM suppression_list s
       LEFT JOIN contacts c ON LOWER(c.email) = LOWER(s.email)
       WHERE s.reason IN ('bounced', 'invalid') OR s.reason LIKE '%bounce%'
@@ -35,6 +42,8 @@ export async function GET(): Promise<NextResponse> {
       company: r.company ?? null,
       title: r.title ?? null,
       status: r.status ?? null,
+      lists: r.lists ?? null,
+      list_ids: r.list_ids ?? null,
     }));
     return NextResponse.json(rows);
   } catch (err) {

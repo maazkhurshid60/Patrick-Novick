@@ -43,7 +43,11 @@ interface BouncedContact {
   company: string | null;
   title: string | null;
   status: string | null;
+  lists: string | null;
+  list_ids: string | null;
 }
+
+interface ContactList { id: number; name: string }
 
 const cardStyle = {
   background: "#1a1d23",
@@ -83,6 +87,10 @@ export default function BouncedClient() {
   const [busy, setBusy] = useState(false);
   const PER_PAGE = 30;
 
+  // Contact lists, for the "which list" column, the list filter, and scoped export
+  const [lists, setLists] = useState<ContactList[]>([]);
+  const [listFilter, setListFilter] = useState<number | "all">("all");
+
   // Delete dialog state
   const [deleteContactInfo, setDeleteContactInfo] = useState<{ contactId: number | null; email: string; name: string } | null>(null);
 
@@ -97,7 +105,7 @@ export default function BouncedClient() {
 
   function downloadCsv() {
     const a = document.createElement("a");
-    a.href = "/api/export/bounced";
+    a.href = `/api/export/bounced${listFilter !== "all" ? `?list=${listFilter}` : ""}`;
     a.click();
   }
 
@@ -106,7 +114,7 @@ export default function BouncedClient() {
       setExporting(true);
       setError("");
       const XLSX = await loadXLSX();
-      const res = await fetch("/api/export/bounced?format=json");
+      const res = await fetch(`/api/export/bounced?format=json${listFilter !== "all" ? `&list=${listFilter}` : ""}`);
       const data = await res.json();
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
@@ -204,6 +212,7 @@ export default function BouncedClient() {
 
   useEffect(() => {
     fetchRows();
+    fetch("/api/lists").then((r) => (r.ok ? r.json() : [])).then(setLists).catch(() => {});
   }, []);
 
   function startEdit(email: string) {
@@ -322,20 +331,26 @@ export default function BouncedClient() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
+    return rows.filter((r) => {
+      if (listFilter !== "all") {
+        const ids = String(r.list_ids ?? "").split(",").map((s) => s.trim());
+        if (!ids.includes(String(listFilter))) return false;
+      }
+      if (!q) return true;
+      return (
         r.email.toLowerCase().includes(q) ||
         (r.name ?? "").toLowerCase().includes(q) ||
         (r.company ?? "").toLowerCase().includes(q) ||
+        (r.lists ?? "").toLowerCase().includes(q) ||
         r.reason.toLowerCase().includes(q)
-    );
-  }, [rows, search]);
+      );
+    });
+  }, [rows, search, listFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
-  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { setPage(1); }, [search, listFilter]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -383,6 +398,17 @@ export default function BouncedClient() {
                 style={{ ...inputStyle, padding: "0.5rem 0.75rem 0.5rem 2.2rem", fontSize: "0.8rem", width: "240px" }}
               />
             </div>
+            <select
+              value={listFilter}
+              onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+              title="Filter by contact list — also scopes the CSV / Excel export"
+              style={{ ...inputStyle, padding: "0.5rem 0.7rem", fontSize: "0.8rem", width: "auto", maxWidth: 200, cursor: "pointer" }}
+            >
+              <option value="all" style={{ background: "#16181e" }}>All lists</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
             <button
               onClick={downloadCsv}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5"
@@ -445,6 +471,7 @@ export default function BouncedClient() {
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Contact</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Email</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Reason</th>
+                  <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>List(s)</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Last Emailed</th>
                   <th className="text-left px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Bounced</th>
                   <th className="text-right px-6 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Action</th>
@@ -491,6 +518,19 @@ export default function BouncedClient() {
                         >
                           {r.reason}
                         </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {r.lists ? (
+                          <div className="flex flex-wrap gap-1 max-w-[220px]">
+                            {r.lists.split(",").map((nm) => nm.trim()).filter(Boolean).map((nm, idx) => (
+                              <span key={idx} className="px-2 py-0.5 rounded-md text-[11px] font-medium" style={{ background: "rgba(96,165,250,0.1)", color: "#93c5fd", border: "1px solid rgba(96,165,250,0.2)" }}>
+                                {nm}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {r.last_sent ? (
