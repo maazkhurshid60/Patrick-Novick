@@ -97,7 +97,6 @@ export default function CampaignClient({
   const [history, setHistory] = useState<Campaign[]>([]);
   const [historyFilter, setHistoryFilter] = useState<number | "all">("all");
 
-  const [attachPostcard, setAttachPostcard] = useState(false);
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [bodyIsHtml, setBodyIsHtml] = useState(false);
@@ -209,7 +208,6 @@ export default function CampaignClient({
 
   // Names of attachments that will ride along with this send
   const attachmentNames = [
-    ...(attachPostcard ? ["postcard.pdf"] : []),
     ...(customAttachment ? [customAttachment.name] : []),
   ];
   const hasAttachment = attachmentNames.length > 0;
@@ -283,7 +281,6 @@ export default function CampaignClient({
           replyTo: replyTo.trim() || null,
           isTestSend,
           testEmail: isTestSend ? testEmail.trim() : null,
-          attachPostcard,
           customAttachment: customAttachment ? { name: customAttachment.name, content: customAttachment.content } : null,
         }),
       });
@@ -300,7 +297,6 @@ export default function CampaignClient({
         );
         if (!isTestSend) {
           setSubject(""); setBody("");
-          setAttachPostcard(false);
           setCustomAttachment(null);
           fetchHistory();
         }
@@ -709,27 +705,13 @@ export default function CampaignClient({
           <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-white">Campaign Attachments</span>
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a postcard or any document to this email campaign</span>
+              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a document to this email campaign</span>
             </div>
 
             <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-              {/* Predefined Postcard Checkbox */}
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={attachPostcard}
-                  onChange={(e) => setAttachPostcard(e.target.checked)}
-                  className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
-                />
-                <div className="flex flex-col">
-                  <span className="text-xs text-white/80">Attach standard postcard PDF</span>
-                  <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Includes the default company postcard.pdf</span>
-                </div>
-              </label>
-
               {/* Custom File Upload */}
               <div className="flex flex-col gap-2">
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Or attach a custom file</label>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Attach a file</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="file"
