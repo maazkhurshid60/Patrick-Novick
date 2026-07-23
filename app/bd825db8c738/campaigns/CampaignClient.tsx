@@ -551,10 +551,10 @@ export default function CampaignClient({
                   value={dailyLimit}
                   onChange={(e) => {
                     const digits = e.target.value.replace(/[^0-9]/g, "");
-                    setDailyLimit(digits === "" ? 0 : Math.min(500, Number(digits)));
+                    setDailyLimit(digits === "" ? 0 : Math.min(1500, Number(digits)));
                   }}
-                  onBlur={() => setDailyLimit((v) => Math.max(1, Math.min(500, v || 1)))}
-                  title="How many to send this run (1–500)."
+                  onBlur={() => setDailyLimit((v) => Math.max(1, Math.min(1500, v || 1)))}
+                  title="How many to send this run (1–1500)."
                 />
               </div>
               <div>
