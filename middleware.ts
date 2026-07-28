@@ -14,6 +14,9 @@ const PUBLIC_API = [
   "/api/auth/logout",
   "/api/track/open",
   "/api/unsubscribe",
+  // Scheduler cron worker: hit by Vercel Cron with no admin session. It is not
+  // open — it verifies CRON_SECRET itself (see app/api/scheduler/run/route.ts).
+  "/api/scheduler/run",
 ];
 
 function hexToBytes(hex: string): ArrayBuffer {

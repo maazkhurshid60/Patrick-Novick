@@ -103,6 +103,30 @@ db.batch([
     active        INTEGER NOT NULL DEFAULT 1,
     created_at    INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Scheduled campaign sends. `scheduled_at` is the absolute UTC epoch the send
+  // is due (computed from the user's local time + IANA `timezone` at creation).
+  // The cron worker (/api/scheduler/run) claims due rows and dispatches them via
+  // the shared send-core. `result_campaign_id` links to the campaigns row created
+  // when it actually sends.
+  `CREATE TABLE IF NOT EXISTS scheduled_campaigns (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject             TEXT NOT NULL,
+    body                TEXT NOT NULL,
+    is_html             INTEGER NOT NULL DEFAULT 0,
+    list_id             INTEGER,
+    exclude_recent_days INTEGER,
+    daily_limit         INTEGER,
+    send_offset         INTEGER NOT NULL DEFAULT 0,
+    reply_to            TEXT,
+    attach_postcard     INTEGER NOT NULL DEFAULT 0,
+    scheduled_at        INTEGER NOT NULL,
+    timezone            TEXT NOT NULL DEFAULT 'UTC',
+    status              TEXT NOT NULL DEFAULT 'pending',
+    result_campaign_id  INTEGER,
+    recipient_count     INTEGER NOT NULL DEFAULT 0,
+    error               TEXT,
+    created_at          INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
 ], "write")
   .catch(console.error)
   .then(() => Promise.all([

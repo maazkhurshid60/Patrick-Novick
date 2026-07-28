@@ -1,178 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { sendCampaignEmail, getBouncedEmails } from "@/lib/brevo";
-import fs from "fs";
-import path from "path";
+import { sendCampaignEmail } from "@/lib/brevo";
+import {
+  personalize,
+  wrapInHtmlTemplate,
+  buildAttachments,
+  sendCampaignNow,
+  type CampaignSendParams,
+} from "@/lib/campaignSend";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Every real campaign also sends ONE clearly-marked copy to these verifier
-// addresses so the team can see exactly what went out. They are not tracked,
-// not counted as recipients, and not written to any log.
-const VERIFIER_EMAILS: string[] = [
-  "news@patricknovick.com",
-  "pat@jobw.com",
-  "zohaibe840@gmail.com",
-];
-
-
-interface ContactRow {
-  id: number;
-  email: string;
-  name: string;
-  title?: string;
-  company?: string;
-}
-
-function personalize(template: string, contact: ContactRow): string {
-  const fullName = (contact.name as string) || "";
-  const firstName = fullName.split(" ")[0] || fullName || "there";
-  const lastName = fullName.split(" ").slice(1).join(" ") || "";
-  return template
-    .replace(/\{\{first_name\}\}/gi, firstName)
-    .replace(/\{\{last_name\}\}/gi, lastName)
-    .replace(/\{\{full_name\}\}/gi, fullName)
-    .replace(/\{\{name\}\}/gi, fullName)
-    .replace(/\{\{email\}\}/gi, contact.email as string)
-    .replace(/\{\{title\}\}/gi, contact.title || "")
-    .replace(/\{\{company\}\}/gi, contact.company || "");
-}
-
-// A body that carries its own <html>/<body> is a complete, self-contained email
-// (e.g. a rich HTML template). It should be delivered as authored rather than
-// nested inside the standard wrapper below.
-function isFullHtmlDocument(s: string): boolean {
-  return /<!doctype html|<html[\s>]/i.test(s);
-}
-
-function wrapInHtmlTemplate(bodyText: string, email: string, campaignId: number, isHtml = false): string {
-  const unsubscribeUrl = `https://patricknovick.com/unsubscribe?email=${encodeURIComponent(email)}`;
-  // base64-encode email for tracking pixel — decoded server-side on open
-  const eid = encodeURIComponent(Buffer.from(email.toLowerCase()).toString("base64"));
-  const trackingPixel = `https://patricknovick.com/api/track/open?cid=${campaignId}&eid=${eid}`;
-
-  // Full standalone HTML email: send the author's document verbatim. We only
-  // resolve the {{unsubscribe_url}} token, guarantee an unsubscribe link exists
-  // (CAN-SPAM), and add the open-tracking pixel — all just before </body> so the
-  // design is left untouched.
-  if (isFullHtmlDocument(bodyText)) {
-    const html = bodyText.replace(/\{\{unsubscribe_url\}\}/gi, unsubscribeUrl);
-    const pixel = `<img src="${trackingPixel}" width="1" height="1" style="display:none;width:1px;height:1px;opacity:0;" alt="" />`;
-    const unsubFallback = /unsubscribe/i.test(html)
-      ? ""
-      : `<div style="text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:17px;color:#8a97a4;padding:16px;">` +
-        `<a href="${unsubscribeUrl}" style="color:#8a97a4;text-decoration:underline;">Unsubscribe</a></div>`;
-    const injection = `${unsubFallback}${pixel}`;
-    return /<\/body>/i.test(html)
-      ? html.replace(/<\/body>/i, `${injection}</body>`)
-      : `${html}${injection}`;
-  }
-
-  // Plain text: convert newlines to <br>. HTML fragment: use the author's markup verbatim.
-  const formattedBody = isHtml ? bodyText : bodyText.trim().replace(/\n/g, "<br />");
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table border="0" cellpadding="0" cellspacing="0" width="100%">
-    <tr>
-      <td style="padding:40px 30px;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:600px;">
-        ${formattedBody}
-        <div style="margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px;">
-          <img src="https://patricknovick.com/signature.png" alt="Patrick Novick - CEO, Metro Associates LLC" width="550" style="display: block; max-width: 100%; height: auto; border: 0;" />
-        </div>
-      </td>
-    </tr>
-    <tr>
-      <td style="height:400px;font-size:0;line-height:0;">&nbsp;</td>
-    </tr>
-    <tr>
-      <td style="padding:30px;border-top:1px solid #eeeeee;text-align:center;">
-        <p style="margin:0 0 6px 0;font-size:12px;color:#999999;">Metro Associates, LLC &nbsp;&bull;&nbsp; 1317 Edgewater Drive #4452, Orlando, FL 32804</p>
-        <p style="margin:0;">
-          <a href="${unsubscribeUrl}" style="font-size:11px;color:#999999;text-decoration:underline;">Unsubscribe</a>
-        </p>
-      </td>
-    </tr>
-  </table>
-  <img src="${trackingPixel}" width="1" height="1" style="display:none;width:1px;height:1px;position:absolute;opacity:0;" alt="" />
-</body>
-</html>`.trim();
-}
-
 // POST /api/campaigns/send
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const {
-    subject,
-    body,
-    isHtml,
-    listId,
-    excludeRecentDays,
-    dailyLimit,
-    offset,
-    replyTo,
-    isTestSend,
-    testEmail,
-    attachPostcard,
-    customAttachment,
-  } = await req.json() as {
-    subject: string;
-    body: string;
-    isHtml?: boolean;
-    listId?: number | null;
-    excludeRecentDays?: number | null;
-    dailyLimit?: number | null;
-    offset?: number | null;
-    replyTo?: string | null;
+  const payload = await req.json() as CampaignSendParams & {
     isTestSend?: boolean;
     testEmail?: string | null;
-    attachPostcard?: boolean;
-    customAttachment?: { name: string; content: string } | null;
   };
+  const {
+    subject, body, isHtml, replyTo, isTestSend, testEmail,
+    attachPostcard, customAttachment,
+  } = payload;
 
   if (!subject?.trim() || !body?.trim()) {
     return NextResponse.json({ error: "Subject and body are required" }, { status: 400 });
   }
 
-  // Construct attachments array
-  const finalAttachments: { name: string; content?: string; url?: string }[] = [];
-
-  if (attachPostcard) {
-    try {
-      const postcardPath = path.join(process.cwd(), "public", "postcard.pdf");
-      if (fs.existsSync(postcardPath)) {
-        finalAttachments.push({
-          name: "postcard.pdf",
-          content: fs.readFileSync(postcardPath).toString("base64"),
-        });
-      } else {
-        console.warn("Postcard file not found in public directory:", postcardPath);
-      }
-    } catch (err) {
-      console.error("Failed to read postcard file:", err);
-    }
-  }
-
-  if (customAttachment?.content) {
-    finalAttachments.push({
-      name: customAttachment.name,
-      content: customAttachment.content,
-    });
-  }
-
-  const attachmentsOption = finalAttachments.length > 0 ? finalAttachments : undefined;
-
-  // Handle Test Send logic (does not write to campaigns logs)
+  // Test Send: deliver a single [TEST] copy, no targeting, no logging.
   if (isTestSend) {
     if (!testEmail?.trim()) {
       return NextResponse.json({ error: "Test email address is required" }, { status: 400 });
     }
     try {
+      const attachmentsOption = buildAttachments(attachPostcard, customAttachment);
       const testContact = { id: 0, email: testEmail.trim(), name: "Test Recipient", title: "Senior Engineer", company: "Big Company" };
       const personalizedBody = personalize(body, testContact);
       const personalizedSubject = `[TEST] ${personalize(subject, testContact)}`;
@@ -183,11 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         htmlContent: wrappedHtml,
         replyTo: replyTo ?? undefined,
         attachments: attachmentsOption,
-        recipients: [{
-          email: testEmail.trim(),
-          name: "Test Recipient",
-          personalizedHtml: wrappedHtml
-        }]
+        recipients: [{ email: testEmail.trim(), name: "Test Recipient", personalizedHtml: wrappedHtml }],
       });
       if (result.sent.length === 0) {
         const reason = result.failed[0]?.error ?? "Send failed";
@@ -200,179 +57,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Feedback loop: before targeting, pull every address Brevo has marked as a
-  // hard bounce / block / invalid and add it to our suppression list. The
-  // targeting query below excludes suppression_list, so these bad addresses are
-  // skipped automatically — this is what keeps the bounce rate near zero over time.
-  try {
-    const bounced = await getBouncedEmails(90);
-    if (bounced.size > 0) {
-      await db.batch(
-        [...bounced].map((email) => ({
-          sql: "INSERT OR IGNORE INTO suppression_list (email, reason) VALUES (?, 'bounced')",
-          args: [email],
-        })),
-        "write"
-      );
-    }
-  } catch {
-    // a failed sync must never block a send — worst case we skip a few bad addresses this round
+  // Real send — shared core (identical logic used by the scheduler worker).
+  const result = await sendCampaignNow(payload);
+  if (!result.ok) {
+    const status = result.error === "No eligible contacts to send to" ? 400 : 500;
+    return NextResponse.json({ error: result.error ?? "Send failed" }, { status });
   }
-
-  // Build targeting query
-  let sql: string;
-  const args: (string | number)[] = [];
-
-  if (listId) {
-    sql = `SELECT c.id, c.email, c.name, c.title, c.company
-           FROM contacts c
-           JOIN contact_list_members m ON c.id = m.contact_id
-           WHERE m.list_id = ? AND c.status = 'active'
-           AND c.email NOT IN (SELECT email FROM suppression_list)`;
-    args.push(listId);
-  } else {
-    sql = `SELECT id, email, name, title, company FROM contacts WHERE status = 'active'
-           AND email NOT IN (SELECT email FROM suppression_list)`;
-  }
-
-  if (excludeRecentDays && excludeRecentDays > 0) {
-    const cutoff = Math.floor(Date.now() / 1000) - excludeRecentDays * 86400;
-    const emailCol = listId ? "c.email" : "email";
-    sql += ` AND ${emailCol} NOT IN (SELECT DISTINCT email FROM campaign_recipients WHERE sent_at > ?)`;
-    args.push(cutoff);
-  }
-
-  // Stable ordering so "skip first N" refers to the same positions across sends.
-  sql += ` ORDER BY ${listId ? "c.id" : "id"}`;
-
-  const limit = dailyLimit && dailyLimit > 0 ? dailyLimit : 500;
-  sql += ` LIMIT ?`;
-  args.push(limit);
-
-  // Skip the first N eligible recipients (batch sending: 1–25, then 26–50, …)
-  const skip = offset && offset > 0 ? Math.floor(offset) : 0;
-  if (skip > 0) {
-    sql += ` OFFSET ?`;
-    args.push(skip);
-  }
-
-  const contactsResult = await db.execute({ sql, args });
-  const contacts = contactsResult.rows as unknown as ContactRow[];
-
-  if (contacts.length === 0) {
-    return NextResponse.json({ error: "No eligible contacts to send to" }, { status: 400 });
-  }
-
-  // Resolve list name for logging
-  let targetListName: string | null = null;
-  if (listId) {
-    const listResult = await db.execute({ sql: "SELECT name FROM contact_lists WHERE id = ?", args: [listId] });
-    targetListName = (listResult.rows[0]?.name as string) ?? null;
-  }
-
-  // Create campaign record FIRST to get ID for tracking pixel
-  const campaignInsert = await db.execute({
-    sql: `INSERT INTO campaigns (subject, body, recipient_count, status, target_list, list_id, sent_at)
-          VALUES (?, ?, 0, 'sending', ?, ?, unixepoch())`,
-    args: [subject, body, targetListName, listId ?? null],
-  });
-  const campaignId = Number(campaignInsert.lastInsertRowid);
-
-  let result;
-  try {
-    result = await sendCampaignEmail({
-      subject,
-      htmlContent: body,
-      replyTo: replyTo ?? undefined,
-      attachments: attachmentsOption,
-      recipients: contacts.map((c) => {
-        const personalizedText = personalize(body, c);
-        const wrappedHtml = wrapInHtmlTemplate(personalizedText, c.email as string, campaignId, !!isHtml);
-        return {
-          email: c.email as string,
-          name: (c.name as string) || undefined,
-          personalizedHtml: wrappedHtml,
-          personalizedSubject: personalize(subject, c),
-        };
-      }),
-    });
-  } catch (err) {
-    await db.execute({ sql: "UPDATE campaigns SET status = 'failed' WHERE id = ?", args: [campaignId] });
-    const message = err instanceof Error ? err.message : "Send failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-
-  // If nothing actually sent, mark the campaign failed and report why.
-  if (result.sent.length === 0) {
-    await db.execute({ sql: "UPDATE campaigns SET status = 'failed' WHERE id = ?", args: [campaignId] });
-    const reason = result.failed[0]?.error ?? "no emails were accepted";
-    return NextResponse.json({ error: `Send failed — ${reason}` }, { status: 500 });
-  }
-
-  // Mark campaign sent with the ACTUAL number delivered to Brevo (not the target
-  // count) so a partial send is recorded accurately.
-  await db.execute({
-    sql: "UPDATE campaigns SET status = 'sent', recipient_count = ?, brevo_msg_id = ? WHERE id = ?",
-    args: [result.sent.length, result.messageId ?? null, campaignId],
-  });
-
-  // Track ONLY the recipients that were actually sent — so a mid-batch failure
-  // can be safely retried without duplicating the ones already emailed.
-  await db.batch(
-    result.sent.map((email) => ({
-      sql: "INSERT OR IGNORE INTO campaign_recipients (campaign_id, email) VALUES (?, ?)",
-      args: [campaignId, email],
-    })),
-    "write"
-  );
-
-  // Append-only send log — one row for every email actually dispatched, no dedup.
-  // This is what "Emails Sent" counts, so re-sends to the same person are each
-  // counted (campaign_recipients above stays deduped for retry-safety).
-  await db.batch(
-    result.sent.map((email) => ({
-      sql: "INSERT INTO email_send_log (campaign_id, email) VALUES (?, ?)",
-      args: [campaignId, email],
-    })),
-    "write"
-  );
-
-  // Send one verifier copy of what just went out (non-blocking to the result —
-  // a failure here must never fail the campaign). Uses the first recipient's data
-  // for a representative, personalized example; campaignId 0 so it isn't tracked.
-  if (VERIFIER_EMAILS.length > 0) {
-    try {
-      const sample = contacts[0];
-      const verifierSubject = `[CAMPAIGN COPY] ${personalize(subject, sample)}`;
-      const verifierBodyText = personalize(body, sample);
-      await sendCampaignEmail({
-        subject: verifierSubject,
-        htmlContent: wrapInHtmlTemplate(verifierBodyText, VERIFIER_EMAILS[0], 0, !!isHtml),
-        replyTo: replyTo ?? undefined,
-        attachments: attachmentsOption,
-        recipients: VERIFIER_EMAILS.map((e) => ({
-          email: e,
-          name: "Campaign Verifier",
-          personalizedHtml: wrapInHtmlTemplate(verifierBodyText, e, 0, !!isHtml),
-          personalizedSubject: verifierSubject,
-        })),
-      });
-    } catch (err) {
-      console.error("Verifier copy failed (non-fatal):", err);
-    }
-  }
-
   return NextResponse.json({
     success: true,
-    recipients: result.sent.length,
-    failed: result.failed.length,
-    campaignId,
+    recipients: result.recipients,
+    failed: result.failed,
+    campaignId: result.campaignId,
     messageId: result.messageId,
   });
 }
 
 // GET /api/campaigns/send — campaign history with open counts.
-// Optional ?listId=N filters to campaigns sent to that list.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const listIdParam = req.nextUrl.searchParams.get("listId");
   const listId = listIdParam ? Number(listIdParam) : null;
