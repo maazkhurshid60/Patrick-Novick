@@ -118,6 +118,41 @@ export type UpdateUserResult =
   | { ok: true }
   | { ok: false; error: string; status: number };
 
+// Does a DB account already exist for this username? Used by login to stop the
+// env bootstrap password from working once the admin has been migrated to the DB.
+export async function usernameExists(username: string): Promise<boolean> {
+  const res = await db.execute({
+    sql: "SELECT 1 FROM admin_users WHERE username = ? LIMIT 1",
+    args: [username.trim()],
+  });
+  return res.rows.length > 0;
+}
+
+// Migrate the env bootstrap admin into a real DB account (or update it if one
+// already exists). After this, login uses the DB password and the old env
+// password is retired (see the login route). Returns the DB user id.
+export async function promoteEnvAdminToDb(username: string, password: string): Promise<{ ok: true; id: number } | { ok: false; error: string; status: number }> {
+  const uname = username.trim();
+  if (uname.length < 3) return { ok: false, error: "Invalid admin username.", status: 400 };
+  if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters.", status: 400 };
+  const { hash, salt } = hashPassword(password);
+
+  const existing = await db.execute({ sql: "SELECT id FROM admin_users WHERE username = ?", args: [uname] });
+  if (existing.rows[0]) {
+    const id = Number(existing.rows[0].id);
+    await db.execute({
+      sql: "UPDATE admin_users SET password_hash = ?, password_salt = ?, role = 'admin', active = 1 WHERE id = ?",
+      args: [hash, salt, id],
+    });
+    return { ok: true, id };
+  }
+  const res = await db.execute({
+    sql: "INSERT INTO admin_users (username, password_hash, password_salt, role, active) VALUES (?, ?, ?, 'admin', 1)",
+    args: [uname, hash, salt],
+  });
+  return { ok: true, id: Number(res.lastInsertRowid) };
+}
+
 // Admin: set a new password for an existing DB user (rehashes with a fresh salt).
 export async function setUserPassword(id: number, password: string): Promise<UpdateUserResult> {
   if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters.", status: 400 };

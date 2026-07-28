@@ -64,6 +64,41 @@ export default function UsersClient() {
   const [showEditPw, setShowEditPw] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Change-my-password modal
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [cpForm, setCpForm] = useState({ current: "", next: "", confirm: "" });
+  const [showCpPw, setShowCpPw] = useState(false);
+  const [savingCp, setSavingCp] = useState(false);
+  const cpValid = cpForm.current.length > 0 && cpForm.next.length >= 8 && cpForm.next === cpForm.confirm;
+
+  function closeChangePw() {
+    setShowChangePw(false);
+    setShowCpPw(false);
+    setCpForm({ current: "", next: "", confirm: "" });
+  }
+
+  async function changeMyPassword(e: FormEvent) {
+    e.preventDefault();
+    if (!cpValid) return;
+    setSavingCp(true);
+    try {
+      const res = await fetch("/api/users/me/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: cpForm.current, newPassword: cpForm.next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error || "Could not change password."); return; }
+      toast.success("Your password has been changed.");
+      closeChangePw();
+      loadUsers();
+    } catch {
+      toast.error("Network error — please try again.");
+    } finally {
+      setSavingCp(false);
+    }
+  }
+
   const editPwEqual = editForm.confirmPassword.length > 0 && editForm.password === editForm.confirmPassword;
   const editRoleChanged = editUser !== null && editForm.role !== editUser.role;
   const editPwProvided = editForm.password.length > 0;
@@ -262,18 +297,27 @@ export default function UsersClient() {
             Create accounts and enable or disable access. Admins can manage users; members can’t.
           </p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
-          style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.28)" }}
-        >
-          <Plus size={15} /> Add User
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => setShowChangePw(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all hover:scale-[1.02]"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.8)", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
+            <KeyRound size={15} /> Change my password
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
+            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.28)" }}
+          >
+            <Plus size={15} /> Add User
+          </button>
+        </div>
       </div>
 
       {/* Bootstrap-admin note */}
       <div className="px-4 py-2.5 rounded-xl text-xs mb-4" style={{ background: "rgba(96,165,250,0.08)", color: "#93c5fd", border: "1px solid rgba(96,165,250,0.18)" }}>
-        You’re signed in as <strong>{me.username}</strong>. The primary admin is configured via environment variables and isn’t listed here.
+        You’re signed in as <strong>{me.username}</strong>. Use <strong>Change my password</strong> above to update your own login — including the primary admin account.
       </div>
 
       {/* Users table */}
@@ -608,6 +652,71 @@ export default function UsersClient() {
                 <button type="button" onClick={closeAdd} className="px-4 py-2 rounded-full text-slate-400 hover:bg-white/5 cursor-pointer transition-colors" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>Cancel</button>
                 <button type="submit" disabled={saving || !canSubmit} className="px-5 py-2 rounded-full text-white cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:brightness-110" style={{ background: "linear-gradient(135deg, #e63946, #b5121b)", boxShadow: "0 6px 20px rgba(230,57,70,0.35)" }}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change-my-password modal */}
+      {showChangePw && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={closeChangePw}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: "#16181d", border: "1px solid rgba(255,255,255,0.08)" }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(96,165,250,0.12)" }}>
+                  <KeyRound size={17} style={{ color: "#60a5fa" }} />
+                </div>
+                <div>
+                  <p className="text-base font-bold text-white">Change my password</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Updates the account you’re signed in as ({me.username}).</p>
+                </div>
+              </div>
+              <button onClick={closeChangePw} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={changeMyPassword} className="mt-4 flex flex-col gap-3.5">
+              <div>
+                <label style={label}>Current password</label>
+                <input style={inp} type={showCpPw ? "text" : "password"} value={cpForm.current}
+                  onChange={(e) => setCpForm({ ...cpForm, current: e.target.value })}
+                  placeholder="Your current password" autoComplete="current-password" />
+              </div>
+              <div>
+                <label style={label}>New password</label>
+                <div className="relative">
+                  <input style={{ ...inp, paddingRight: 40 }} type={showCpPw ? "text" : "password"} value={cpForm.next}
+                    onChange={(e) => setCpForm({ ...cpForm, next: e.target.value })}
+                    placeholder="At least 8 characters" autoComplete="new-password" minLength={8} />
+                  <button type="button" onClick={() => setShowCpPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors"
+                    style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {showCpPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={label}>Confirm new password</label>
+                <input style={inp} type={showCpPw ? "text" : "password"} value={cpForm.confirm}
+                  onChange={(e) => setCpForm({ ...cpForm, confirm: e.target.value })}
+                  placeholder="Re-enter new password" autoComplete="new-password" />
+                {cpForm.confirm.length > 0 && cpForm.next !== cpForm.confirm && (
+                  <p className="text-xs mt-1" style={{ color: "#f87171" }}>Passwords don’t match.</p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 mt-1">
+                <button type="button" onClick={closeChangePw} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.7)" }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={!cpValid || savingCp}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                  style={{ background: "var(--color-red)" }}>
+                  {savingCp ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  {savingCp ? "Saving…" : "Change password"}
                 </button>
               </div>
             </form>
