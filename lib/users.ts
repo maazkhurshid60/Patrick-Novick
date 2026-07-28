@@ -114,6 +114,33 @@ export async function createUser(username: string, password: string, role: Role)
   }
 }
 
+export type UpdateUserResult =
+  | { ok: true }
+  | { ok: false; error: string; status: number };
+
+// Admin: set a new password for an existing DB user (rehashes with a fresh salt).
+export async function setUserPassword(id: number, password: string): Promise<UpdateUserResult> {
+  if (password.length < 8) return { ok: false, error: "Password must be at least 8 characters.", status: 400 };
+  const { hash, salt } = hashPassword(password);
+  const res = await db.execute({
+    sql: "UPDATE admin_users SET password_hash = ?, password_salt = ? WHERE id = ?",
+    args: [hash, salt, id],
+  });
+  if (res.rowsAffected === 0) return { ok: false, error: "User not found.", status: 404 };
+  return { ok: true };
+}
+
+// Admin: change an existing DB user's role.
+export async function setUserRole(id: number, role: Role): Promise<UpdateUserResult> {
+  if (role !== "admin" && role !== "member") return { ok: false, error: "Invalid role.", status: 400 };
+  const res = await db.execute({
+    sql: "UPDATE admin_users SET role = ? WHERE id = ?",
+    args: [role, id],
+  });
+  if (res.rowsAffected === 0) return { ok: false, error: "User not found.", status: 404 };
+  return { ok: true };
+}
+
 export async function setUserActive(id: number, active: boolean): Promise<void> {
   await db.execute({
     sql: "UPDATE admin_users SET active = ? WHERE id = ?",

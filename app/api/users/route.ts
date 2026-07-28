@@ -5,6 +5,8 @@ import {
   listUsers,
   createUser,
   setUserActive,
+  setUserPassword,
+  setUserRole,
   deleteUser,
   type SessionUser,
 } from "@/lib/users";
@@ -63,6 +65,41 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   }
 
   await setUserActive(id, body.active);
+  return NextResponse.json({ success: true });
+}
+
+// PUT /api/users — update an existing account's password and/or role (admin only)
+export async function PUT(req: NextRequest): Promise<NextResponse> {
+  const me = await requireAdmin(req);
+  if (me instanceof NextResponse) return me;
+
+  const body = await req.json().catch(() => ({}));
+  const id = Number(body.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+  }
+
+  const hasPassword = typeof body.password === "string" && body.password.length > 0;
+  const hasRole = body.role !== undefined;
+  if (!hasPassword && !hasRole) {
+    return NextResponse.json({ error: "Nothing to update. Provide a password and/or role." }, { status: 400 });
+  }
+
+  // Don't let an admin demote their own DB account (would strip their own access).
+  if (hasRole && me.id === String(id) && body.role !== "admin") {
+    return NextResponse.json({ error: "You can't change your own role." }, { status: 400 });
+  }
+
+  if (hasPassword) {
+    const result = await setUserPassword(id, String(body.password));
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+  if (hasRole) {
+    const role = body.role === "admin" ? "admin" : "member";
+    const result = await setUserRole(id, role);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  }
+
   return NextResponse.json({ success: true });
 }
 

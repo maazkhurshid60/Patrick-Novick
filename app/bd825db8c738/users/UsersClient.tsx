@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, FormEvent } from "react";
-import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock, UserPlus, Eye, EyeOff, Check, AtSign, Trash2 } from "lucide-react";
+import { Plus, X, ShieldCheck, User as UserIcon, Loader2, Lock, UserPlus, Eye, EyeOff, Check, AtSign, Trash2, KeyRound } from "lucide-react";
 import { ToastProvider, toast, Spinner } from "../Toast";
 
 type Role = "admin" | "member";
@@ -57,6 +57,31 @@ export default function UsersClient() {
   const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", role: "member" as Role });
   const [showPw, setShowPw] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Edit (reset password / change role) modal
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({ password: "", confirmPassword: "", role: "member" as Role });
+  const [showEditPw, setShowEditPw] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const editPwEqual = editForm.confirmPassword.length > 0 && editForm.password === editForm.confirmPassword;
+  const editRoleChanged = editUser !== null && editForm.role !== editUser.role;
+  const editPwProvided = editForm.password.length > 0;
+  const canSaveEdit =
+    editUser !== null &&
+    (editPwProvided || editRoleChanged) &&
+    (!editPwProvided || (editForm.password.length >= 8 && editForm.password === editForm.confirmPassword));
+
+  function openEdit(u: AdminUser) {
+    setEditUser(u);
+    setEditForm({ password: "", confirmPassword: "", role: u.role });
+    setShowEditPw(false);
+  }
+  function closeEdit() {
+    setEditUser(null);
+    setShowEditPw(false);
+    setEditForm({ password: "", confirmPassword: "", role: "member" });
+  }
 
   // Live validation for the Add User form
   const pwEqual = form.confirmPassword.length > 0 && form.password === form.confirmPassword;
@@ -162,6 +187,39 @@ export default function UsersClient() {
     } finally {
       setBusyId(null);
       setConfirmDelete(null);
+    }
+  }
+
+  async function handleEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    if (editPwProvided && editForm.password !== editForm.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    const payload: { id: number; password?: string; role?: Role } = { id: editUser.id };
+    if (editPwProvided) payload.password = editForm.password;
+    if (editRoleChanged) payload.role = editForm.role;
+
+    setSavingEdit(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error ?? "Failed to update user"); return; }
+      if (editRoleChanged) {
+        setUsers((prev) => prev.map((x) => (x.id === editUser.id ? { ...x, role: editForm.role } : x)));
+      }
+      const changed = [editPwProvided && "password", editRoleChanged && "role"].filter(Boolean).join(" & ");
+      toast.success(`${editUser.username}: ${changed} updated`);
+      closeEdit();
+    } catch {
+      toast.error("Couldn't reach the server. Please try again.");
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -279,6 +337,15 @@ export default function UsersClient() {
                           {u.active ? "Disable" : "Enable"}
                         </button>
                         <button
+                          onClick={() => openEdit(u)}
+                          disabled={busyId === u.id}
+                          title="Reset password / change role"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50 cursor-pointer inline-flex items-center"
+                          style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
+                        >
+                          <KeyRound size={12} />
+                        </button>
+                        <button
                           onClick={() => setConfirmDelete(u)}
                           disabled={busyId === u.id}
                           title="Delete user"
@@ -320,6 +387,113 @@ export default function UsersClient() {
                 {busyId === confirmDelete.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />} Delete user
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit user (reset password / change role) modal */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeEdit(); }}>
+          <div className="w-full max-w-md rounded-2xl border overflow-hidden" style={{ background: "#16181e", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 30px 60px -12px rgba(0,0,0,0.6)" }}>
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg, rgba(96,165,250,0.06), transparent)" }}>
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(96,165,250,0.14)", border: "1px solid rgba(96,165,250,0.25)" }}>
+                  <KeyRound size={19} style={{ color: "#60a5fa" }} />
+                </div>
+                <div>
+                  <p className="text-base font-bold text-white leading-tight" style={{ fontFamily: "var(--font-heading)" }}>Edit {editUser.username}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Reset the password or change the role</p>
+                </div>
+              </div>
+              <button onClick={closeEdit} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5 transition-colors shrink-0" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+            </div>
+
+            <form onSubmit={handleEdit} className="flex flex-col gap-4 px-6 py-6">
+              {/* New Password */}
+              <div>
+                <label style={label}>New Password <span style={{ textTransform: "none", fontWeight: 500, color: "rgba(255,255,255,0.25)" }}>· leave blank to keep current</span></label>
+                <div style={{ position: "relative" }}>
+                  <Lock size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                  <input style={{ ...inp, paddingLeft: 34, paddingRight: 40 }} type={showEditPw ? "text" : "password"} value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} placeholder="At least 8 characters" autoComplete="new-password" minLength={8} />
+                  <button type="button" onClick={() => setShowEditPw((v) => !v)} title={showEditPw ? "Hide passwords" : "Show passwords"} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer" style={{ color: "rgba(255,255,255,0.4)" }}>
+                    {showEditPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm New Password */}
+              {editPwProvided && (
+                <div>
+                  <label style={label}>Confirm New Password</label>
+                  <div style={{ position: "relative" }}>
+                    <Lock size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                    <input
+                      style={{
+                        ...inp, paddingLeft: 34, paddingRight: 40,
+                        border: editForm.confirmPassword.length === 0
+                          ? inp.border
+                          : editPwEqual ? "1px solid rgba(74,222,128,0.5)" : "1px solid rgba(248,113,113,0.5)",
+                      }}
+                      type={showEditPw ? "text" : "password"}
+                      value={editForm.confirmPassword}
+                      onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                      placeholder="Re-enter new password"
+                      autoComplete="new-password"
+                    />
+                    {editForm.confirmPassword.length > 0 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        {editPwEqual ? <Check size={15} style={{ color: "#4ade80" }} /> : <X size={15} style={{ color: "#f87171" }} />}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Role — selectable cards */}
+              <div>
+                <label style={label}>Role</label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {(["member", "admin"] as Role[]).map((r) => {
+                    const selected = editForm.role === r;
+                    const Icon = r === "admin" ? ShieldCheck : UserIcon;
+                    const selfLock = me?.id === String(editUser.id) && r === "member" && editUser.role === "admin";
+                    return (
+                      <button
+                        type="button"
+                        key={r}
+                        disabled={selfLock}
+                        onClick={() => setEditForm({ ...editForm, role: r })}
+                        title={selfLock ? "You can't change your own role" : undefined}
+                        className="text-left rounded-xl p-3 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                        style={{
+                          border: selected ? "1px solid rgba(230,57,70,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                          background: selected ? "rgba(230,57,70,0.08)" : "rgba(255,255,255,0.02)",
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon size={13} style={{ color: selected ? "#f87171" : "rgba(255,255,255,0.5)" }} />
+                          <span className="text-xs font-bold capitalize" style={{ color: selected ? "#fff" : "rgba(255,255,255,0.65)" }}>{r}</span>
+                        </div>
+                        <p className="text-[0.7rem] leading-snug" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {r === "admin" ? "Full access + manage users" : "Dashboard access only"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 mt-2 text-sm font-bold">
+                <button type="button" onClick={closeEdit} className="px-4 py-2 rounded-full text-slate-400 hover:bg-white/5 cursor-pointer transition-colors" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>Cancel</button>
+                <button type="submit" disabled={savingEdit || !canSaveEdit} className="px-5 py-2 rounded-full text-white cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:brightness-110" style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", boxShadow: "0 6px 20px rgba(59,130,246,0.35)" }}>
+                  {savingEdit ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
