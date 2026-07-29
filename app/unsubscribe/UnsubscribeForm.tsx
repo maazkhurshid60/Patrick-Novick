@@ -17,6 +17,7 @@ const FEEDBACK_OPTIONS = [
 export default function UnsubscribeForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [hp, setHp] = useState(""); // honeypot — real users leave this empty
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +50,7 @@ export default function UnsubscribeForm() {
       const res = await fetch("/api/unsubscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, hp }),
       });
 
       const data = await res.json();
@@ -121,6 +122,17 @@ export default function UnsubscribeForm() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Honeypot — hidden from real users; bots that fill it are ignored */}
+              <input
+                type="text"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={hp}
+                onChange={(e) => setHp(e.target.value)}
+                aria-hidden="true"
+                style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+              />
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
