@@ -49,14 +49,6 @@ export default function Footer() {
           >
             Privacy Policy
           </Link>
-          &nbsp;|&nbsp;{" "}
-          <Link
-            href="/unsubscribe"
-            className="hover:text-red-400 transition-colors duration-200"
-            style={{ color: "rgba(255,255,255,0.35)" }}
-          >
-            Unsubscribe
-          </Link>
         </p>
 
         {/* Nav links */}
