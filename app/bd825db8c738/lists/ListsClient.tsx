@@ -804,6 +804,18 @@ export default function ListsClient() {
     setSelected((prev) => prev?.id === id ? { ...prev, name: trimmed } : prev);
   }
 
+  const mostRecentListId = useMemo(() => {
+    let maxTime = 0;
+    let targetId: number | null = null;
+    lists.forEach((l) => {
+      if (l.last_sent_at && l.last_sent_at > maxTime) {
+        maxTime = l.last_sent_at;
+        targetId = l.id;
+      }
+    });
+    return targetId;
+  }, [lists]);
+
   const memberIds = useMemo(() => new Set(members.map((m) => m.id)), [members]);
 
   // Distinct location (state) values among this list's members
@@ -964,6 +976,14 @@ export default function ListsClient() {
                           <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>•</span>
                           <span className="text-[11px]" style={{ color: "#60a5fa" }} title="Campaigns sent targeting this list">
                             {list.campaign_count} sent
+                          </span>
+                        </>
+                      )}
+                      {list.id === mostRecentListId && (
+                        <>
+                          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>•</span>
+                          <span className="text-[9px] px-1 py-0.5 rounded font-bold uppercase tracking-wider" style={{ background: "rgba(230,57,70,0.18)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }}>
+                            Last Sent
                           </span>
                         </>
                       )}
