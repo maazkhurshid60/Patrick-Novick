@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Clock } from "lucide-react";
 import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
 
 interface Template {
@@ -154,6 +154,15 @@ export default function TemplatesClient() {
     router.push("/bd825db8c738/campaigns");
   }
 
+  function scheduleTemplate(t: Template) {
+    localStorage.setItem("scheduler_draft", JSON.stringify({
+      subject: t.subject,
+      body: t.body,
+      isHtml: isHtmlTemplate(t.body),
+    }));
+    router.push("/bd825db8c738/scheduler");
+  }
+
   return (
     <div>
       {/* Starter templates banner */}
@@ -269,13 +278,22 @@ export default function TemplatesClient() {
             >
               {t.body.replace(/<[^>]+>/g, " ").trim().slice(0, 150)}…
             </pre>
-            <button
-              onClick={() => useTemplate(t)}
-              className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
-              style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
-            >
-              <Send size={11} /> Use in Campaign
-            </button>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={() => useTemplate(t)}
+                className="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+              >
+                <Send size={11} /> Use in Campaign
+              </button>
+              <button
+                onClick={() => scheduleTemplate(t)}
+                className="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
+              >
+                <Clock size={11} /> Schedule
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -305,6 +323,13 @@ export default function TemplatesClient() {
                   style={{ background: "var(--color-red)", color: "#fff" }}
                 >
                   <Send size={11} /> Use in Campaign
+                </button>
+                <button
+                  onClick={() => { scheduleTemplate(previewing); setPreviewing(null); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02]"
+                  style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.3)" }}
+                >
+                  <Clock size={11} /> Schedule
                 </button>
                 <button
                   onClick={() => setPreviewing(null)}

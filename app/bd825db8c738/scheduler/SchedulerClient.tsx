@@ -85,6 +85,20 @@ export default function SchedulerClient({
     d.setMinutes(0, 0, 0);
     const pad = (n: number) => String(n).padStart(2, "0");
     setLocalDateTime(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+
+    // Pre-populate scheduler draft if any (e.g. from Templates page)
+    const draft = localStorage.getItem("scheduler_draft");
+    if (draft) {
+      try {
+        const { subject: s, body: b, isHtml: h } = JSON.parse(draft);
+        if (s) setSubject(s);
+        if (b) setBody(b);
+        if (typeof h === "boolean") setIsHtml(h);
+        localStorage.removeItem("scheduler_draft");
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }, []);
 
   const loadRows = useCallback(async () => {
@@ -189,15 +203,15 @@ export default function SchedulerClient({
           <div>
             <label style={LABEL}>Start from a template (optional)</label>
             <select style={INPUT} value={templateId} onChange={(e) => applyTemplate(e.target.value ? Number(e.target.value) : "")}>
-              <option value="">— None —</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="" style={{ background: "#16181e", color: "#fff" }}>— None —</option>
+              {templates.map((t) => <option key={t.id} value={t.id} style={{ background: "#16181e", color: "#fff" }}>{t.name}</option>)}
             </select>
           </div>
           <div>
             <label style={LABEL}>Send to</label>
             <select style={INPUT} value={listId ?? ""} onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">All active contacts ({contactCount})</option>
-              {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.member_count})</option>)}
+              <option value="" style={{ background: "#16181e", color: "#fff" }}>All active contacts ({contactCount})</option>
+              {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e", color: "#fff" }}>{l.name} ({l.member_count})</option>)}
             </select>
           </div>
         </div>
@@ -253,7 +267,7 @@ export default function SchedulerClient({
           <div>
             <label style={LABEL}>Timezone</label>
             <select style={INPUT} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-              {tzOptions.map((tz) => <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>)}
+              {tzOptions.map((tz) => <option key={tz} value={tz} style={{ background: "#16181e", color: "#fff" }}>{tz.replace(/_/g, " ")}</option>)}
             </select>
           </div>
         </div>
