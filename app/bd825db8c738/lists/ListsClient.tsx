@@ -976,14 +976,15 @@ export default function ListsClient() {
                           <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>•</span>
                           <span className="text-[11px]" style={{ color: "#60a5fa" }} title="Campaigns sent targeting this list">
                             {list.campaign_count} sent
+                            {list.id !== mostRecentListId && list.last_sent_at && ` (${new Date(list.last_sent_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })})`}
                           </span>
                         </>
                       )}
-                      {list.id === mostRecentListId && (
+                      {list.id === mostRecentListId && list.last_sent_at && (
                         <>
                           <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>•</span>
-                          <span className="text-[9px] px-1 py-0.5 rounded font-bold uppercase tracking-wider" style={{ background: "rgba(230,57,70,0.18)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }}>
-                            Last Sent
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider" style={{ background: "rgba(230,57,70,0.18)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }}>
+                            Last Sent: {new Date(list.last_sent_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                           </span>
                         </>
                       )}
