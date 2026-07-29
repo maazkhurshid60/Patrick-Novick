@@ -11,7 +11,7 @@ const FEEDBACK_OPTIONS = [
   "I never signed up for this mailing list",
   "The emails are inappropriate",
   "The emails are spam and should be reported",
-  "Other (fill in reason below)",
+  "Other",
 ];
 
 export default function UnsubscribeForm() {
