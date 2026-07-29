@@ -10,10 +10,13 @@ export async function GET() {
   // an orphan membership row can't inflate the number shown.
   const result = await db.execute(`
     SELECT cl.id, cl.name, cl.created_at,
-           COUNT(c.id) as member_count
+           COUNT(DISTINCT c.id) as member_count,
+           COUNT(DISTINCT cp.id) as campaign_count,
+           MAX(cp.sent_at) as last_sent_at
     FROM contact_lists cl
     LEFT JOIN contact_list_members clm ON cl.id = clm.list_id
     LEFT JOIN contacts c ON c.id = clm.contact_id
+    LEFT JOIN campaigns cp ON cl.id = cp.list_id AND cp.status = 'sent'
     GROUP BY cl.id
     ORDER BY cl.created_at DESC
   `);

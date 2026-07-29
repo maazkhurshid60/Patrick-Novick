@@ -21,13 +21,13 @@ export default async function AdminPage() {
     db.execute("SELECT COUNT(*) as count FROM contacts"),
     db.execute("SELECT COUNT(*) as count FROM campaigns WHERE status = 'sent' AND recipient_count > 0"),
     db.execute("SELECT COUNT(*) as count FROM email_templates"),
-    db.execute("SELECT id, subject, recipient_count, status, sent_at FROM campaigns WHERE status = 'sent' AND recipient_count > 0 ORDER BY sent_at DESC LIMIT 8"),
+    db.execute("SELECT id, subject, recipient_count, status, target_list, sent_at FROM campaigns WHERE status = 'sent' AND recipient_count > 0 ORDER BY sent_at DESC LIMIT 8"),
   ]);
 
   const contactCount = Number(contactRes.rows[0]?.count ?? 0);
   const campaignCount = Number(campaignRes.rows[0]?.count ?? 0);
   const templateCount = Number(templateRes.rows[0]?.count ?? 0);
-  const recentCampaigns = recentRes.rows as unknown as { id: number; subject: string; recipient_count: number; status: string; sent_at: number }[];
+  const recentCampaigns = recentRes.rows as unknown as { id: number; subject: string; recipient_count: number; status: string; target_list: string | null; sent_at: number }[];
   const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
 
   return (
@@ -160,7 +160,7 @@ export default async function AdminPage() {
               <table className="w-full min-w-[480px]">
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    {["Name", "Status", "Recipients", "Date"].map((h) => (
+                    {["Name", "Status", "List", "Recipients", "Date"].map((h) => (
                       <th key={h} className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
                         {h}
                       </th>
@@ -186,6 +186,15 @@ export default async function AdminPage() {
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>
                           {c.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {c.target_list ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc" }}>
+                            {c.target_list}
+                          </span>
+                        ) : (
+                          <span className="text-white/30 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
                         {c.recipient_count}

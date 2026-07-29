@@ -13,6 +13,20 @@ interface ContactList {
   name: string;
   member_count: number;
   created_at: number;
+  campaign_count?: number;
+  last_sent_at?: number | null;
+}
+
+interface Campaign {
+  id: number;
+  subject: string;
+  recipient_count: number;
+  status: string;
+  target_list: string | null;
+  list_id: number | null;
+  sent_at: number;
+  total_opens: number;
+  unique_opens: number;
 }
 
 interface Contact {
@@ -670,6 +684,24 @@ export default function ListsClient() {
   const [memberSentFilter, setMemberSentFilter] = useState<"all" | "sent" | "unsent">("all");
   const [memberPage, setMemberPage] = useState(1);
 
+  const [activeRightTab, setActiveRightTab] = useState<"contacts" | "campaigns">("contacts");
+  const [listCampaigns, setListCampaigns] = useState<Campaign[]>([]);
+  const [listCampaignsLoading, setListCampaignsLoading] = useState(false);
+
+  async function fetchListCampaigns(listId: number) {
+    setListCampaignsLoading(true);
+    try {
+      const res = await fetch(`/api/campaigns/send?listId=${listId}`);
+      if (res.ok) {
+        setListCampaigns(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setListCampaignsLoading(false);
+    }
+  }
+
   // Inline list rename
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -717,7 +749,11 @@ export default function ListsClient() {
   async function openList(list: ContactList) {
     setSelected(list);
     setMemberSearch("");
-    await fetchMembers(list.id);
+    setActiveRightTab("contacts");
+    await Promise.all([
+      fetchMembers(list.id),
+      fetchListCampaigns(list.id)
+    ]);
   }
 
   async function confirmRemoveMember() {
@@ -921,7 +957,17 @@ export default function ListsClient() {
                     ) : (
                       <p className="text-sm font-medium truncate" style={{ color: selected?.id === list.id ? "#fff" : "rgba(255,255,255,0.7)" }}>{list.name}</p>
                     )}
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{Number(list.member_count)} contacts</p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.25)" }}>{Number(list.member_count)} contacts</p>
+                      {list.campaign_count !== undefined && list.campaign_count > 0 && (
+                        <>
+                          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.15)" }}>•</span>
+                          <span className="text-[11px]" style={{ color: "#60a5fa" }} title="Campaigns sent targeting this list">
+                            {list.campaign_count} sent
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -986,7 +1032,15 @@ export default function ListsClient() {
                         </button>
                       </div>
                     )}
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{members.length} contacts</p>
+                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      {members.length} contacts
+                      {selected.campaign_count !== undefined && selected.campaign_count > 0 && (
+                        <>
+                          {" · "}
+                          <span style={{ color: "#60a5fa" }}>{selected.campaign_count} campaign{selected.campaign_count === 1 ? "" : "s"} sent</span>
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <button onClick={() => setShowModal(true)}
@@ -996,119 +1050,197 @@ export default function ListsClient() {
                 </button>
               </div>
 
-              {/* Member search + location filter — always visible */}
-              <div style={{ padding: "0.75rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
-                  <Search size={13} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
-                  <input style={{ ...inputStyle, paddingLeft: "2.2rem", fontSize: "0.78rem", borderRadius: "0.625rem" }}
-                    placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
-                  {memberSearch && (
-                    <button onClick={() => setMemberSearch("")} style={{ position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-                <select value={memberLocationFilter} onChange={(e) => setMemberLocationFilter(e.target.value)}
-                  style={{ ...inputStyle, width: "auto", maxWidth: 170, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
-                  title="Filter by location (state)">
-                  <option value="all" style={{ background: "#16181e", color: "#fff" }}>All locations</option>
-                  {memberStateOptions.map((st) => (
-                    <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
-                  ))}
-                </select>
-                <select value={memberSentFilter} onChange={(e) => setMemberSentFilter(e.target.value as "all" | "sent" | "unsent")}
-                  style={{ ...inputStyle, width: "auto", maxWidth: 170, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
-                  title="Filter by whether we've emailed them">
-                  <option value="all" style={{ background: "#16181e", color: "#fff" }}>Everyone</option>
-                  <option value="sent" style={{ background: "#16181e", color: "#fff" }}>Emailed only</option>
-                  <option value="unsent" style={{ background: "#16181e", color: "#fff" }}>Not emailed yet</option>
-                </select>
+              {/* Tabs */}
+              <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 1.5rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveRightTab("contacts")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.7rem 1.25rem 0.55rem",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    color: activeRightTab === "contacts" ? "#fff" : "rgba(255,255,255,0.35)",
+                    borderBottom: activeRightTab === "contacts" ? "2px solid #e63946" : "2px solid transparent",
+                  }}
+                >
+                  Contacts ({members.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveRightTab("campaigns")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.7rem 1.25rem 0.55rem",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    color: activeRightTab === "campaigns" ? "#fff" : "rgba(255,255,255,0.35)",
+                    borderBottom: activeRightTab === "campaigns" ? "2px solid #e63946" : "2px solid transparent",
+                  }}
+                >
+                  Sent Campaigns ({listCampaigns.length})
+                </button>
               </div>
 
-              {/* Members */}
-              {members.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Click "Add Contacts" to add people to this list.</p>
-                </div>
-              ) : filteredMembers.length === 0 ? (
-                <div className="py-12 text-center">
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No members match your search.</p>
-                </div>
-              ) : (
+              {activeRightTab === "contacts" ? (
                 <>
-                  {pagedMembers.map((c, i) => (
-                    <div key={c.id}
-                      className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/[0.02]"
-                      style={{ borderBottom: i < pagedMembers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                          style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
-                          {(c.name || c.email)[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-white">{c.name || c.email}</p>
-                            {c.status === "unsubscribed" && (
-                              <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>unsubscribed</span>
-                            )}
-                            {(c.send_count ?? 0) > 0 && (
-                              <span
-                                className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
-                                title={`Emailed ${c.send_count} time${c.send_count === 1 ? "" : "s"} across all campaigns`}
-                              >
-                                sent {c.send_count}×
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                            {c.name ? c.email : ""}
-                            {(c.title || c.company) && <>{c.name ? " · " : ""}{c.title}{c.title && c.company ? " at " : ""}{c.company}</>}
-                          </p>
-                          {locationOf(c) && (
-                            <p className="text-xs flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
-                              <MapPin size={10} style={{ flexShrink: 0 }} /> {locationOf(c)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <button onClick={() => setRemoveTarget(c)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/5"
-                        style={{ color: "rgba(255,255,255,0.3)" }} title="Remove from list">
-                        <UserMinus size={12} /> Remove
-                      </button>
+                  {/* Member search + location filter — always visible */}
+                  <div style={{ padding: "0.75rem 1.5rem", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                    <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
+                      <Search size={13} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                      <input style={{ ...inputStyle, paddingLeft: "2.2rem", fontSize: "0.78rem", borderRadius: "0.625rem" }}
+                        placeholder="Search members…" value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} />
+                      {memberSearch && (
+                        <button onClick={() => setMemberSearch("")} style={{ position: "absolute", right: "0.625rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
+                          <X size={12} />
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    <select value={memberLocationFilter} onChange={(e) => setMemberLocationFilter(e.target.value)}
+                      style={{ ...inputStyle, width: "auto", maxWidth: 170, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
+                      title="Filter by location (state)">
+                      <option value="all" style={{ background: "#16181e", color: "#fff" }}>All locations</option>
+                      {memberStateOptions.map((st) => (
+                        <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
+                      ))}
+                    </select>
+                    <select value={memberSentFilter} onChange={(e) => setMemberSentFilter(e.target.value as "all" | "sent" | "unsent")}
+                      style={{ ...inputStyle, width: "auto", maxWidth: 170, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
+                      title="Filter by whether we've emailed them">
+                      <option value="all" style={{ background: "#16181e", color: "#fff" }}>Everyone</option>
+                      <option value="sent" style={{ background: "#16181e", color: "#fff" }}>Emailed only</option>
+                      <option value="unsent" style={{ background: "#16181e", color: "#fff" }}>Not emailed yet</option>
+                    </select>
+                  </div>
 
-                  {/* Pagination footer */}
-                  {totalMemberPages > 1 && (
-                    <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                        {(currentMemberPage - 1) * MEMBERS_PER_PAGE + 1}–{Math.min(currentMemberPage * MEMBERS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
-                          disabled={currentMemberPage <= 1}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
-                          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <ChevronLeft size={13} /> Prev
-                        </button>
-                        <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>
-                          Page {currentMemberPage} of {totalMemberPages}
-                        </span>
-                        <button
-                          onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
-                          disabled={currentMemberPage >= totalMemberPages}
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
-                          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          Next <ChevronRight size={13} />
-                        </button>
-                      </div>
+                  {/* Members */}
+                  {members.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Click "Add Contacts" to add people to this list.</p>
                     </div>
+                  ) : filteredMembers.length === 0 ? (
+                    <div className="py-12 text-center">
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No members match your search.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {pagedMembers.map((c, i) => (
+                        <div key={c.id}
+                          className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-white/[0.02]"
+                          style={{ borderBottom: i < pagedMembers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                              style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                              {(c.name || c.email)[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-white">{c.name || c.email}</p>
+                                {c.status === "unsubscribed" && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>unsubscribed</span>
+                                )}
+                                {(c.send_count ?? 0) > 0 && (
+                                  <span
+                                    className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                    style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa" }}
+                                    title={`Emailed ${c.send_count} time${c.send_count === 1 ? "" : "s"} across all campaigns`}
+                                  >
+                                    sent {c.send_count}×
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                                {c.name ? c.email : ""}
+                                {(c.title || c.company) && <>{c.name ? " · " : ""}{c.title}{c.title && c.company ? " at " : ""}{c.company}</>}
+                              </p>
+                              {locationOf(c) && (
+                                <p className="text-xs flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                                  <MapPin size={10} style={{ flexShrink: 0 }} /> {locationOf(c)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button onClick={() => setRemoveTarget(c)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:bg-white/5"
+                            style={{ color: "rgba(255,255,255,0.3)" }} title="Remove from list">
+                            <UserMinus size={12} /> Remove
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Pagination footer */}
+                      {totalMemberPages > 1 && (
+                        <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                            {(currentMemberPage - 1) * MEMBERS_PER_PAGE + 1}–{Math.min(currentMemberPage * MEMBERS_PER_PAGE, filteredMembers.length)} of {filteredMembers.length}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                              disabled={currentMemberPage <= 1}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                              <ChevronLeft size={13} /> Prev
+                            </button>
+                            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>
+                              Page {currentMemberPage} of {totalMemberPages}
+                            </span>
+                            <button
+                              onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
+                              disabled={currentMemberPage >= totalMemberPages}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
+                              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                              Next <ChevronRight size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
+              ) : (
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                  {listCampaignsLoading ? (
+                    <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Loading campaigns…</div>
+                  ) : listCampaigns.length === 0 ? (
+                    <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No campaigns sent to this list yet.</div>
+                  ) : (
+                    <div>
+                      {listCampaigns.map((c, i) => (
+                        <div
+                          key={c.id}
+                          className="px-6 py-4 transition-colors hover:bg-white/[0.02]"
+                          style={{ borderBottom: i < listCampaigns.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-white mb-1.5 truncate">{c.subject}</p>
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: c.status === "failed" ? "rgba(230,57,70,0.12)" : "rgba(74,222,128,0.1)", color: c.status === "failed" ? "#f87171" : "#4ade80" }}>
+                                  {c.status}
+                                </span>
+                                <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.recipient_count} sent</span>
+                                {Number(c.unique_opens) > 0 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+                                    {c.unique_opens} opened
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>
+                                {new Date(c.sent_at * 1000).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
