@@ -268,12 +268,12 @@ export default function Metro() {
                   <ArrowRight size={14} />
                 </a>
                 <a
-                  href="tel:+12392555921"
+                  href="tel:+13125001878"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 hover:scale-105"
                   style={{ borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.65)", fontFamily: "var(--font-heading)" }}
                 >
                   <Phone size={13} />
-                  +1 (239) 255-5921
+                  +1 (312) 500-1878
                 </a>
               </div>
             </div>

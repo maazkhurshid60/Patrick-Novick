@@ -114,11 +114,11 @@ export const METRO_CLIENT_OUTREACH: SeedTemplate = {
                     </a>
                   </td>
                   <td class="button-cell">
-                    <a class="button-link" href="tel:+12392555921"
+                    <a class="button-link" href="tel:+13125001878"
                        style="display:inline-block;background:#071b31;color:#ffffff;text-decoration:none;
                               font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;
                               line-height:18px;padding:14px 20px;border-radius:6px;">
-                      Call +1 (239) 255-5921
+                      Call +1 (312) 500-1878
                     </a>
                   </td>
                 </tr>
@@ -132,7 +132,7 @@ export const METRO_CLIENT_OUTREACH: SeedTemplate = {
               <div style="font-size:18px;line-height:23px;font-weight:700;">Patrick Novick</div>
               <div style="font-size:14px;line-height:21px;color:#d7e0e9;">CEO, Metro Associates</div>
               <div style="margin-top:10px;font-size:14px;line-height:23px;">
-                <a href="tel:+12392555921" style="color:#f2b800;text-decoration:none;font-weight:700;">+1 (239) 255-5921</a>
+                <a href="tel:+13125001878" style="color:#f2b800;text-decoration:none;font-weight:700;">+1 (312) 500-1878</a>
                 &nbsp;|&nbsp;
                 <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">patrick@metroassoc.com</a>
               </div>
@@ -271,8 +271,8 @@ export const METRO_MEP_OUTREACH: SeedTemplate = {
               <div style="font-size:19px;line-height:24px;font-weight:bold;">Patrick Novick</div>
               <div style="font-size:14px;line-height:21px;color:#dfe6ee;">CEO | Metro Associates</div>
               <div style="margin-top:9px;font-size:14px;line-height:23px;">
-                <a href="tel:+12392555921" style="color:#f4bf00;text-decoration:none;font-weight:bold;">
-                  +1 (239) 255-5921
+                <a href="tel:+13125001878" style="color:#f4bf00;text-decoration:none;font-weight:bold;">
+                  +1 (312) 500-1878
                 </a>
                 &nbsp;|&nbsp;
                 <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">
@@ -412,8 +412,8 @@ export const METRO_NYC_EMPLOYER_OUTREACH: SeedTemplate = {
               <div style="font-size:19px;line-height:24px;font-weight:bold;">Patrick Novick</div>
               <div style="font-size:14px;line-height:21px;color:#d8e0e8;">CEO | Metro Associates</div>
               <div style="margin-top:9px;font-size:14px;line-height:23px;">
-                <a href="tel:+12392555921" style="color:#f2b800;text-decoration:none;font-weight:bold;">
-                  +1 (239) 255-5921
+                <a href="tel:+13125001878" style="color:#f2b800;text-decoration:none;font-weight:bold;">
+                  +1 (312) 500-1878
                 </a>
                 &nbsp;|&nbsp;
                 <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">

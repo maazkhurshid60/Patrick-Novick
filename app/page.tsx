@@ -15,7 +15,7 @@ const jsonLd = {
   description:
     "Elite professional recruiter with 35+ years of experience placing talent at Fortune 100/500 companies across government, defense, and commercial sectors.",
   url: "https://patricknovick.com",
-  telephone: "(239) 255-5921",
+  telephone: "(312) 500-1878",
   email: "patrick@patricknovick.com",
   worksFor: {
     "@type": "Organization",

@@ -27,8 +27,8 @@ const contactItems = [
   {
     Icon: Phone,
     label: "Phone",
-    value: "+1 (239) 255-5921",
-    href: "tel:+12392555921",
+    value: "+1 (312) 500-1878",
+    href: "tel:+13125001878",
     external: false,
   },
   {

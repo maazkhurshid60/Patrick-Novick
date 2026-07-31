@@ -182,6 +182,39 @@ db.batch([
     })),
     "write",
   ))
+  // Phone-number migration (239 255-5921 -> 312 500-1878). Seeding above only
+  // inserts a template when its name is missing, so templates already saved in the
+  // DB — seeded ones plus anything typed or built in the dashboard — keep whatever
+  // number they were created with. Rewrite it in place, covering every separator
+  // style actually in use: the bare digits of the tel: href, the HTML signature's
+  // "(239) 255-5921", and the "239-255-5921" that the plain-text letters sign off
+  // with. Idempotent: REPLACE is a no-op once the new number is in. Pending
+  // scheduled sends get it too, since their body is frozen at schedule time.
+  // Sent campaigns are left alone — they're a historical record of what went out.
+  .then(() => {
+    const swap = (col: string) => `
+      REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${col},
+        '2392555921',     '3125001878'),
+        '(239) 255-5921', '(312) 500-1878'),
+        '239-255-5921',   '312-500-1878'),
+        '239.255.5921',   '312.500.1878'),
+        '239 255 5921',   '312 500 1878')`;
+    return db.batch([
+      {
+        sql: `UPDATE email_templates SET body = ${swap("body")} WHERE body LIKE '%5921%'`,
+        args: [],
+      },
+      {
+        sql: `UPDATE email_templates SET subject = ${swap("subject")} WHERE subject LIKE '%5921%'`,
+        args: [],
+      },
+      {
+        sql: `UPDATE scheduled_campaigns SET body = ${swap("body")}
+              WHERE status = 'pending' AND body LIKE '%5921%'`,
+        args: [],
+      },
+    ], "write");
+  })
   // Backfill the send log from historical campaign_recipients ONCE — only runs
   // while the log is empty, so it preserves the existing "Emails Sent" baseline
   // without ever double-counting on later startups.

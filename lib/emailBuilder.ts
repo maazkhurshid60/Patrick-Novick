@@ -197,8 +197,8 @@ export function buildMetroEmail(input: EmailBuilderInput): string {
               <div style="font-size:19px;line-height:24px;font-weight:bold;">Patrick Novick</div>
               <div style="font-size:14px;line-height:21px;color:#d8e0e8;">CEO | Metro Associates</div>
               <div style="margin-top:9px;font-size:14px;line-height:23px;">
-                <a href="tel:+12392555921" style="color:#f2b800;text-decoration:none;font-weight:bold;">
-                  +1 (239) 255-5921
+                <a href="tel:+13125001878" style="color:#f2b800;text-decoration:none;font-weight:bold;">
+                  +1 (312) 500-1878
                 </a>
                 &nbsp;|&nbsp;
                 <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">
