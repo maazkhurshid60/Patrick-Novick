@@ -165,6 +165,27 @@ db.batch([
     db.execute("ALTER TABLE contacts ADD COLUMN work_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN mobile_phone_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
     db.execute("ALTER TABLE contacts ADD COLUMN personal_email_2 TEXT NOT NULL DEFAULT ''").catch(() => {}),
+    // Drip sending — a scheduled entry may deliver its audience across many
+    // batches instead of one. `batch_interval_minutes` is the gap between
+    // batches (null = single send); `daily_limit` remains the per-batch size.
+    // `send_offset` walks forward by the number actually sent each round, and
+    // `recipient_count` accumulates the running total. `total_target` is the
+    // audience size measured at schedule time — display only, so that drift in
+    // the list never affects when the drip stops.
+    db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN batch_interval_minutes INTEGER").catch(() => {}),
+    db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN total_target INTEGER NOT NULL DEFAULT 0").catch(() => {}),
+    // When the next batch is due. `scheduled_at` stays pinned to the time the
+    // user originally chose — it is the campaign's anchor, and recurrence steps
+    // forward from it — so the moving batch clock needs its own column.
+    // Null means "use scheduled_at", i.e. the first batch has not run yet.
+    db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN next_batch_at INTEGER").catch(() => {}),
+    // Recurrence: when a send finishes, queue the next occurrence ('daily' |
+    // 'weekly' | 'monthly'). Null means one-and-done.
+    db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN repeat_every TEXT").catch(() => {}),
+    // Set when a row is claimed for sending. A run killed mid-send (Vercel's
+    // Hobby plan caps functions at 60s) would otherwise strand the row in
+    // 'processing' forever; the worker reaps rows whose claim has gone stale.
+    db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN claimed_at INTEGER").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe

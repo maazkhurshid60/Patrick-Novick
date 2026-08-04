@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Clock, Calendar, Trash2, Send, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Clock, Calendar, Trash2, Send, AlertCircle, CheckCircle2, Loader2, Repeat } from "lucide-react";
 
 interface ListRow { id: number; name: string; member_count: number }
 interface TemplateRow { id: number; name: string; subject: string; body: string }
@@ -22,6 +22,10 @@ interface ScheduledRow {
   result_campaign_id: number | null;
   recipient_count: number;
   error: string | null;
+  batch_interval_minutes: number | null;
+  total_target: number;
+  repeat_every: string | null;
+  next_batch_at: number | null;
 }
 
 // A curated set of common IANA zones; the viewer's own zone is added on mount.
@@ -41,11 +45,19 @@ const LABEL: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "rgba
 function statusStyle(status: string): { bg: string; color: string } {
   switch (status) {
     case "pending": return { bg: "rgba(245,158,11,0.14)", color: "#fbbf24" };
+    case "sending": return { bg: "rgba(59,130,246,0.16)", color: "#60a5fa" };
     case "processing": return { bg: "rgba(59,130,246,0.16)", color: "#60a5fa" };
     case "sent": return { bg: "rgba(34,197,94,0.14)", color: "#4ade80" };
     case "failed": return { bg: "rgba(230,57,70,0.16)", color: "#f87171" };
     default: return { bg: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.6)" };
   }
+}
+
+// A drip that has delivered at least one batch is still 'pending' in the table —
+// it is waiting for its next batch, not waiting to start. Show that difference.
+function displayStatus(r: ScheduledRow): string {
+  if (r.status === "pending" && r.recipient_count > 0) return "sending";
+  return r.status;
 }
 
 export default function SchedulerClient({
@@ -67,6 +79,9 @@ export default function SchedulerClient({
   const [localDateTime, setLocalDateTime] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [tzOptions, setTzOptions] = useState<string[]>(TIMEZONES);
+  const [drip, setDrip] = useState(false);
+  const [dripMinutes, setDripMinutes] = useState(30);
+  const [repeatEvery, setRepeatEvery] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -111,7 +126,15 @@ export default function SchedulerClient({
     }
   }, []);
 
-  useEffect(() => { loadRows(); }, [loadRows]);
+  // Poll while the tab is visible. Without this the list keeps showing "Pending"
+  // long after the cron has actually sent, since it only loaded once on mount.
+  useEffect(() => {
+    loadRows();
+    const tick = () => { if (document.visibilityState === "visible") loadRows(); };
+    const timer = setInterval(tick, 30_000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, [loadRows]);
 
   function applyTemplate(id: number | "") {
     setTemplateId(id);
@@ -148,11 +171,19 @@ export default function SchedulerClient({
           replyTo: replyTo.trim() || null,
           localDateTime,
           timezone,
+          batchIntervalMinutes: drip ? dripMinutes : null,
+          repeatEvery: repeatEvery || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) { setMsg({ type: "err", text: data.error || "Failed to schedule." }); return; }
-      setMsg({ type: "ok", text: "Scheduled! It will send automatically at the chosen time." });
+      const batches = drip ? Math.ceil(Math.max(0, targetCount - sendOffset) / Math.max(1, dailyLimit)) : 1;
+      setMsg({
+        type: "ok",
+        text: drip
+          ? `Scheduled! ${dailyLimit} at a time, every ${dripMinutes} min — about ${batches} batch${batches === 1 ? "" : "es"} to reach all ${targetCount}.`
+          : "Scheduled! It will send automatically at the chosen time.",
+      });
       setSubject(""); setBody(""); setTemplateId(""); setIsHtml(false);
       loadRows();
     } catch {
@@ -272,12 +303,49 @@ export default function SchedulerClient({
           </div>
         </div>
 
+        {/* Drip + repeat */}
+        <div className="grid sm:grid-cols-2 gap-4 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+              <input type="checkbox" checked={drip} onChange={(e) => setDrip(e.target.checked)} />
+              Keep sending in batches, every
+              <input style={{ ...INPUT, width: 68, padding: "4px 8px" }} type="number" min={5} step={5} value={dripMinutes}
+                disabled={!drip} onChange={(e) => setDripMinutes(Math.max(5, Number(e.target.value)))} />
+              min
+            </label>
+            <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              {drip
+                ? `Sends ${dailyLimit} at a time until the whole audience is covered.`
+                : `Off — this sends ${willSend} once and stops.`}
+            </p>
+          </div>
+          <div>
+            <label style={LABEL}><Repeat size={12} className="inline mr-1 -mt-0.5" />Repeat</label>
+            <select style={INPUT} value={repeatEvery} onChange={(e) => setRepeatEvery(e.target.value)}>
+              <option value="" style={{ background: "#16181e", color: "#fff" }}>Don&apos;t repeat</option>
+              <option value="daily" style={{ background: "#16181e", color: "#fff" }}>Daily</option>
+              <option value="weekly" style={{ background: "#16181e", color: "#fff" }}>Weekly</option>
+              <option value="monthly" style={{ background: "#16181e", color: "#fff" }}>Monthly</option>
+            </select>
+          </div>
+        </div>
+
         {/* Summary + submit */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-            Will send to <span style={{ color: "#fff" }}>{willSend}</span> recipient{willSend === 1 ? "" : "s"}
-            {sendOffset > 0 ? ` (#${sendOffset + 1}–#${sendOffset + willSend})` : ""} of {targetCount} in{" "}
-            <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span>.
+            {drip ? (
+              <>
+                Will send <span style={{ color: "#fff" }}>{dailyLimit}</span> at a time every {dripMinutes} min until all{" "}
+                <span style={{ color: "#fff" }}>{remaining}</span> of {targetCount} in{" "}
+                <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span> are reached.
+              </>
+            ) : (
+              <>
+                Will send to <span style={{ color: "#fff" }}>{willSend}</span> recipient{willSend === 1 ? "" : "s"}
+                {sendOffset > 0 ? ` (#${sendOffset + 1}–#${sendOffset + willSend})` : ""} of {targetCount} in{" "}
+                <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span>.
+              </>
+            )}
           </p>
           <button onClick={schedule} disabled={submitting}
             className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors"
@@ -314,21 +382,48 @@ export default function SchedulerClient({
         ) : (
           <div className="flex flex-col gap-2">
             {rows.map((r) => {
-              const ss = statusStyle(r.status);
+              const shown = displayStatus(r);
+              const ss = statusStyle(shown);
+              const isDrip = !!r.batch_interval_minutes && r.batch_interval_minutes > 0;
+              const showProgress = isDrip && r.total_target > 0 && shown !== "failed";
+              const pct = showProgress
+                ? Math.min(100, Math.round((r.recipient_count / r.total_target) * 100))
+                : 0;
               return (
                 <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3"
                   style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{r.subject || "—"}</p>
+                    <p className="text-sm font-medium text-white truncate">
+                      {r.subject || "—"}
+                      {r.repeat_every && (
+                        <span className="ml-2 text-xs font-normal capitalize" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          <Repeat size={10} className="inline mr-0.5 -mt-0.5" />{r.repeat_every}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
                       {fmt(r.scheduled_at, r.timezone)} · {r.timezone.replace(/_/g, " ")} ·{" "}
                       {r.list_name ?? "All active contacts"}
-                      {r.status === "sent" ? ` · ${r.recipient_count} sent` : ""}
-                      {r.status === "failed" && r.error ? ` · ${r.error}` : ""}
+                      {shown === "sent" ? ` · ${r.recipient_count} sent` : ""}
+                      {shown === "sending" && r.next_batch_at
+                        ? ` · next batch ${fmt(r.next_batch_at, r.timezone)}`
+                        : ""}
+                      {shown === "failed" && r.error ? ` · ${r.error}` : ""}
                     </p>
+                    {showProgress && (
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                          <div className="h-full rounded-full transition-all"
+                            style={{ width: `${pct}%`, background: shown === "sent" ? "#4ade80" : "#60a5fa" }} />
+                        </div>
+                        <span className="text-xs tabular-nums shrink-0" style={{ color: "rgba(255,255,255,0.4)" }}>
+                          {r.recipient_count.toLocaleString()} / {r.total_target.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0" style={{ background: ss.bg, color: ss.color }}>
-                    {r.status}
+                    {shown}
                   </span>
                   {r.status !== "processing" && (
                     <button onClick={() => cancel(r.id)} title={r.status === "pending" ? "Cancel" : "Remove"}
