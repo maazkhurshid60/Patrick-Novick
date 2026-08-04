@@ -164,6 +164,28 @@ export default function Contact() {
                 View All Jobs
               </a>
             </motion.div>
+
+            {/* Catch candidates whose role isn't currently posted — the portal's
+                apply form accepts a general resume for future openings. */}
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.6, delay: 0.35 }}
+              className="mt-5 text-sm leading-6"
+              style={{ color: "rgba(255,255,255,0.55)" }}
+            >
+              Don&apos;t see the job you&apos;re looking for?{" "}
+              <a
+                href="https://careers.topechelon.com/portals/3a7f6fd3-7cf7-447c-a20f-2354eb2031df/apply"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold underline underline-offset-4 transition-colors hover:text-red-400"
+                style={{ color: "#fff", textDecorationColor: "var(--color-red)" }}
+              >
+                Submit your resume for future consideration
+              </a>{" "}
+              and I&apos;ll reach out when a matching role opens.
+            </motion.p>
           </div>
 
           {/* Right — contact card */}
