@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Check, X, Wand2, Code, Loader2 } from "lucide-react";
-import { buildMetroEmail, DEFAULT_BUILDER, EmailBuilderInput } from "@/lib/emailBuilder";
+import { buildMetroEmail, DEFAULT_BUILDER, DEFAULT_FOOTER, EmailBuilderInput, FooterSettings } from "@/lib/emailBuilder";
 import EmailBuilderFields from "../EmailBuilderFields";
 
 interface ContactList { id: number; name: string }
@@ -43,14 +43,18 @@ export default function TemplateEditor({ id }: { id: string }) {
 
   const [mode, setMode] = useState<"builder" | "blank">(isNew ? "builder" : "blank");
   const [builder, setBuilder] = useState<EmailBuilderInput>(DEFAULT_BUILDER);
+  const [footer, setFooter] = useState<FooterSettings>(DEFAULT_FOOTER);
   const [form, setForm] = useState<{ name: string; subject: string; body: string; list_id: number | null }>({ name: "", subject: "", body: "", list_id: null });
   const [loading, setLoading] = useState(false);
 
-  const builderHtml = useMemo(() => buildMetroEmail(builder), [builder]);
+  const builderHtml = useMemo(() => buildMetroEmail(builder, footer), [builder, footer]);
   const setB = (patch: Partial<EmailBuilderInput>) => setBuilder((b) => ({ ...b, ...patch }));
+  const setF = (patch: Partial<FooterSettings>) => setFooter((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
     fetch("/api/lists").then((r) => (r.ok ? r.json() : [])).then(setLists).catch(() => {});
+    // Same global footer used everywhere else — see /bd825db8c738/footer-settings.
+    fetch("/api/footer-settings").then((r) => (r.ok ? r.json() : null)).then((f) => f && setFooter({ ...DEFAULT_FOOTER, ...f })).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -163,7 +167,7 @@ export default function TemplateEditor({ id }: { id: string }) {
         </div>
 
         {mode === "builder" ? (
-          <EmailBuilderFields builder={builder} onChange={setB} previewHeight="72vh" />
+          <EmailBuilderFields builder={builder} onChange={setB} previewHeight="72vh" footer={footer} onFooterChange={setF} />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Editor */}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, Loader2, X, Plus } from "lucide-react";
-import { EmailBuilderInput, buildMetroEmail } from "@/lib/emailBuilder";
+import { Upload, Loader2, X, Plus, Check } from "lucide-react";
+import { EmailBuilderInput, FooterSettings, buildMetroEmail } from "@/lib/emailBuilder";
 
 const inputStyle = {
   border: "1px solid rgba(255,255,255,0.08)",
@@ -44,15 +44,30 @@ export default function EmailBuilderFields({
   builder,
   onChange,
   previewHeight = "62vh",
+  footer,
+  onFooterChange,
 }: {
   builder: EmailBuilderInput;
   onChange: (patch: Partial<EmailBuilderInput>) => void;
   previewHeight?: string;
+  /** The saved footer (see /bd825db8c738/footer-settings). Falls back to
+      emailBuilder's DEFAULT_FOOTER when the caller hasn't loaded it yet. */
+  footer?: FooterSettings;
+  /** Updates the caller's local footer state so the preview reacts instantly.
+      Persisting it globally (PUT /api/footer-settings) happens inside this
+      component's own "Save footer" button — editing it here changes the ONE
+      shared footer, not something scoped to this template. */
+  onFooterChange?: (patch: Partial<FooterSettings>) => void;
 }) {
   const setB = onChange;
+  const setF = onFooterChange ?? (() => {});
   const [uploading, setUploading] = useState(false);
   const [uploadErr, setUploadErr] = useState("");
-  const html = buildMetroEmail(builder);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUploadErr, setLogoUploadErr] = useState("");
+  const [footerSaving, setFooterSaving] = useState(false);
+  const [footerSaved, setFooterSaved] = useState(false);
+  const html = buildMetroEmail(builder, footer);
   const previewSrc = html.replace(
     /https:\/\/patricknovick\.com\//g,
     (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
@@ -82,6 +97,48 @@ export default function EmailBuilderFields({
       setUploadErr("Upload failed. Please try again.");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function uploadFooterLogo(file: File) {
+    setLogoUploadErr("");
+    if (!file.type.startsWith("image/")) { setLogoUploadErr("Please choose an image file."); return; }
+    setLogoUploading(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = () => reject(new Error("read failed"));
+        r.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, mime: file.type, dataBase64: base64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setLogoUploadErr(data.error || "Upload failed"); return; }
+      setF({ logoUrl: data.url });
+    } catch {
+      setLogoUploadErr("Upload failed. Please try again.");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function saveFooter() {
+    if (!footer) return;
+    setFooterSaving(true);
+    try {
+      const res = await fetch("/api/footer-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(footer),
+      });
+      if (res.ok) { setFooterSaved(true); setTimeout(() => setFooterSaved(false), 2000); }
+    } finally {
+      setFooterSaving(false);
     }
   }
 
@@ -234,6 +291,128 @@ export default function EmailBuilderFields({
           </p>
         </div>
         <BField label="Inbox preview text (optional)" value={builder.previewText} onChange={(v) => setB({ previewText: v })} />
+
+        {footer && (
+          <div className="mt-2 pt-4 flex flex-col gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <div>
+              <p className="text-sm font-bold text-white">Footer</p>
+              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Shared by every template — saving here updates it everywhere, not just this one.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <BField label="Signature name" value={footer.signatureName} onChange={(v) => setF({ signatureName: v })} />
+              <BField label="Signature title" value={footer.signatureTitle} onChange={(v) => setF({ signatureTitle: v })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <BField label="Phone (shown)" value={footer.phoneDisplay} onChange={(v) => setF({ phoneDisplay: v })} />
+              <BField label="Phone (tel: link)" value={footer.phoneHref} onChange={(v) => setF({ phoneHref: v })} />
+            </div>
+            <BField label="Email" value={footer.email} onChange={(v) => setF({ email: v })} />
+            <div className="grid grid-cols-2 gap-3">
+              <BField label="Link 1 label" value={footer.link1Label} onChange={(v) => setF({ link1Label: v })} />
+              <BField label="Link 1 URL" value={footer.link1Url} onChange={(v) => setF({ link1Url: v })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <BField label="Link 2 label" value={footer.link2Label} onChange={(v) => setF({ link2Label: v })} />
+              <BField label="Link 2 URL" value={footer.link2Url} onChange={(v) => setF({ link2Url: v })} />
+            </div>
+            <BField label="Bottom bar tagline" value={footer.tagline} onChange={(v) => setF({ tagline: v })} />
+
+            {/* Footer logo — upload/URL + where it sits */}
+            <div>
+              <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Footer logo (optional)</p>
+              <div className="flex gap-2">
+                <input
+                  value={footer.logoUrl}
+                  onChange={(e) => setF({ logoUrl: e.target.value })}
+                  placeholder="Paste an image URL, or upload →"
+                  style={inputStyle}
+                />
+                <label
+                  className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-white/5"
+                  style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+                >
+                  {logoUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {logoUploading ? "Uploading…" : "Upload"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    style={{ display: "none" }}
+                    disabled={logoUploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFooterLogo(f); e.target.value = ""; }}
+                  />
+                </label>
+              </div>
+              {logoUploadErr && <p className="text-xs mt-1" style={{ color: "#f87171" }}>{logoUploadErr}</p>}
+              {footer.logoUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={footer.logoUrl} alt="Footer logo preview" style={{ height: 36, width: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }} />
+                  <button
+                    type="button"
+                    onClick={() => setF({ logoUrl: "" })}
+                    className="flex items-center gap-1 text-xs transition-colors hover:text-white"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    <X size={12} /> Remove
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Position</p>
+                  <div className="flex gap-2">
+                    {(["top", "bottom"] as const).map((pos) => (
+                      <button
+                        key={pos}
+                        type="button"
+                        onClick={() => setF({ logoPosition: pos })}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                        style={footer.logoPosition === pos
+                          ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
+                          : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      >
+                        {pos === "top" ? "Above signature" : "Below signature"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Alignment</p>
+                  <div className="flex gap-2">
+                    {(["left", "center", "right"] as const).map((align) => (
+                      <button
+                        key={align}
+                        type="button"
+                        onClick={() => setF({ logoAlign: align })}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
+                        style={footer.logoAlign === align
+                          ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
+                          : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      >
+                        {align}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={saveFooter}
+              disabled={footerSaving}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-white/5 disabled:opacity-50 w-fit px-4"
+              style={{ border: "1px solid rgba(255,255,255,0.12)", color: footerSaved ? "#4ade80" : "rgba(255,255,255,0.7)" }}
+            >
+              {footerSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              {footerSaved ? "Footer saved" : footerSaving ? "Saving…" : "Save footer (applies to every template)"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Live preview */}

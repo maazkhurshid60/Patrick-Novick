@@ -1,5 +1,6 @@
 import { createClient } from "@libsql/client/http";
 import { SEED_TEMPLATES } from "./seedTemplates";
+import { DEFAULT_FOOTER } from "./emailBuilder";
 
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -90,6 +91,26 @@ db.batch([
     data       TEXT NOT NULL,
     size       INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // The email footer (signature, contact links, tagline, optional logo) shared
+  // by every template the branded builder produces — see lib/emailBuilder.ts.
+  // Single row, id=1, seeded below with the values that used to be hardcoded.
+  `CREATE TABLE IF NOT EXISTS email_footer_settings (
+    id               INTEGER PRIMARY KEY CHECK (id = 1),
+    signature_name   TEXT NOT NULL DEFAULT '',
+    signature_title  TEXT NOT NULL DEFAULT '',
+    phone_display    TEXT NOT NULL DEFAULT '',
+    phone_href       TEXT NOT NULL DEFAULT '',
+    email            TEXT NOT NULL DEFAULT '',
+    link1_label      TEXT NOT NULL DEFAULT '',
+    link1_url        TEXT NOT NULL DEFAULT '',
+    link2_label      TEXT NOT NULL DEFAULT '',
+    link2_url        TEXT NOT NULL DEFAULT '',
+    tagline          TEXT NOT NULL DEFAULT '',
+    logo_url         TEXT NOT NULL DEFAULT '',
+    logo_align       TEXT NOT NULL DEFAULT 'left',
+    logo_position    TEXT NOT NULL DEFAULT 'top',
+    updated_at       INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
   // Dashboard login accounts. The bootstrap super-admin still lives in the
   // ADMIN_USERNAME/ADMIN_PASSWORD env vars; these are additional accounts an
@@ -194,6 +215,24 @@ db.batch([
     { sql: "UPDATE contacts SET name = 'TEST SEED - Patrick', tags = 'test_seed', title = 'Senior Recruiter', company = 'Metro Associates' WHERE email = 'fiveer840@gmail.com'", args: [] },
     { sql: "UPDATE contacts SET name = 'TEST SEED - Sender', tags = 'test_seed', title = 'Marketing Coordinator', company = 'Metro Associates' WHERE email = 'news@patricknovick.com'", args: [] },
   ], "write"))
+  // Seed the single footer-settings row once, with the values that used to be
+  // hardcoded in emailBuilder.ts. INSERT OR IGNORE on a fixed id=1 makes this
+  // safe to re-run — it never overwrites an admin's saved edits.
+  .then(() => db.execute({
+    sql: `INSERT OR IGNORE INTO email_footer_settings
+          (id, signature_name, signature_title, phone_display, phone_href, email,
+           link1_label, link1_url, link2_label, link2_url, tagline,
+           logo_url, logo_align, logo_position)
+          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      DEFAULT_FOOTER.signatureName, DEFAULT_FOOTER.signatureTitle,
+      DEFAULT_FOOTER.phoneDisplay, DEFAULT_FOOTER.phoneHref, DEFAULT_FOOTER.email,
+      DEFAULT_FOOTER.link1Label, DEFAULT_FOOTER.link1Url,
+      DEFAULT_FOOTER.link2Label, DEFAULT_FOOTER.link2Url,
+      DEFAULT_FOOTER.tagline, DEFAULT_FOOTER.logoUrl,
+      DEFAULT_FOOTER.logoAlign, DEFAULT_FOOTER.logoPosition,
+    ],
+  }))
   // Seed built-in email templates once (idempotent: skip if the name exists).
   .then(() => db.batch(
     SEED_TEMPLATES.map((t) => ({

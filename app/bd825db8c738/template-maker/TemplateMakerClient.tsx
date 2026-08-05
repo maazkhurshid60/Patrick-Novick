@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Wand2, Eye } from "lucide-react";
-import { buildMetroEmail, DEFAULT_BUILDER, EmailBuilderInput } from "@/lib/emailBuilder";
+import { buildMetroEmail, DEFAULT_BUILDER, DEFAULT_FOOTER, EmailBuilderInput, FooterSettings } from "@/lib/emailBuilder";
 import EmailBuilderFields from "../EmailBuilderFields";
 
 interface ContactList { id: number; name: string }
@@ -26,14 +26,20 @@ export default function TemplateMakerClient() {
   const [listId, setListId] = useState<number | null>(null);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [builder, setBuilder] = useState<EmailBuilderInput>(DEFAULT_BUILDER);
+  const [footer, setFooter] = useState<FooterSettings>(DEFAULT_FOOTER);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const setB = (patch: Partial<EmailBuilderInput>) => setBuilder((b) => ({ ...b, ...patch }));
-  const html = useMemo(() => buildMetroEmail(builder), [builder]);
+  const setF = (patch: Partial<FooterSettings>) => setFooter((f) => ({ ...f, ...patch }));
+  const html = useMemo(() => buildMetroEmail(builder, footer), [builder, footer]);
 
   useEffect(() => {
     fetch("/api/lists").then((r) => (r.ok ? r.json() : [])).then(setLists).catch(() => {});
+    // The footer is edited once, globally, at /bd825db8c738/footer-settings —
+    // pick up whatever's currently saved so both the preview and the HTML
+    // this page saves match it.
+    fetch("/api/footer-settings").then((r) => (r.ok ? r.json() : null)).then((f) => f && setFooter({ ...DEFAULT_FOOTER, ...f })).catch(() => {});
   }, []);
 
   async function handleSave(e: FormEvent) {
@@ -97,7 +103,7 @@ export default function TemplateMakerClient() {
 
           <div className="pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
 
-          <EmailBuilderFields builder={builder} onChange={setB} previewHeight="70vh" />
+          <EmailBuilderFields builder={builder} onChange={setB} previewHeight="70vh" footer={footer} onFooterChange={setF} />
 
           <div className="flex flex-wrap gap-3 pt-2">
             <button

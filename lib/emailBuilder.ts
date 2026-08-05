@@ -1,8 +1,12 @@
 // Metro Associates branded email builder.
 // Turns a small set of structured fields into a full, Outlook-safe HTML email in
 // the house style (680px table, navy #071b31 header/footer, gold #f2b800 button,
-// Patrick Novick signature, unsubscribe). The campaign sender detects the full
-// HTML document and delivers it verbatim, so what you build is what recipients get.
+// signature block, unsubscribe). The campaign sender detects the full HTML
+// document and delivers it verbatim, so what you build is what recipients get.
+//
+// The footer (signature, contact links, tagline, optional logo) is the same
+// on every email produced here by design — see FooterSettings/DEFAULT_FOOTER
+// below and /bd825db8c738/footer-settings, which is where it's edited.
 //
 // Personalization tokens ({{first_name}} etc.) pass straight through untouched.
 
@@ -21,6 +25,43 @@ export interface EmailBuilderInput {
   heroUrl: string;      // optional hero image URL (empty = no hero)
   previewText: string;  // hidden inbox-preview snippet (optional)
 }
+
+// The signature block + bottom bar, shared by every email this builder
+// produces. Historically these were hardcoded here, so "the footer" really
+// was identical on every template — this type is what makes it editable
+// (see /bd825db8c738/footer-settings) while keeping that same "one footer
+// for everything" behavior as the default.
+export interface FooterSettings {
+  signatureName: string;
+  signatureTitle: string;
+  phoneDisplay: string; // shown text, e.g. "+1 (312) 500-1878"
+  phoneHref: string;    // tel: target — digits/plus only, e.g. "+13125001878"
+  email: string;
+  link1Label: string;
+  link1Url: string;
+  link2Label: string;
+  link2Url: string;
+  tagline: string;      // bottom dark bar, above the required Unsubscribe link
+  logoUrl: string;      // optional — empty means no footer logo
+  logoAlign: "left" | "center" | "right";
+  logoPosition: "top" | "bottom"; // relative to the signature text
+}
+
+export const DEFAULT_FOOTER: FooterSettings = {
+  signatureName: "Patrick Novick",
+  signatureTitle: "CEO | Metro Associates",
+  phoneDisplay: "+1 (312) 500-1878",
+  phoneHref: "+13125001878",
+  email: "patrick@metroassoc.com",
+  link1Label: "patricknovick.com",
+  link1Url: "https://patricknovick.com",
+  link2Label: "metroassoc.com",
+  link2Url: "https://metroassoc.com",
+  tagline: "Metro Associates  •  Engineering, MEP, DOT and Construction Recruiting",
+  logoUrl: "",
+  logoAlign: "left",
+  logoPosition: "top",
+};
 
 export const DEFAULT_BUILDER: EmailBuilderInput = {
   eyebrow: "ENGINEERING & CONSTRUCTION TALENT",
@@ -63,7 +104,7 @@ const paragraphs = (text: string, style: string) =>
     .map((p) => `<p style="${style}">${esc(p).replace(/\n/g, "<br>")}</p>`)
     .join("\n              ");
 
-export function buildMetroEmail(input: EmailBuilderInput): string {
+export function buildMetroEmail(input: EmailBuilderInput, footer: FooterSettings = DEFAULT_FOOTER): string {
   const {
     eyebrow, headline, greeting, intro,
     bodyAfter, heroUrl, previewText,
@@ -148,6 +189,43 @@ export function buildMetroEmail(input: EmailBuilderInput): string {
 
   const activeButtons = (input.buttons ?? []).filter((b) => b.label.trim());
 
+  // Footer logo — an inline-block div rather than a table row, so it sits
+  // inside the same navy cell as the signature text with no extra padding
+  // seams between them, and `logoPosition` just decides where in that cell
+  // it's placed.
+  const footerLogo = footer.logoUrl.trim()
+    ? `<div style="text-align:${footer.logoAlign};margin:${footer.logoPosition === "top" ? "0 0 14px 0" : "14px 0 0 0"};">
+                <img src="${escAttr(footer.logoUrl.trim())}" alt=""
+                     style="display:inline-block;max-width:200px;width:auto;height:auto;border:0;outline:none;">
+              </div>`
+    : "";
+
+  const phoneHtml = footer.phoneDisplay.trim()
+    ? `<a href="tel:${escAttr((footer.phoneHref || footer.phoneDisplay).trim())}" style="color:#f2b800;text-decoration:none;font-weight:bold;">${esc(footer.phoneDisplay.trim())}</a>`
+    : "";
+  const emailHtml = footer.email.trim()
+    ? `<a href="mailto:${escAttr(footer.email.trim())}" style="color:#ffffff;text-decoration:none;">${esc(footer.email.trim())}</a>`
+    : "";
+  const contactLine = phoneHtml || emailHtml
+    ? `
+              <div style="margin-top:9px;font-size:14px;line-height:23px;">
+                ${phoneHtml}${phoneHtml && emailHtml ? "&nbsp;|&nbsp;" : ""}${emailHtml}
+              </div>`
+    : "";
+
+  const footerLink = (label: string, url: string) =>
+    label.trim() && url.trim()
+      ? `<a href="${escAttr(url.trim())}" style="color:#ffffff;text-decoration:none;">${esc(label.trim())}</a>`
+      : "";
+  const link1Html = footerLink(footer.link1Label, footer.link1Url);
+  const link2Html = footerLink(footer.link2Label, footer.link2Url);
+  const linksLine = link1Html || link2Html
+    ? `
+              <div style="font-size:14px;line-height:23px;">
+                ${link1Html}${link1Html && link2Html ? "&nbsp;|&nbsp;" : ""}${link2Html}
+              </div>`
+    : "";
+
   // Negative bottom margin on the cell absorbs the last row's 12px button margin
   // so spacing below the buttons stays consistent no matter how many there are.
   const button = activeButtons.length
@@ -194,29 +272,17 @@ export function buildMetroEmail(input: EmailBuilderInput): string {
           </tr>${listBox}${afterBox}${button}
           <tr>
             <td style="padding:24px 40px;background:#071b31;font-family:Arial,Helvetica,sans-serif;color:#ffffff;">
-              <div style="font-size:19px;line-height:24px;font-weight:bold;">Patrick Novick</div>
-              <div style="font-size:14px;line-height:21px;color:#d8e0e8;">CEO | Metro Associates</div>
-              <div style="margin-top:9px;font-size:14px;line-height:23px;">
-                <a href="tel:+13125001878" style="color:#f2b800;text-decoration:none;font-weight:bold;">
-                  +1 (312) 500-1878
-                </a>
-                &nbsp;|&nbsp;
-                <a href="mailto:patrick@metroassoc.com" style="color:#ffffff;text-decoration:none;">
-                  patrick@metroassoc.com
-                </a>
-              </div>
-              <div style="font-size:14px;line-height:23px;">
-                <a href="https://patricknovick.com" style="color:#ffffff;text-decoration:none;">patricknovick.com</a>
-                &nbsp;|&nbsp;
-                <a href="https://metroassoc.com" style="color:#ffffff;text-decoration:none;">metroassoc.com</a>
-              </div>
+              ${footer.logoPosition === "top" ? footerLogo : ""}
+              <div style="font-size:19px;line-height:24px;font-weight:bold;">${esc(footer.signatureName)}</div>
+              <div style="font-size:14px;line-height:21px;color:#d8e0e8;">${esc(footer.signatureTitle)}</div>${contactLine}${linksLine}
+              ${footer.logoPosition === "bottom" ? footerLogo : ""}
             </td>
           </tr>
           <tr>
             <td align="center"
                 style="padding:13px 25px;background:#031426;font-family:Arial,Helvetica,sans-serif;
                        font-size:11px;line-height:17px;color:#a9b6c2;">
-              Metro Associates &nbsp;•&nbsp; Engineering, MEP, DOT and Construction Recruiting<br>
+              ${footer.tagline.trim() ? `${esc(footer.tagline.trim())}<br>` : ""}
               <a href="{{unsubscribe_url}}" style="color:#a9b6c2;text-decoration:underline;">Unsubscribe</a>
             </td>
           </tr>
