@@ -42,3 +42,5 @@ next-env.d.ts
 
 # Local DB backups — contain contact PII, never commit
 backups/
+
+.vercel
