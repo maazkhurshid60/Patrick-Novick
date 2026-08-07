@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
-import { zonedWallTimeToUtcEpoch, isRepeatEvery } from "@/lib/schedule";
+import { zonedWallTimeToUtcEpoch, isRepeatEvery, REPEAT_INTERVAL_DAYS } from "@/lib/schedule";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -80,6 +80,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const repeatEvery = isRepeatEvery(b.repeatEvery) ? b.repeatEvery : null;
 
+  // A recurring send re-targets its whole list every occurrence, so an
+  // exclusion window as long as (or longer than) the repeat interval means
+  // the previous run's recipients are still "recently emailed" next time —
+  // the entire audience gets excluded and the send fails a cycle later with
+  // no obvious cause. Catch it here instead.
+  if (repeatEvery && b.excludeRecentDays && b.excludeRecentDays >= REPEAT_INTERVAL_DAYS[repeatEvery]) {
+    return NextResponse.json({
+      error: `A ${repeatEvery} repeat combined with excluding contacts emailed in the last ${b.excludeRecentDays} days will exclude almost everyone once the previous run has gone out. Lower the exclusion below ${REPEAT_INTERVAL_DAYS[repeatEvery]} days, or turn it off, if this should re-reach the same list each time.`,
+    }, { status: 400 });
+  }
+
   // A drip needs a positive gap between batches. The cron ticks every 5 minutes,
   // so anything smaller than that just lands on the next tick anyway.
   let batchInterval: number | null = null;
@@ -120,6 +131,74 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     scheduledAt,
     totalTarget,
   });
+}
+
+// PATCH /api/scheduler — reschedule a failed (or pending) send: pick a new
+// time and optionally fix the settings that caused it to fail, without
+// re-typing the subject/body from scratch. Sets it back to 'pending' with a
+// future scheduled_at, so it shows as Pending and is NOT picked up by the
+// cron worker until that time — this is how you defer a send rather than
+// have it fire immediately, since processDue() only claims rows whose
+// scheduled_at has already passed.
+export async function PATCH(req: NextRequest): Promise<NextResponse> {
+  const b = await req.json() as {
+    id?: number;
+    localDateTime?: string;
+    timezone?: string;
+    excludeRecentDays?: number | null; // omit to leave unchanged
+    repeatEvery?: string | null;       // omit to leave unchanged
+  };
+
+  if (!b.id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  if (!b.localDateTime || !b.timezone) {
+    return NextResponse.json({ error: "A send date, time and timezone are required" }, { status: 400 });
+  }
+
+  let scheduledAt: number | null;
+  try {
+    scheduledAt = zonedWallTimeToUtcEpoch(b.localDateTime, b.timezone);
+  } catch {
+    return NextResponse.json({ error: "Invalid timezone" }, { status: 400 });
+  }
+  if (scheduledAt === null) {
+    return NextResponse.json({ error: "Invalid date/time" }, { status: 400 });
+  }
+  if (scheduledAt < Math.floor(Date.now() / 1000) + 30) {
+    return NextResponse.json({ error: "Scheduled time must be in the future" }, { status: 400 });
+  }
+
+  const existing = await db.execute({
+    sql: "SELECT repeat_every, exclude_recent_days FROM scheduled_campaigns WHERE id = ?",
+    args: [b.id],
+  });
+  const current = existing.rows[0] as unknown as { repeat_every: string | null; exclude_recent_days: number | null } | undefined;
+  if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (b.repeatEvery !== undefined && b.repeatEvery !== "" && b.repeatEvery !== null && !isRepeatEvery(b.repeatEvery)) {
+    return NextResponse.json({ error: "Repeat must be daily, weekly or monthly" }, { status: 400 });
+  }
+  const repeatEvery = b.repeatEvery === undefined
+    ? current.repeat_every
+    : (isRepeatEvery(b.repeatEvery) ? b.repeatEvery : null);
+  const excludeRecentDays = b.excludeRecentDays === undefined ? current.exclude_recent_days : b.excludeRecentDays;
+
+  if (repeatEvery && excludeRecentDays && excludeRecentDays >= REPEAT_INTERVAL_DAYS[repeatEvery as "daily" | "weekly" | "monthly"]) {
+    return NextResponse.json({
+      error: `A ${repeatEvery} repeat combined with excluding contacts emailed in the last ${excludeRecentDays} days will exclude almost everyone once the previous run has gone out. Lower the exclusion below ${REPEAT_INTERVAL_DAYS[repeatEvery as "daily" | "weekly" | "monthly"]} days, or turn it off, if this should re-reach the same list each time.`,
+    }, { status: 400 });
+  }
+
+  const res = await db.execute({
+    sql: `UPDATE scheduled_campaigns
+          SET status = 'pending', error = NULL, claimed_at = NULL, next_batch_at = NULL,
+              scheduled_at = ?, timezone = ?, exclude_recent_days = ?, repeat_every = ?
+          WHERE id = ? AND status != 'processing'`,
+    args: [scheduledAt, b.timezone, excludeRecentDays, repeatEvery, b.id],
+  });
+  if (res.rowsAffected === 0) {
+    return NextResponse.json({ error: "Cannot reschedule — it is currently sending or does not exist" }, { status: 409 });
+  }
+  return NextResponse.json({ success: true, scheduledAt });
 }
 
 // DELETE /api/scheduler — cancel/remove a scheduled send by id.

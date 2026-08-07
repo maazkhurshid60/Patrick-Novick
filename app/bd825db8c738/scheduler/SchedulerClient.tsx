@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Clock, Calendar, Trash2, Send, AlertCircle, CheckCircle2, Loader2, Repeat } from "lucide-react";
+import { Clock, Calendar, Trash2, Send, AlertCircle, CheckCircle2, Loader2, Repeat, CalendarClock, X } from "lucide-react";
+import { REPEAT_INTERVAL_DAYS, type RepeatEvery } from "@/lib/schedule";
 
 interface ListRow { id: number; name: string; member_count: number }
 interface TemplateRow { id: number; name: string; subject: string; body: string }
@@ -88,6 +89,59 @@ export default function SchedulerClient({
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(true);
 
+  // Reschedule a failed row — see the inline editor in the list below. Pushing
+  // the date forward (rather than re-sending now) is what makes it show
+  // "Pending" again without actually firing: the cron worker only claims rows
+  // whose scheduled_at has already passed.
+  const [reschedulingId, setReschedulingId] = useState<number | null>(null);
+  const [reDateTime, setReDateTime] = useState("");
+  const [reExcludeRecent, setReExcludeRecent] = useState(false);
+  const [reExcludeDays, setReExcludeDays] = useState(30);
+  const [reSaving, setReSaving] = useState(false);
+  const [reErr, setReErr] = useState<string | null>(null);
+
+  // `defaultDateTime` is computed at the call site (inside the button's onClick,
+  // an actual event handler) rather than here, so the impure Date.now() read
+  // isn't inside a plain component-scope function the linter can't prove is
+  // event-only.
+  function openReschedule(r: ScheduledRow, defaultDateTime: string) {
+    setReschedulingId(r.id);
+    setReErr(null);
+    setReDateTime(defaultDateTime);
+    setReExcludeRecent(r.exclude_recent_days != null);
+    setReExcludeDays(r.exclude_recent_days ?? 30);
+  }
+
+  async function saveReschedule(r: ScheduledRow) {
+    setReErr(null);
+    if (!reDateTime) { setReErr("Pick a date and time."); return; }
+    if (r.repeat_every && reExcludeRecent && reExcludeDays >= REPEAT_INTERVAL_DAYS[r.repeat_every as RepeatEvery]) {
+      setReErr(`A ${r.repeat_every} repeat with a ${reExcludeDays}-day exclusion will exclude almost everyone once the previous run has gone out. Lower it below ${REPEAT_INTERVAL_DAYS[r.repeat_every as RepeatEvery]} days, or turn it off.`);
+      return;
+    }
+    setReSaving(true);
+    try {
+      const res = await fetch("/api/scheduler", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: r.id,
+          localDateTime: reDateTime,
+          timezone: r.timezone,
+          excludeRecentDays: reExcludeRecent ? reExcludeDays : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReErr(data.error || "Could not reschedule."); return; }
+      setReschedulingId(null);
+      loadRows();
+    } catch {
+      setReErr("Network error — please try again.");
+    } finally {
+      setReSaving(false);
+    }
+  }
+
   // Default timezone + a sensible default time (1 hour from now, rounded to :00).
   useEffect(() => {
     const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -152,10 +206,21 @@ export default function SchedulerClient({
   const remaining = Math.max(0, targetCount - sendOffset);
   const willSend = Math.min(remaining, dailyLimit);
 
+  // A recurring send re-targets its whole list from scratch every occurrence,
+  // so an exclusion window as long as the repeat interval means next time's
+  // run finds the previous run's recipients still "recently emailed" — the
+  // whole audience gets excluded and it fails with no obvious cause. Same
+  // check as POST /api/scheduler; shown here so it's caught before submitting.
+  const repeatConflict =
+    repeatEvery && excludeRecent && excludeDays >= REPEAT_INTERVAL_DAYS[repeatEvery as RepeatEvery]
+      ? `A ${repeatEvery} repeat with a ${excludeDays}-day exclusion will exclude almost everyone once the previous run has gone out. Lower it below ${REPEAT_INTERVAL_DAYS[repeatEvery as RepeatEvery]} days, or turn it off, if this should re-reach the same list each time.`
+      : null;
+
   async function schedule() {
     setMsg(null);
     if (!subject.trim() || !body.trim()) { setMsg({ type: "err", text: "Subject and message are required." }); return; }
     if (!localDateTime) { setMsg({ type: "err", text: "Pick a date and time." }); return; }
+    if (repeatConflict) { setMsg({ type: "err", text: repeatConflict }); return; }
 
     setSubmitting(true);
     try {
@@ -330,6 +395,14 @@ export default function SchedulerClient({
           </div>
         </div>
 
+        {repeatConflict && (
+          <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
+            style={{ background: "rgba(245,158,11,0.12)", color: "#fbbf24" }}>
+            <AlertCircle size={15} className="shrink-0 mt-0.5" />
+            {repeatConflict}
+          </div>
+        )}
+
         {/* Summary + submit */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -389,48 +462,107 @@ export default function SchedulerClient({
               const pct = showProgress
                 ? Math.min(100, Math.round((r.recipient_count / r.total_target) * 100))
                 : 0;
+              const isEditing = reschedulingId === r.id;
               return (
-                <div key={r.id} className="flex items-center gap-3 rounded-xl px-4 py-3"
+                <div key={r.id} className="rounded-xl px-4 py-3"
                   style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {r.subject || "—"}
-                      {r.repeat_every && (
-                        <span className="ml-2 text-xs font-normal capitalize" style={{ color: "rgba(255,255,255,0.35)" }}>
-                          <Repeat size={10} className="inline mr-0.5 -mt-0.5" />{r.repeat_every}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                      {fmt(r.scheduled_at, r.timezone)} · {r.timezone.replace(/_/g, " ")} ·{" "}
-                      {r.list_name ?? "All active contacts"}
-                      {shown === "sent" ? ` · ${r.recipient_count} sent` : ""}
-                      {shown === "sending" && r.next_batch_at
-                        ? ` · next batch ${fmt(r.next_batch_at, r.timezone)}`
-                        : ""}
-                      {shown === "failed" && r.error ? ` · ${r.error}` : ""}
-                    </p>
-                    {showProgress && (
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
-                          <div className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, background: shown === "sent" ? "#4ade80" : "#60a5fa" }} />
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">
+                        {r.subject || "—"}
+                        {r.repeat_every && (
+                          <span className="ml-2 text-xs font-normal capitalize" style={{ color: "rgba(255,255,255,0.35)" }}>
+                            <Repeat size={10} className="inline mr-0.5 -mt-0.5" />{r.repeat_every}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        {fmt(r.scheduled_at, r.timezone)} · {r.timezone.replace(/_/g, " ")} ·{" "}
+                        {r.list_name ?? "All active contacts"}
+                        {shown === "sent" ? ` · ${r.recipient_count} sent` : ""}
+                        {shown === "sending" && r.next_batch_at
+                          ? ` · next batch ${fmt(r.next_batch_at, r.timezone)}`
+                          : ""}
+                        {shown === "failed" && r.error ? ` · ${r.error}` : ""}
+                      </p>
+                      {showProgress && (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.07)" }}>
+                            <div className="h-full rounded-full transition-all"
+                              style={{ width: `${pct}%`, background: shown === "sent" ? "#4ade80" : "#60a5fa" }} />
+                          </div>
+                          <span className="text-xs tabular-nums shrink-0" style={{ color: "rgba(255,255,255,0.4)" }}>
+                            {r.recipient_count.toLocaleString()} / {r.total_target.toLocaleString()}
+                          </span>
                         </div>
-                        <span className="text-xs tabular-nums shrink-0" style={{ color: "rgba(255,255,255,0.4)" }}>
-                          {r.recipient_count.toLocaleString()} / {r.total_target.toLocaleString()}
-                        </span>
-                      </div>
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0" style={{ background: ss.bg, color: ss.color }}>
+                      {shown}
+                    </span>
+                    {r.status === "failed" && (
+                      <button onClick={() => {
+                          if (isEditing) { setReschedulingId(null); return; }
+                          const d = new Date(Date.now() + 24 * 60 * 60 * 1000); // default: this time tomorrow
+                          d.setMinutes(0, 0, 0);
+                          const pad = (n: number) => String(n).padStart(2, "0");
+                          openReschedule(r, `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                        }}
+                        title="Reschedule — sets it back to Pending without sending now"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-white/5"
+                        style={{ color: isEditing ? "#fbbf24" : "rgba(255,255,255,0.35)" }}>
+                        <CalendarClock size={15} />
+                      </button>
+                    )}
+                    {r.status !== "processing" && (
+                      <button onClick={() => cancel(r.id)} title={r.status === "pending" ? "Cancel" : "Remove"}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-white/5"
+                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        <Trash2 size={15} />
+                      </button>
                     )}
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0" style={{ background: ss.bg, color: ss.color }}>
-                    {shown}
-                  </span>
-                  {r.status !== "processing" && (
-                    <button onClick={() => cancel(r.id)} title={r.status === "pending" ? "Cancel" : "Remove"}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors hover:bg-white/5"
-                      style={{ color: "rgba(255,255,255,0.35)" }}>
-                      <Trash2 size={15} />
-                    </button>
+
+                  {isEditing && (
+                    <div className="mt-3 pt-3 flex flex-col gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        Pushes this to Pending at a new time — it will NOT send right now.
+                      </p>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                          <label style={LABEL}>New send date &amp; time ({r.timezone.replace(/_/g, " ")})</label>
+                          <input style={INPUT} type="datetime-local" value={reDateTime} onChange={(e) => setReDateTime(e.target.value)} />
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-2 cursor-pointer mt-6" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+                            <input type="checkbox" checked={reExcludeRecent} onChange={(e) => setReExcludeRecent(e.target.checked)} />
+                            Don&apos;t send to anyone emailed in the last
+                            <input style={{ ...INPUT, width: 64, padding: "4px 8px" }} type="number" min={1} value={reExcludeDays}
+                              disabled={!reExcludeRecent} onChange={(e) => setReExcludeDays(Math.max(1, Number(e.target.value)))} />
+                            days
+                          </label>
+                        </div>
+                      </div>
+                      {reErr && (
+                        <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                          <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                          {reErr}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={() => saveReschedule(r)} disabled={reSaving}
+                          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors"
+                          style={{ background: "var(--color-red, #e63946)", color: "#fff" }}>
+                          {reSaving ? <Loader2 size={13} className="animate-spin" /> : <CalendarClock size={13} />}
+                          {reSaving ? "Saving…" : "Set to Pending"}
+                        </button>
+                        <button onClick={() => setReschedulingId(null)}
+                          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors hover:bg-white/5"
+                          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                          <X size={13} /> Cancel
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               );

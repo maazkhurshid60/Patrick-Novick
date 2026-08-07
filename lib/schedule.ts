@@ -16,6 +16,23 @@ export function isRepeatEvery(v: unknown): v is RepeatEvery {
   return typeof v === "string" && (REPEAT_OPTIONS as string[]).includes(v);
 }
 
+/**
+ * Minimum whole days between occurrences of each cadence (28 for monthly — the
+ * shortest possible month). A recurring send re-targets its whole list from
+ * scratch every occurrence (see queueRepeat in api/scheduler/run), so pairing
+ * it with "exclude anyone emailed in the last N days" where N is >= this
+ * interval means the previous run's recipients are still inside the exclusion
+ * window on the next one — the entire audience gets excluded and the send
+ * fails with "No eligible contacts to send to". Caught at schedule time in
+ * POST /api/scheduler rather than discovered a month later when it silently
+ * fails.
+ */
+export const REPEAT_INTERVAL_DAYS: Record<RepeatEvery, number> = {
+  daily: 1,
+  weekly: 7,
+  monthly: 28,
+};
+
 /** The wall-clock fields an instant maps to inside a given IANA zone. */
 interface ZonedParts {
   year: number; month: number; day: number; hour: number; minute: number; second: number;
