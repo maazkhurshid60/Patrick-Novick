@@ -9,11 +9,12 @@ import { useRouter } from "next/navigation";
 import { Check, X, Wand2, Code, Loader2 } from "lucide-react";
 import { buildMetroEmail, DEFAULT_BUILDER, DEFAULT_FOOTER, EmailBuilderInput, FooterSettings } from "@/lib/emailBuilder";
 import EmailBuilderFields from "../EmailBuilderFields";
+import { TEMPLATE_CATEGORIES } from "@/lib/templateCategories";
 
 interface ContactList { id: number; name: string }
 interface Template {
   id: number; name: string; subject: string; body: string;
-  list_id: number | null; builder_json?: string | null;
+  list_id: number | null; builder_json?: string | null; category?: string | null;
 }
 
 // A body carrying its own HTML document/markup previews as rendered HTML.
@@ -44,7 +45,7 @@ export default function TemplateEditor({ id }: { id: string }) {
   const [mode, setMode] = useState<"builder" | "blank">(isNew ? "builder" : "blank");
   const [builder, setBuilder] = useState<EmailBuilderInput>(DEFAULT_BUILDER);
   const [footer, setFooter] = useState<FooterSettings>(DEFAULT_FOOTER);
-  const [form, setForm] = useState<{ name: string; subject: string; body: string; list_id: number | null }>({ name: "", subject: "", body: "", list_id: null });
+  const [form, setForm] = useState<{ name: string; subject: string; body: string; list_id: number | null; category: string }>({ name: "", subject: "", body: "", list_id: null, category: "general" });
   const [loading, setLoading] = useState(false);
 
   const builderHtml = useMemo(() => buildMetroEmail(builder, footer), [builder, footer]);
@@ -73,7 +74,7 @@ export default function TemplateEditor({ id }: { id: string }) {
           catch { builderMode = false; }
         }
         setMode(builderMode ? "builder" : "blank");
-        setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null });
+        setForm({ name: t.name, subject: t.subject, body: t.body, list_id: t.list_id ?? null, category: t.category || "general" });
         setLoaded(true);
       })
       .catch(() => { if (!cancelled) { setNotFound(true); setLoaded(true); } });
@@ -152,18 +153,32 @@ export default function TemplateEditor({ id }: { id: string }) {
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         <input style={inputStyle} placeholder="Template name (e.g. Job Outreach)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <input style={inputStyle} placeholder="Email subject line" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
-        <div>
-          <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional — which list this template is for)</span></p>
-          <select
-            style={{ ...inputStyle, cursor: "pointer" }}
-            value={form.list_id ?? ""}
-            onChange={(e) => setForm({ ...form, list_id: e.target.value ? Number(e.target.value) : null })}
-          >
-            <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
-            ))}
-          </select>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Category</p>
+            <select
+              style={{ ...inputStyle, cursor: "pointer" }}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            >
+              {TEMPLATE_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value} style={{ background: "#16181e" }}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional)</span></p>
+            <select
+              style={{ ...inputStyle, cursor: "pointer" }}
+              value={form.list_id ?? ""}
+              onChange={(e) => setForm({ ...form, list_id: e.target.value ? Number(e.target.value) : null })}
+            >
+              <option value="" style={{ background: "#16181e" }}>No specific list</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {mode === "builder" ? (

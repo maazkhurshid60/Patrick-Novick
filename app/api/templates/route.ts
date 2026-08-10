@@ -20,22 +20,22 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { name, subject, body, list_id, builder_json } = await req.json();
+  const { name, subject, body, list_id, builder_json, category } = await req.json();
   if (!name?.trim() || !subject?.trim() || !body?.trim()) {
     return NextResponse.json({ error: "Name, subject and body required" }, { status: 400 });
   }
   const result = await db.execute({
-    sql: "INSERT INTO email_templates (name, subject, body, list_id, builder_json) VALUES (?, ?, ?, ?, ?)",
-    args: [name.trim(), subject.trim(), body.trim(), list_id ?? null, builder_json ?? null],
+    sql: "INSERT INTO email_templates (name, subject, body, list_id, builder_json, category) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [name.trim(), subject.trim(), body.trim(), list_id ?? null, builder_json ?? null, category || "general"],
   });
   return NextResponse.json({ id: Number(result.lastInsertRowid) });
 }
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
-  const { id, name, subject, body, list_id, builder_json } = await req.json();
+  const { id, name, subject, body, list_id, builder_json, category } = await req.json();
   await db.execute({
-    sql: "UPDATE email_templates SET name=?, subject=?, body=?, list_id=?, builder_json=?, updated_at=unixepoch() WHERE id=?",
-    args: [name, subject, body, list_id ?? null, builder_json ?? null, id],
+    sql: "UPDATE email_templates SET name=?, subject=?, body=?, list_id=?, builder_json=?, category=?, updated_at=unixepoch() WHERE id=?",
+    args: [name, subject, body, list_id ?? null, builder_json ?? null, category || "general", id],
   });
   return NextResponse.json({ success: true });
 }

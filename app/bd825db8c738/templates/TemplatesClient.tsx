@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Clock } from "lucide-react";
+import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Clock, Search, ChevronDown } from "lucide-react";
 import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
+import { TEMPLATE_CATEGORIES, categoryMeta } from "@/lib/templateCategories";
 
 interface Template {
   id: number;
@@ -12,6 +13,7 @@ interface Template {
   body: string;
   updated_at: number;
   list_id: number | null;
+  category: string;
 }
 
 interface ContactList {
@@ -96,7 +98,9 @@ export default function TemplatesClient() {
   const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [lists, setLists] = useState<ContactList[]>([]);
-  const [listFilter, setListFilter] = useState<number | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState<Template | null>(null);
@@ -114,7 +118,12 @@ export default function TemplatesClient() {
   useEffect(() => { fetchTemplates(); fetchLists(); }, []);
 
   const listName = (id: number | null) => (id == null ? null : lists.find((l) => l.id === id)?.name ?? null);
-  const shownTemplates = listFilter === "all" ? templates : templates.filter((t) => t.list_id === listFilter);
+  const shownTemplates = templates.filter((t) => {
+    if (categoryFilter !== "all" && (t.category || "general") !== categoryFilter) return false;
+    const q = search.trim().toLowerCase();
+    if (q && !t.name.toLowerCase().includes(q) && !t.subject.toLowerCase().includes(q)) return false;
+    return true;
+  });
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this template?")) return;
@@ -145,7 +154,7 @@ export default function TemplatesClient() {
     setTimeout(() => setCopied(null), 1500);
   }
 
-  function useTemplate(t: Template) {
+  function applyTemplate(t: Template) {
     localStorage.setItem("campaign_draft", JSON.stringify({
       subject: t.subject,
       body: t.body,
@@ -197,24 +206,31 @@ export default function TemplatesClient() {
         </div>
       )}
 
-      {/* Toolbar: filter + New Template (opens the dedicated editor page) */}
+      {/* Toolbar: category filter, search, New Template (opens the dedicated editor page) */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div className="flex items-center gap-3 flex-wrap">
-          <p className="text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
-          </p>
           <select
-            value={listFilter}
-            onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-            style={{ ...inputStyle, width: "auto", fontSize: "0.78rem", padding: "0.4rem 0.7rem", borderRadius: "0.625rem", cursor: "pointer" }}
-            title="Filter templates by list"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            style={{ ...inputStyle, width: "auto", fontSize: "0.8rem", padding: "0.55rem 0.9rem", borderRadius: "0.75rem", cursor: "pointer" }}
           >
-            <option value="all" style={{ background: "#16181e" }}>All lists</option>
-            <option value="" disabled style={{ background: "#16181e" }}>──────</option>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+            <option value="all" style={{ background: "#16181e" }}>All Categories</option>
+            {TEMPLATE_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value} style={{ background: "#16181e" }}>{c.label}</option>
             ))}
           </select>
+          <div className="relative">
+            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(255,255,255,0.3)" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search templates..."
+              style={{ ...inputStyle, width: "220px", paddingLeft: "2.25rem", fontSize: "0.8rem" }}
+            />
+          </div>
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+            {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
+          </p>
         </div>
         <button
           onClick={() => router.push("/bd825db8c738/templates/new")}
@@ -225,77 +241,105 @@ export default function TemplatesClient() {
         </button>
       </div>
 
-      {/* Template grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {shownTemplates.map((t) => (
-          <div key={t.id} className="rounded-2xl p-6 flex flex-col gap-3" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-white mb-0.5 truncate" style={{ fontFamily: "var(--font-heading)" }}>{t.name}</p>
-                <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>{t.subject}</p>
-                {listName(t.list_id) && (
-                  <span className="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(124,58,237,0.15)", color: "#c4b5fd", border: "1px solid rgba(124,58,237,0.3)" }}>
-                    {listName(t.list_id)}
+      {/* Template library — expandable rows, grouped visually by category badge */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+        {shownTemplates.length === 0 ? (
+          <p className="py-14 text-center text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+            No templates match your filters.
+          </p>
+        ) : (
+          shownTemplates.map((t, i) => {
+            const cat = categoryMeta(t.category);
+            const isOpen = expandedId === t.id;
+            return (
+              <div key={t.id} style={{ borderBottom: i < shownTemplates.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(isOpen ? null : t.id)}
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cat.bg }}>
+                    <Layout size={14} style={{ color: cat.color }} strokeWidth={1.75} />
+                  </div>
+                  <p className="text-sm font-semibold text-white truncate flex-1 min-w-0">{t.name}</p>
+                  <span
+                    className="shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold"
+                    style={{ background: cat.bg, color: cat.color }}
+                  >
+                    {cat.label}
                   </span>
+                  <ChevronDown
+                    size={15}
+                    style={{ color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "rotate(-90deg)", transition: "transform 150ms" }}
+                  />
+                </button>
+
+                {isOpen && (
+                  <div className="px-5 pb-5 flex flex-col gap-3">
+                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Subject: {t.subject}</p>
+                    {listName(t.list_id) && (
+                      <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}>
+                        List: {listName(t.list_id)}
+                      </span>
+                    )}
+                    <pre
+                      className="text-xs rounded-xl p-3 overflow-hidden"
+                      style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", maxHeight: "72px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid rgba(255,255,255,0.04)" }}
+                    >
+                      {t.body.replace(/<[^>]+>/g, " ").trim().slice(0, 150)}…
+                    </pre>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => applyTemplate(t)}
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                        style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+                      >
+                        <Send size={11} /> Use in Campaign
+                      </button>
+                      <button
+                        onClick={() => scheduleTemplate(t)}
+                        className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
+                        style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
+                      >
+                        <Clock size={11} /> Schedule
+                      </button>
+                      <button
+                        onClick={() => setPreviewing(t)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
+                        title="Preview"
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={() => copyBody(t.id, t.body)}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/10 ${
+                          copied === t.id ? "text-emerald-400" : "text-white/55 hover:text-white"
+                        }`}
+                        title="Copy HTML"
+                      >
+                        {copied === t.id ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      <button
+                        onClick={() => router.push(`/bd825db8c738/templates/${t.id}`)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
+                        title="Edit"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-red-500/15 hover:text-red-400"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => setPreviewing(t)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
-                  title="Preview"
-                >
-                  <Eye size={14} />
-                </button>
-                <button
-                  onClick={() => copyBody(t.id, t.body)}
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/10 ${
-                    copied === t.id ? "text-emerald-400" : "text-white/55 hover:text-white"
-                  }`}
-                  title="Copy HTML"
-                >
-                  {copied === t.id ? <Check size={14} /> : <Copy size={14} />}
-                </button>
-                <button
-                  onClick={() => router.push(`/bd825db8c738/templates/${t.id}`)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
-                  title="Edit"
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-red-500/15 hover:text-red-400"
-                  title="Delete"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-            <pre
-              className="text-xs rounded-xl p-3 overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", maxHeight: "72px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid rgba(255,255,255,0.04)" }}
-            >
-              {t.body.replace(/<[^>]+>/g, " ").trim().slice(0, 150)}…
-            </pre>
-            <div className="flex gap-2 w-full">
-              <button
-                onClick={() => useTemplate(t)}
-                className="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
-                style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
-              >
-                <Send size={11} /> Use in Campaign
-              </button>
-              <button
-                onClick={() => scheduleTemplate(t)}
-                className="flex items-center justify-center gap-1.5 flex-1 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
-                style={{ background: "rgba(96,165,250,0.12)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}
-              >
-                <Clock size={11} /> Schedule
-              </button>
-            </div>
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
 
       {/* Preview modal */}
@@ -318,7 +362,7 @@ export default function TemplatesClient() {
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { useTemplate(previewing); setPreviewing(null); }}
+                  onClick={() => { applyTemplate(previewing); setPreviewing(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02]"
                   style={{ background: "var(--color-red)", color: "#fff" }}
                 >

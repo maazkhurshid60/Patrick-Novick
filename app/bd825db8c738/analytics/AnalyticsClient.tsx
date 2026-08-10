@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2, ChevronLeft, ChevronRight, MapPin, Reply, MousePointerClick } from "lucide-react";
+import { LineChart, DonutChart } from "./charts";
 
 interface ContactEngagement {
   email: string;
@@ -46,12 +47,48 @@ interface BrevoEvent {
   reason?: string;
 }
 
+interface DayCount { date: string; count: number }
+interface DeviceCount { device: string; count: number }
+interface LocationCount { city: string; state: string; count: number }
+interface ChartsData {
+  opensByDay: DayCount[];
+  clicksByDay: DayCount[];
+  devices: DeviceCount[];
+  locations: LocationCount[];
+}
+
 interface AnalyticsData {
   brevo: BrevoStats;
   events: BrevoEvent[];
   contacts: ContactEngagement[];
   totals: Totals;
+  charts: ChartsData;
 }
+
+interface CampaignRow {
+  id: number;
+  subject: string;
+  status: string;
+  recipient_count: number;
+  unique_opens: number;
+  sent_at: number;
+  target_list: string | null;
+}
+
+const DEVICE_META: Record<string, { label: string; color: string }> = {
+  desktop: { label: "Desktop", color: "#3b82f6" },
+  mobile: { label: "Mobile", color: "#16a34a" },
+  other: { label: "Other", color: "#7c3aed" },
+};
+
+const TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "campaigns", label: "Campaigns" },
+  { key: "contacts", label: "Contacts" },
+  { key: "replies", label: "Replies" },
+  { key: "geo", label: "Geo" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 // Map a Brevo event type to a readable label + colors
 function eventStyle(ev: string): { label: string; color: string; bg: string } {
@@ -123,6 +160,10 @@ export default function AnalyticsClient() {
   const rangeActive = !!(from && to);
   const [lists, setLists] = useState<ContactList[]>([]);
   const [listFilter, setListFilter] = useState<number | "all">("all");
+  const [tab, setTab] = useState<TabKey>("overview");
+  const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [contactsSearch, setContactsSearch] = useState("");
   const [eventPage, setEventPage] = useState(1);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>("all"); // by readable label, e.g. "Opened"
   const [activitySearch, setActivitySearch] = useState("");

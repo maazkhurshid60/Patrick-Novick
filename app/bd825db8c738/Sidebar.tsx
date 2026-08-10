@@ -1,30 +1,78 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { ExternalLink, BarChart2, Mail, Users, Layout, List, Activity, UserMinus, MailWarning, Table, Menu, X, UserCog, Wand2, Clock, PanelBottom } from "lucide-react";
+import { useState, useEffect, type ComponentType } from "react";
+import {
+  ExternalLink, BarChart2, Mail, Users, Layout, Activity, Menu, X, UserCog,
+  Inbox, ChevronDown,
+} from "lucide-react";
 
 const BASE = "/bd825db8c738";
 
-const navItems = [
-  { label: "Dashboard",       icon: BarChart2, href: BASE,                key: "dashboard" },
-  { label: "Analytics",       icon: Activity,  href: `${BASE}/analytics`, key: "analytics" },
-  { label: "Contacts",        icon: Users,     href: `${BASE}/contacts`,  key: "contacts" },
-  { label: "Spreadsheet",     icon: Table,     href: `${BASE}/spreadsheet`, key: "spreadsheet" },
-  { label: "Lists",           icon: List,      href: `${BASE}/lists`,     key: "lists" },
-  { label: "Email Campaigns", icon: Mail,      href: `${BASE}/campaigns`, key: "campaigns" },
-  { label: "Scheduler",       icon: Clock,     href: `${BASE}/scheduler`, key: "scheduler" },
-  { label: "Templates",       icon: Layout,    href: `${BASE}/templates`, key: "templates" },
-  { label: "Template Maker",  icon: Wand2,     href: `${BASE}/template-maker`, key: "template-maker" },
-  { label: "Email Footer",    icon: PanelBottom, href: `${BASE}/footer-settings`, key: "footer-settings" },
-  { label: "Bounced",         icon: MailWarning, href: `${BASE}/bounced`,  key: "bounced" },
-  { label: "Opt-Outs",        icon: UserMinus, href: `${BASE}/optouts`,   key: "optouts" },
+type IconType = ComponentType<{ size?: number; strokeWidth?: number }>;
+
+type NavLeaf = { label: string; href: string; key: string; adminOnly?: boolean };
+type NavLink = { type: "link"; label: string; icon: IconType; href: string; key: string; badge?: string };
+type NavGroup = { type: "group"; label: string; icon: IconType; key: string; items: NavLeaf[] };
+
+/* Grouped so the sidebar reads as ~6 sections instead of a flat list of every
+   sub-page. Each page still passes its own leaf `key` to <Sidebar active=… />
+   unchanged — grouping only changes how those same keys are presented. */
+const NAV: (NavLink | NavGroup)[] = [
+  { type: "link", label: "Dashboard", icon: BarChart2, href: BASE, key: "dashboard" },
+  {
+    type: "group", label: "Contacts", icon: Users, key: "contacts-group",
+    items: [
+      { label: "All Contacts", href: `${BASE}/contacts`, key: "contacts" },
+      { label: "Spreadsheet", href: `${BASE}/spreadsheet`, key: "spreadsheet" },
+      { label: "Lists", href: `${BASE}/lists`, key: "lists" },
+      { label: "Bounced", href: `${BASE}/bounced`, key: "bounced" },
+      { label: "Opt-Outs", href: `${BASE}/optouts`, key: "optouts" },
+    ],
+  },
+  {
+    type: "group", label: "Campaigns", icon: Mail, key: "campaigns-group",
+    items: [
+      { label: "Email Campaigns", href: `${BASE}/campaigns`, key: "campaigns" },
+      { label: "Scheduler", href: `${BASE}/scheduler`, key: "scheduler" },
+    ],
+  },
+  // Not built yet — links to a placeholder rather than claiming the feature
+  // exists. See app/bd825db8c738/inbox/page.tsx.
+  { type: "link", label: "Inbox", icon: Inbox, href: `${BASE}/inbox`, key: "inbox", badge: "Soon" },
+  {
+    type: "group", label: "Templates", icon: Layout, key: "templates-group",
+    items: [
+      { label: "Templates", href: `${BASE}/templates`, key: "templates" },
+      { label: "Template Maker", href: `${BASE}/template-maker`, key: "template-maker" },
+    ],
+  },
+  { type: "link", label: "Reports", icon: Activity, href: `${BASE}/analytics`, key: "analytics" },
+  {
+    type: "group", label: "Admin", icon: UserCog, key: "admin-group",
+    items: [
+      { label: "Email Footer", href: `${BASE}/footer-settings`, key: "footer-settings" },
+      { label: "Users", href: `${BASE}/users`, key: "users", adminOnly: true },
+    ],
+  },
 ];
 
 export default function Sidebar({ active }: { active: string }) {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<{ username: string; role: string } | null>(null);
   const close = () => setOpen(false);
+
+  // A group starts expanded when the current page lives inside it, so the
+  // active link is never hidden behind a collapsed section on load.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const entry of NAV) {
+      if (entry.type === "group") init[entry.key] = entry.items.some((i) => i.key === active);
+    }
+    return init;
+  });
+  const toggleGroup = (key: string) =>
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -47,6 +95,8 @@ export default function Sidebar({ active }: { active: string }) {
     }
     close();
   };
+
+  const isAdmin = me?.role === "admin";
 
   return (
     <>
@@ -98,40 +148,88 @@ export default function Sidebar({ active }: { active: string }) {
           <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: "rgba(255,255,255,0.18)" }}>
             Application
           </p>
-          {navItems.map(({ label, icon: Icon, href, key }) => {
-            const isActive = active === key;
+
+          {NAV.map((entry) => {
+            if (entry.type === "link") {
+              const isActive = active === entry.key;
+              const Icon = entry.icon;
+              return (
+                <Link
+                  key={entry.key}
+                  href={entry.href}
+                  onClick={handleLinkClick}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+                  style={{
+                    background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
+                    color: isActive ? "#f87171" : "rgba(255,255,255,0.38)",
+                  }}
+                >
+                  <Icon size={15} strokeWidth={1.75} />
+                  <span className="flex-1">{entry.label}</span>
+                  {entry.badge && (
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                      style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
+                    >
+                      {entry.badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            }
+
+            const items = entry.items.filter((i) => !i.adminOnly || isAdmin);
+            if (items.length === 0) return null;
+
+            const isGroupActive = items.some((i) => i.key === active);
+            const isOpen = expanded[entry.key] ?? isGroupActive;
+            const GroupIcon = entry.icon;
+
             return (
-              <Link
-                key={href}
-                href={href}
-                onClick={handleLinkClick}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-                style={{
-                  background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
-                  color: isActive ? "#f87171" : "rgba(255,255,255,0.38)",
-                }}
-              >
-                <Icon size={15} strokeWidth={1.75} />
-                {label}
-              </Link>
+              <div key={entry.key}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(entry.key)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+                  style={{ color: isGroupActive ? "#f87171" : "rgba(255,255,255,0.38)" }}
+                  aria-expanded={isOpen}
+                >
+                  <GroupIcon size={15} strokeWidth={1.75} />
+                  <span className="flex-1 text-left">{entry.label}</span>
+                  <ChevronDown
+                    size={14}
+                    strokeWidth={1.75}
+                    style={{
+                      transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 150ms",
+                      opacity: 0.6,
+                    }}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="ml-4 pl-3 flex flex-col gap-0.5" style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+                    {items.map((item) => {
+                      const isActive = active === item.key;
+                      return (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          onClick={handleLinkClick}
+                          className="px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150"
+                          style={{
+                            background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
+                            color: isActive ? "#f87171" : "rgba(255,255,255,0.32)",
+                          }}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
-
-          {/* Admin-only: user management */}
-          {me?.role === "admin" && (
-            <Link
-              href={`${BASE}/users`}
-              onClick={handleLinkClick}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
-              style={{
-                background: active === "users" ? "rgba(230,57,70,0.12)" : "transparent",
-                color: active === "users" ? "#f87171" : "rgba(255,255,255,0.38)",
-              }}
-            >
-              <UserCog size={15} strokeWidth={1.75} />
-              Users
-            </Link>
-          )}
 
           <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: "rgba(255,255,255,0.18)" }}>

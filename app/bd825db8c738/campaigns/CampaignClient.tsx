@@ -1,8 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { Send, Clock, ChevronDown, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2, Search, X, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Send, Clock, ChevronDown, ChevronLeft, ChevronRight, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2, Search, X, MapPin, Check, Pencil, CalendarClock } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
+
+// The 5-step campaign builder flow. Each step renders a slice of the same
+// form state below — nothing is step-local, so switching steps never loses
+// what was typed.
+const STEPS = [
+  { n: 1, label: "Recipients" },
+  { n: 2, label: "Subject" },
+  { n: 3, label: "Email" },
+  { n: 4, label: "Preview" },
+  { n: 5, label: "Schedule" },
+] as const;
 
 interface Campaign {
   id: number;
@@ -73,12 +85,42 @@ const labelStyle = {
   color: "rgba(255,255,255,0.35)",
 };
 
+// Back / Next row shown at the bottom of every step except the last (which
+// has its own Send/Schedule actions instead of a generic "Next").
+function StepNav({ onBack, onNext, nextLabel }: { onBack?: () => void; onNext: () => void; nextLabel: string }) {
+  return (
+    <div className="flex items-center justify-between pt-1">
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
+          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <ChevronLeft size={14} /> Back
+        </button>
+      ) : <span />}
+      <button
+        type="button"
+        onClick={onNext}
+        className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
+        style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+      >
+        Next: {nextLabel} <ChevronRight size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function CampaignClient({
   contactCount: initialContactCount,
 }: {
   contactCount: number;
   lists: ContactList[];
 }) {
+  const router = useRouter();
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [recipientsEditOpen, setRecipientsEditOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [listId, setListId] = useState<number | null>(null);
@@ -100,7 +142,6 @@ export default function CampaignClient({
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [bodyIsHtml, setBodyIsHtml] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   // Recipient preview — the actual people this send will go to
   const [showRecipients, setShowRecipients] = useState(false);
@@ -249,8 +290,9 @@ export default function CampaignClient({
     }
   }
 
-  async function handleSend(e: FormEvent) {
-    e.preventDefault();
+  // Split from the form's onSubmit so the step-4 "Send test email" button can
+  // trigger the same validation + send path without needing a submit event.
+  async function triggerSend() {
     if (!subject.trim() || !body.trim()) { toast.error("Subject and body are required"); return; }
     if (isTestSend && !testEmail.trim()) { toast.error("Test email is required"); return; }
     if (!isTestSend && recipientCount === 0) { toast.error("No contacts in selected list"); return; }
@@ -262,6 +304,11 @@ export default function CampaignClient({
     } else {
       setShowConfirm(true);
     }
+  }
+
+  async function handleSend(e: FormEvent) {
+    e.preventDefault();
+    await triggerSend();
   }
 
   async function doSend() {
@@ -306,6 +353,15 @@ export default function CampaignClient({
     } finally {
       setLoading(false);
     }
+  }
+
+  // Hands this draft to the Scheduler instead of sending now — same
+  // localStorage handoff the Templates page already uses for its own
+  // "Schedule" action, so the Scheduler page needs no changes to pick it up.
+  function scheduleForLater() {
+    if (!subject.trim() || !body.trim()) { toast.error("Subject and body are required"); return; }
+    localStorage.setItem("scheduler_draft", JSON.stringify({ subject, body, isHtml: bodyIsHtml }));
+    router.push("/bd825db8c738/scheduler");
   }
 
   return (
@@ -496,306 +552,363 @@ export default function CampaignClient({
           <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
         </div>
 
-        <form onSubmit={handleSend} className="flex flex-col gap-5">
-          {/* Targeting row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Send to */}
-            <div>
-              <label style={labelStyle}>Send to</label>
-              <div className="relative" ref={dropdownRef}>
+        {/* Stepper */}
+        <div className="flex items-center mb-7 overflow-x-auto pb-1">
+          {STEPS.map((s, i) => {
+            const isActive = step === s.n;
+            const isDone = step > s.n;
+            return (
+              <div key={s.n} className="flex items-center shrink-0">
                 <button
                   type="button"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center justify-between w-full"
-                  style={{ ...inputStyle, cursor: "pointer", textAlign: "left" }}
+                  onClick={() => setStep(s.n)}
+                  className="flex items-center gap-2 shrink-0"
+                  title={s.label}
                 >
-                  <span>{listId ? `${lists.find(l => l.id === listId)?.name} (${Number(lists.find(l => l.id === listId)?.member_count)})` : `All active contacts (${contactCount})`}</span>
-                  <ChevronDown size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors"
+                    style={
+                      isActive
+                        ? { background: "#3b82f6", color: "#fff" }
+                        : isDone
+                        ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.4)" }
+                        : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }
+                    }
+                  >
+                    {isDone ? <Check size={12} /> : s.n}
+                  </span>
+                  <span
+                    className="text-xs font-semibold hidden sm:inline"
+                    style={{ color: isActive ? "#fff" : isDone ? "#60a5fa" : "rgba(255,255,255,0.35)" }}
+                  >
+                    {s.label}
+                  </span>
                 </button>
-                {dropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 rounded-xl overflow-hidden" style={{ background: "#1e2128", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                    <div
-                      className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                      style={{ color: listId === null ? "#fff" : "rgba(255,255,255,0.6)", background: listId === null ? "rgba(230,57,70,0.1)" : "transparent" }}
-                      onMouseEnter={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
-                      onMouseLeave={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-                      onClick={() => { setListId(null); setDropdownOpen(false); }}
-                    >
-                      All active contacts ({contactCount})
-                    </div>
-                    {lists.map((l) => (
-                      <div
-                        key={l.id}
-                        className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                        style={{ color: listId === l.id ? "#fff" : "rgba(255,255,255,0.6)", background: listId === l.id ? "rgba(230,57,70,0.1)" : "transparent", borderTop: "1px solid rgba(255,255,255,0.04)" }}
-                        onMouseEnter={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
-                        onMouseLeave={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-                        onClick={() => { setListId(l.id); setDropdownOpen(false); }}
-                      >
-                        {l.name} ({Number(l.member_count)})
+                {i < STEPS.length - 1 && (
+                  <span className="w-5 sm:w-10 h-px shrink-0 mx-1.5 sm:mx-2.5" style={{ background: "rgba(255,255,255,0.1)" }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <form onSubmit={handleSend} className="flex flex-col gap-5">
+          {/* STEP 1 — Recipients */}
+          {step === 1 && (
+            <>
+              {/* Send to — summary + inline edit */}
+              <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p style={labelStyle}>Send to</p>
+                    <p className="text-sm text-white font-medium">
+                      {listId ? `${lists.find(l => l.id === listId)?.name} (${Number(lists.find(l => l.id === listId)?.member_count)})` : `All active contacts (${contactCount})`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRecipientsEditOpen((v) => !v)}
+                    className="flex items-center gap-1 text-xs font-semibold shrink-0"
+                    style={{ color: "#fbbf24" }}
+                  >
+                    <Pencil size={11} /> Edit
+                  </button>
+                </div>
+
+                {recipientsEditOpen && (
+                  <div className="mt-4 pt-4 flex flex-col gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div>
+                      <label style={labelStyle}>List</label>
+                      <div className="relative" ref={dropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => setDropdownOpen(!dropdownOpen)}
+                          className="flex items-center justify-between w-full"
+                          style={{ ...inputStyle, cursor: "pointer", textAlign: "left" }}
+                        >
+                          <span>{listId ? `${lists.find(l => l.id === listId)?.name} (${Number(lists.find(l => l.id === listId)?.member_count)})` : `All active contacts (${contactCount})`}</span>
+                          <ChevronDown size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                        </button>
+                        {dropdownOpen && (
+                          <div className="absolute z-50 w-full mt-1 rounded-xl overflow-hidden" style={{ background: "#1e2128", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                            <div
+                              className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
+                              style={{ color: listId === null ? "#fff" : "rgba(255,255,255,0.6)", background: listId === null ? "rgba(230,57,70,0.1)" : "transparent" }}
+                              onMouseEnter={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                              onMouseLeave={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+                              onClick={() => { setListId(null); setDropdownOpen(false); }}
+                            >
+                              All active contacts ({contactCount})
+                            </div>
+                            {lists.map((l) => (
+                              <div
+                                key={l.id}
+                                className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
+                                style={{ color: listId === l.id ? "#fff" : "rgba(255,255,255,0.6)", background: listId === l.id ? "rgba(230,57,70,0.1)" : "transparent", borderTop: "1px solid rgba(255,255,255,0.04)" }}
+                                onMouseEnter={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                                onMouseLeave={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+                                onClick={() => { setListId(l.id); setDropdownOpen(false); }}
+                              >
+                                {l.name} ({Number(l.member_count)})
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label style={labelStyle}>Batch size (send)</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          style={inputStyle}
+                          value={dailyLimit}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/[^0-9]/g, "");
+                            setDailyLimit(digits === "" ? 0 : Math.min(1500, Number(digits)));
+                          }}
+                          onBlur={() => setDailyLimit((v) => Math.max(1, Math.min(1500, v || 1)))}
+                          title="How many to send this run (1–1500)."
+                        />
+                      </div>
+                      <div>
+                        <label style={labelStyle}>Skip first</label>
+                        <div className="flex items-stretch gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSendOffset((o) => Math.max(0, o - (dailyLimit || 1)))}
+                            disabled={sendOffset === 0}
+                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                            title="Back one batch"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            style={{ ...inputStyle, textAlign: "center" }}
+                            value={sendOffset}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/[^0-9]/g, "");
+                              setSendOffset(digits === "" ? 0 : Number(digits));
+                            }}
+                            title="Skip this many recipients from the top, then send the next batch. Use − / + to jump one batch at a time."
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSendOffset((o) => o + (dailyLimit || 1))}
+                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10"
+                            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                            title="Forward one batch"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Skip recently emailed</span>
+                      <div
+                        className="relative w-8 h-4 rounded-full transition-colors"
+                        style={{ background: excludeRecent ? "rgba(230,57,70,0.6)" : "rgba(255,255,255,0.1)" }}
+                        onClick={() => setExcludeRecent(!excludeRecent)}
+                      >
+                        <div className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform" style={{ left: excludeRecent ? "calc(100% - 14px)" : "2px" }} />
+                      </div>
+                      {excludeRecent && (
+                        <span className="flex items-center gap-1 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          in last
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={excludeDays}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/[^0-9]/g, "");
+                              setExcludeDays(digits === "" ? 0 : Math.min(90, Number(digits)));
+                            }}
+                            onBlur={() => setExcludeDays((v) => Math.max(1, Math.min(90, v || 1)))}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ width: "42px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#fff", padding: "1px 6px", fontSize: "0.75rem", outline: "none", textAlign: "center" }}
+                          />
+                          days
+                        </span>
+                      )}
+                    </label>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Batch size + start position */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label style={labelStyle}>Batch size (send)</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  style={inputStyle}
-                  value={dailyLimit}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/[^0-9]/g, "");
-                    setDailyLimit(digits === "" ? 0 : Math.min(1500, Number(digits)));
-                  }}
-                  onBlur={() => setDailyLimit((v) => Math.max(1, Math.min(1500, v || 1)))}
-                  title="How many to send this run (1–1500)."
-                />
+              {/* Exclude — the baseline is always on; only "recently emailed" is editable (above) */}
+              <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={labelStyle}>Exclude</p>
+                <p className="text-sm text-white font-medium">
+                  Unsubscribed, Bounced, Suppressed{excludeRecent ? `, emailed in the last ${excludeDays}d` : ""}
+                </p>
               </div>
-              <div>
-                <label style={labelStyle}>Skip first</label>
-                <div className="flex items-stretch gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSendOffset((o) => Math.max(0, o - (dailyLimit || 1)))}
-                    disabled={sendOffset === 0}
-                    className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
-                    title="Back one batch"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    style={{ ...inputStyle, textAlign: "center" }}
-                    value={sendOffset}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/[^0-9]/g, "");
-                      setSendOffset(digits === "" ? 0 : Number(digits));
-                    }}
-                    title="Skip this many recipients from the top, then send the next batch. Use − / + to jump one batch at a time."
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSendOffset((o) => o + (dailyLimit || 1))}
-                    className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10"
-                    style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
-                    title="Forward one batch"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Recipient preview + exclude toggle */}
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="flex items-center gap-2">
-              <Users size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-                {sendCount === 0 ? (
-                  <>Nothing to send — &ldquo;skip first&rdquo; ({sendOffset}) is past the {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}</>
-                ) : (
-                  <>
-                    Will send to <strong className="text-white">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
-                    {" "}(#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount})
-                    {recipientCount > sendOffset + sendCount && (
-                      <span style={{ color: "rgba(255,255,255,0.25)" }}> · {recipientCount - sendOffset - sendCount} remaining after this batch</span>
+              {/* Recipient count + who-gets-this preview */}
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl flex-wrap gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex items-center gap-2">
+                  <Users size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
+                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {sendCount === 0 ? (
+                      <>Nothing to send — &ldquo;skip first&rdquo; ({sendOffset}) is past the {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}</>
+                    ) : (
+                      <>
+                        Will send to <strong className="text-white">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
+                        {" "}(#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount})
+                        {recipientCount > sendOffset + sendCount && (
+                          <span style={{ color: "rgba(255,255,255,0.25)" }}> · {recipientCount - sendOffset - sendCount} remaining after this batch</span>
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-              </span>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Skip recently emailed</span>
-              <div
-                className="relative w-8 h-4 rounded-full transition-colors"
-                style={{ background: excludeRecent ? "rgba(230,57,70,0.6)" : "rgba(255,255,255,0.1)" }}
-                onClick={() => setExcludeRecent(!excludeRecent)}
-              >
-                <div className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform" style={{ left: excludeRecent ? "calc(100% - 14px)" : "2px" }} />
-              </div>
-              {excludeRecent && (
-                <span className="flex items-center gap-1 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  in last
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={excludeDays}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/[^0-9]/g, "");
-                      setExcludeDays(digits === "" ? 0 : Math.min(90, Number(digits)));
-                    }}
-                    onBlur={() => setExcludeDays((v) => Math.max(1, Math.min(90, v || 1)))}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ width: "42px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#fff", padding: "1px 6px", fontSize: "0.75rem", outline: "none", textAlign: "center" }}
-                  />
-                  days
-                </span>
-              )}
-            </label>
-          </div>
-
-          {/* See exactly who this send resolves to */}
-          <button
-            type="button"
-            onClick={openRecipients}
-            disabled={sendCount === 0}
-            className="self-start flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
-          >
-            <Users size={13} /> Preview recipients &amp; send history
-          </button>
-
-          {/* Reply-to */}
-          <div>
-            <label style={labelStyle}>
-              Reply-to email <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — replies land here)</span>
-            </label>
-            <input
-              style={inputStyle}
-              type="email"
-              placeholder="patrick@metroassoc.com (default)"
-              value={replyTo}
-              onChange={(e) => setReplyTo(e.target.value)}
-            />
-          </div>
-
-          {/* Test send toggle */}
-          <div className="flex flex-col gap-2.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={isTestSend}
-                onChange={(e) => {
-                  setIsTestSend(e.target.checked);
-                  if (e.target.checked && !testEmail) {
-                    setTestEmail("patrick@metroassoc.com");
-                  }
-                }}
-                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
-              />
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-white">Enable Test Send</span>
-                <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Does not write log entry to sent history</span>
-              </div>
-            </label>
-            {isTestSend && (
-              <div className="mt-1 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                <label style={{ ...labelStyle, marginBottom: "0.25rem" }}>Test Email Address</label>
-                <input
-                  style={inputStyle}
-                  type="email"
-                  placeholder="e.g. patrick@metroassoc.com"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Campaign Attachments block */}
-          <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white">Campaign Attachments</span>
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a document to this email campaign</span>
-            </div>
-
-            <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-              {/* Custom File Upload */}
-              <div className="flex flex-col gap-2">
-                <label style={{ ...labelStyle, marginBottom: 0 }}>Attach a file</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    onChange={handleFileChange}
-                    className="text-xs text-white/55 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer"
-                  />
-                  {customAttachment && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomAttachment(null)}
-                      className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                {customAttachment && (
-                  <p className="text-[10px] text-emerald-400">
-                    Selected: {customAttachment.name} ({Math.round(customAttachment.size / 1024)} KB)
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label style={labelStyle}>Subject</label>
-            <input style={inputStyle} type="text" placeholder="Email subject line" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </div>
-
-          {/* Body */}
-          <div>
-            <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
-              <label style={{ ...labelStyle, marginBottom: 0 }}>
-                Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
-              </label>
-              <div className="flex items-center gap-2">
-                {/* Plain / HTML toggle */}
-                <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
-                  {([["Plain text", false], ["HTML", true]] as [string, boolean][]).map(([lbl, val]) => (
-                    <button
-                      key={lbl}
-                      type="button"
-                      onClick={() => setBodyIsHtml(val)}
-                      className="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors"
-                      style={{ background: bodyIsHtml === val ? "rgba(230,57,70,0.15)" : "transparent", color: bodyIsHtml === val ? "#f87171" : "rgba(255,255,255,0.4)" }}
-                    >
-                      {lbl}
-                    </button>
-                  ))}
+                  </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowPreview((v) => !v)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5"
-                  style={{ color: showPreview ? "#f87171" : "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  onClick={openRecipients}
+                  disabled={sendCount === 0}
+                  className="flex items-center gap-1.5 text-xs font-semibold transition-colors hover:opacity-70 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ color: "#7dd3fc" }}
                 >
-                  {showPreview ? "Hide preview" : "Preview"}
+                  <Users size={12} /> Preview recipients &amp; send history
                 </button>
               </div>
-            </div>
-            <textarea
-              style={{ ...inputStyle, minHeight: "240px", resize: "vertical", fontFamily: "monospace", fontSize: "0.8rem" }}
-              placeholder={bodyIsHtml
-                ? "<p>Hi {{first_name}},</p>\n<p>I saw you are a {{title}} at {{company}}…</p>\n<p>Best,<br/>Patrick</p>"
-                : "Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-            />
-            {bodyIsHtml && (
-              <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
-                HTML mode: your markup is sent as-is (newlines are not auto-converted). The standard header/footer &amp; unsubscribe link are still added.
-              </p>
-            )}
 
-            {/* Live preview */}
-            {showPreview && (
-              <div className="mt-3 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <p style={labelStyle}>Est. recipients</p>
+                  <p className="text-2xl font-black" style={{ fontFamily: "var(--font-heading)", color: "#fff" }}>{recipientCount}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
+                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+                >
+                  Next: Subject <ChevronRight size={14} />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* STEP 2 — Subject */}
+          {step === 2 && (
+            <>
+              <div>
+                <label style={labelStyle}>Subject</label>
+                <input style={inputStyle} type="text" placeholder="Email subject line" value={subject} onChange={(e) => setSubject(e.target.value)} autoFocus />
+                <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  Personalize with {"{{first_name}}"}, {"{{title}}"}, or {"{{company}}"} — these also work in the body.
+                </p>
+              </div>
+              <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Email" />
+            </>
+          )}
+
+          {/* STEP 3 — Email */}
+          {step === 3 && (
+            <>
+              {/* Reply-to */}
+              <div>
+                <label style={labelStyle}>
+                  Reply-to email <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — replies land here)</span>
+                </label>
+                <input
+                  style={inputStyle}
+                  type="email"
+                  placeholder="patrick@metroassoc.com (default)"
+                  value={replyTo}
+                  onChange={(e) => setReplyTo(e.target.value)}
+                />
+              </div>
+
+              {/* Attachments */}
+              <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-white">Campaign Attachments</span>
+                  <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a document to this email campaign</span>
+                </div>
+                <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="flex flex-col gap-2">
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>Attach a file</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        onChange={handleFileChange}
+                        className="text-xs text-white/55 file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer"
+                      />
+                      {customAttachment && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomAttachment(null)}
+                          className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {customAttachment && (
+                      <p className="text-[10px] text-emerald-400">
+                        Selected: {customAttachment.name} ({Math.round(customAttachment.size / 1024)} KB)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div>
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>
+                    Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
+                  </label>
+                  <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
+                    {([["Plain text", false], ["HTML", true]] as [string, boolean][]).map(([lbl, val]) => (
+                      <button
+                        key={lbl}
+                        type="button"
+                        onClick={() => setBodyIsHtml(val)}
+                        className="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors"
+                        style={{ background: bodyIsHtml === val ? "rgba(230,57,70,0.15)" : "transparent", color: bodyIsHtml === val ? "#f87171" : "rgba(255,255,255,0.4)" }}
+                      >
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  style={{ ...inputStyle, minHeight: "240px", resize: "vertical", fontFamily: "monospace", fontSize: "0.8rem" }}
+                  placeholder={bodyIsHtml
+                    ? "<p>Hi {{first_name}},</p>\n<p>I saw you are a {{title}} at {{company}}…</p>\n<p>Best,<br/>Patrick</p>"
+                    : "Hi {{first_name}},\n\nI saw you are a {{title}} at {{company}}...\n\nBest,\nPatrick"}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                />
+                {bodyIsHtml && (
+                  <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                    HTML mode: your markup is sent as-is (newlines are not auto-converted). The standard header/footer &amp; unsubscribe link are still added.
+                  </p>
+                )}
+              </div>
+
+              <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Preview" />
+            </>
+          )}
+
+          {/* STEP 4 — Preview & test */}
+          {step === 4 && (
+            <>
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>
                   <span>Preview — sample contact (Alex Morgan · Principal Engineer · Acme Corp)</span>
                   <span style={{ color: "rgba(255,255,255,0.25)" }}>{bodyIsHtml ? "HTML" : "Plain text"}</span>
                 </div>
-                <div style={{ background: "#ffffff", padding: "24px", maxHeight: 360, overflowY: "auto" }}>
+                <div style={{ background: "#ffffff", padding: "24px", maxHeight: 420, overflowY: "auto" }}>
                   <div className="text-sm mb-1" style={{ color: "#111", fontWeight: 600 }}>{subject.trim() || "(no subject yet)"}</div>
                   <div style={{ borderTop: "1px solid #eee", margin: "8px 0 16px" }} />
                   {body.trim() ? (
@@ -815,17 +928,95 @@ export default function CampaignClient({
                   </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          <button
-            type="submit" disabled={loading || (!isTestSend && recipientCount === 0)}
-            className="self-start flex items-center gap-2 px-7 py-3 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
-          >
-            {loading ? <Spinner size={14} /> : <Send size={14} />}
-            {loading ? "Sending…" : isTestSend ? "Send Test Email" : `Send to ${sendCount} contacts`}
-          </button>
+              {/* Send a real test to your own inbox before committing */}
+              <div className="flex flex-col gap-2.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isTestSend}
+                    onChange={(e) => {
+                      setIsTestSend(e.target.checked);
+                      if (e.target.checked && !testEmail) {
+                        setTestEmail("patrick@metroassoc.com");
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-white">Send a test email first</span>
+                    <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Doesn&apos;t write a log entry to sent history</span>
+                  </div>
+                </label>
+                {isTestSend && (
+                  <div className="mt-1 pt-2 flex flex-col gap-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div>
+                      <label style={{ ...labelStyle, marginBottom: "0.25rem" }}>Test Email Address</label>
+                      <input
+                        style={inputStyle}
+                        type="email"
+                        placeholder="e.g. patrick@metroassoc.com"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={triggerSend}
+                      disabled={loading}
+                      className="self-start flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
+                      style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.3)" }}
+                    >
+                      {loading ? <Spinner size={12} /> : <Send size={12} />} Send Test Email
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Schedule" />
+            </>
+          )}
+
+          {/* STEP 5 — Schedule / Send */}
+          {step === 5 && (
+            <>
+              <div className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={labelStyle}>Ready to go</p>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                  <strong className="text-white">{sendCount}</strong> recipient{sendCount !== 1 ? "s" : ""} · subject &ldquo;{subject.trim() || "—"}&rdquo;
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="submit"
+                  disabled={loading || (!isTestSend && recipientCount === 0)}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
+                >
+                  {loading ? <Spinner size={14} /> : <Send size={14} />}
+                  {loading ? "Sending…" : `Send now to ${sendCount} contacts`}
+                </button>
+                <button
+                  type="button"
+                  onClick={scheduleForLater}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
+                  style={{ background: "rgba(96,165,250,0.15)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.3)" }}
+                >
+                  <CalendarClock size={14} /> Schedule for later
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep(4)}
+                className="self-start flex items-center gap-1.5 text-sm font-semibold transition-colors hover:bg-white/5 px-4 py-2.5 rounded-full"
+                style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                <ChevronLeft size={14} /> Back
+              </button>
+            </>
+          )}
         </form>
       </div>
 

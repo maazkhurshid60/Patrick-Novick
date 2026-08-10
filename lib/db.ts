@@ -207,6 +207,15 @@ db.batch([
     // Hobby plan caps functions at 60s) would otherwise strand the row in
     // 'processing' forever; the worker reaps rows whose claim has gone stale.
     db.execute("ALTER TABLE scheduled_campaigns ADD COLUMN claimed_at INTEGER").catch(() => {}),
+    // Template Library categories (see lib/templateCategories.ts) — distinct
+    // from list_id, which scopes a template to a contact list rather than
+    // classifying what kind of email it is.
+    db.execute("ALTER TABLE email_templates ADD COLUMN category TEXT NOT NULL DEFAULT 'general'").catch(() => {}),
+    // Coarse device class ('desktop' | 'mobile' | 'other'), parsed from the
+    // opening client's User-Agent at /api/track/open. Powers the Reports
+    // "Top Devices" chart — nullable so historical opens (recorded before this
+    // column existed) just fall into "Other" rather than breaking the count.
+    db.execute("ALTER TABLE email_opens ADD COLUMN device TEXT").catch(() => {}),
   ]))
   .then(() => db.batch([
     // Seed test recipients — upsert so re-runs are safe

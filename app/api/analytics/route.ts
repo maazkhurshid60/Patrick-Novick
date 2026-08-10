@@ -64,6 +64,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     : undefined;
   const unixRange = hasRange ? dayRangeToUnix(fromParam, toParam) : null;
   const label = hasRange ? rangeLabel(fromParam, toParam) : `last ${days} days`;
+  // The charts need a concrete window even for the rolling "last N days" case
+  // (unixRange is null there) — fall back to now-minus-days.
+  const chartRange = unixRange ?? { start: Math.floor(Date.now() / 1000) - days * 86400, endExclusive: Math.floor(Date.now() / 1000) + 1 };
 
   // Member emails for the selected list (used to scope Brevo events)
   let memberEmails: Set<string> | null = null;
@@ -75,18 +78,27 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     memberEmails = new Set(m.rows.map((r) => String(r.e)));
   }
 
-  // Deliverability: account-wide aggregated report normally; derived from the
-  // list's events when a list is selected. (The recent-activity feed is served
+  // Always pull a bounded event window now (not just when a list is selected):
+  // the "Clicks over time" chart needs per-event timestamps, which the
+  // aggregated report doesn't provide. (The recent-activity feed is served
   // separately by /api/analytics/events with proper offset pagination.)
-  let brevo: BrevoStats;
-  if (listId) {
-    const rawEvents = await getBrevoEvents(days, 2500, brevoRange);
-    const events = memberEmails
-      ? rawEvents.filter((e) => memberEmails!.has((e.email || "").toLowerCase()))
-      : rawEvents;
-    brevo = deriveBrevoFromEvents(events, label);
-  } else {
-    brevo = await getBrevoStats(days, brevoRange);
+  const rawEvents = await getBrevoEvents(days, 1000, brevoRange);
+  const events = memberEmails
+    ? rawEvents.filter((e) => memberEmails!.has((e.email || "").toLowerCase()))
+    : rawEvents;
+
+  // Deliverability: account-wide aggregated report normally; derived from the
+  // list's events when a list is selected (Brevo's aggregated report can't be
+  // scoped to a list).
+  const brevo: BrevoStats = listId ? deriveBrevoFromEvents(events, label) : await getBrevoStats(days, brevoRange);
+
+  // Clicks over time, bucketed by UTC day — from the event feed above, since
+  // clicks aren't logged in our own DB (only opens are, via the tracking pixel).
+  const clicksByDayMap = new Map<string, number>();
+  for (const e of events) {
+    if (e.event !== "clicks") continue;
+    const day = e.date.slice(0, 10);
+    clicksByDayMap.set(day, (clicksByDayMap.get(day) ?? 0) + 1);
   }
 
   // Audience totals from our own send logs. Sends & opens honour the date range
@@ -142,6 +154,57 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     total_suppressed: Number(t.total_suppressed ?? 0),
   };
 
+  // Chart data (Opens over time, Top Devices, Top Locations) — always scoped to
+  // a concrete window (chartRange), unlike the "Total Opens" stat above, which
+  // is genuinely all-time when no explicit date range is picked. A trend chart
+  // spanning full account history isn't a useful default.
+  const chartOpenConds = [
+    `eo.campaign_id ${listId ? "IN (SELECT id FROM campaigns WHERE list_id = ?)" : "IN (SELECT id FROM campaigns)"}`,
+    "eo.opened_at >= ? AND eo.opened_at < ?",
+  ];
+  const chartOpenArgs: number[] = [...(listId ? [listId] : []), chartRange.start, chartRange.endExclusive];
+  const chartOpenWhere = chartOpenConds.join(" AND ");
+
+  const [opensByDayRes, devicesRes, locationsRes] = await Promise.all([
+    db.execute({
+      sql: `SELECT strftime('%Y-%m-%d', eo.opened_at, 'unixepoch') AS date, COUNT(*) AS n
+            FROM email_opens eo WHERE ${chartOpenWhere} GROUP BY date ORDER BY date`,
+      args: chartOpenArgs,
+    }),
+    db.execute({
+      sql: `SELECT COALESCE(NULLIF(eo.device,''), 'other') AS device, COUNT(*) AS n
+            FROM email_opens eo WHERE ${chartOpenWhere} GROUP BY device`,
+      args: chartOpenArgs,
+    }),
+    db.execute({
+      sql: `SELECT COALESCE(NULLIF(c.city,''), '') AS city, COALESCE(NULLIF(c.state,''), '') AS state, COUNT(*) AS n
+            FROM email_opens eo JOIN contacts c ON LOWER(c.email) = eo.email
+            WHERE ${chartOpenWhere} AND (c.city != '' OR c.state != '')
+            GROUP BY c.city, c.state ORDER BY n DESC LIMIT 20`,
+      args: chartOpenArgs,
+    }),
+  ]);
+
+  // Zero-fill every calendar day in the window — GROUP BY only returns days
+  // that had at least one row, and a trend chart with silently-skipped zero
+  // days would compress into a misleadingly busy line.
+  function zeroFillDays(counts: Map<string, number>): { date: string; count: number }[] {
+    const out: { date: string; count: number }[] = [];
+    for (let ts = chartRange.start; ts < chartRange.endExclusive; ts += 86400) {
+      const day = new Date(ts * 1000).toISOString().slice(0, 10);
+      out.push({ date: day, count: counts.get(day) ?? 0 });
+    }
+    return out;
+  }
+
+  const opensByDayMap = new Map(opensByDayRes.rows.map((r) => [String(r.date), Number(r.n)]));
+  const opensByDay = zeroFillDays(opensByDayMap);
+  const clicksByDayFilled = zeroFillDays(clicksByDayMap);
+  const devices = devicesRes.rows.map((r) => ({ device: String(r.device), count: Number(r.n) }));
+  const locations = locationsRes.rows.map((r) => ({
+    city: String(r.city), state: String(r.state), count: Number(r.n),
+  }));
+
   // Per-contact engagement: who we've emailed, how many times, and when last —
   // built from the append-only send log so re-sends to the same person count.
   // Honours the same list/date scoping as the totals above (l = email_send_log).
@@ -179,5 +242,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     suppressed: Number(r.suppressed ?? 0) > 0 ? 1 : 0,
   }));
 
-  return NextResponse.json({ brevo, events: [] as BrevoEvent[], contacts, totals });
+  return NextResponse.json({
+    brevo, events: [] as BrevoEvent[], contacts, totals,
+    charts: { opensByDay, clicksByDay: clicksByDayFilled, devices, locations },
+  });
 }
