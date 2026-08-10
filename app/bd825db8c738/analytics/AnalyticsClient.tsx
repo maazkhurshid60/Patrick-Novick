@@ -202,6 +202,20 @@ export default function AnalyticsClient() {
     fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {});
   }, []);
 
+  // Campaign history for the Campaigns tab — reuses the same endpoint the
+  // Campaign Builder's "Sent History" panel already fetches from.
+  useEffect(() => {
+    let active = true;
+    setCampaignsLoading(true);
+    const url = listFilter === "all" ? "/api/campaigns/send" : `/api/campaigns/send?listId=${listFilter}`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((rows: CampaignRow[]) => { if (active) setCampaigns(rows); })
+      .catch(() => { if (active) setCampaigns([]); })
+      .finally(() => { if (active) setCampaignsLoading(false); });
+    return () => { active = false; };
+  }, [listFilter]);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -250,8 +264,44 @@ export default function AnalyticsClient() {
   const deliveryRate = b && b.requests > 0 ? Math.round((b.delivered / b.requests) * 100) : 0;
   const openRate = b && b.delivered > 0 ? Math.round((b.uniqueOpens / b.delivered) * 100) : 0;
 
+  // Fixed device order (desktop → mobile → other), zero-filled — a categorical
+  // donut must not reorder itself as the underlying counts change week to week.
+  const deviceCounts = new Map((data?.charts.devices ?? []).map((d) => [d.device, d.count]));
+  const donutSegments = (["desktop", "mobile", "other"] as const).map((key) => ({
+    label: DEVICE_META[key].label,
+    value: deviceCounts.get(key) ?? 0,
+    color: DEVICE_META[key].color,
+  }));
+
+  const allLocations = data?.charts.locations ?? [];
+  const topLocations = allLocations.slice(0, 4);
+  const locationsTotal = allLocations.reduce((s, l) => s + l.count, 0) || 1;
+
+  const filteredContacts = (data?.contacts ?? []).filter((c) => {
+    const cq = contactsSearch.trim().toLowerCase();
+    if (!cq) return true;
+    return c.name.toLowerCase().includes(cq) || c.email.toLowerCase().includes(cq) || c.company.toLowerCase().includes(cq);
+  });
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className="relative px-4 py-2.5 text-sm font-semibold shrink-0 transition-colors"
+            style={{ color: tab === t.key ? "#fff" : "rgba(255,255,255,0.4)" }}
+          >
+            {t.label}
+            {tab === t.key && (
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full" style={{ background: "var(--color-red)" }} />
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* List scope + date-range selectors */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
@@ -302,6 +352,51 @@ export default function AnalyticsClient() {
           </select>
         </div>
       </div>
+
+      {tab === "overview" && (
+      <>
+      {/* Visual reports: opens/clicks trend, device split, top locations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="p-5" style={card}>
+          <p className="text-sm font-bold text-white mb-3" style={{ fontFamily: "var(--font-heading)" }}>Opens Over Time</p>
+          <LineChart data={data?.charts.opensByDay ?? []} color="#e63946" />
+        </div>
+        <div className="p-5" style={card}>
+          <p className="text-sm font-bold text-white mb-3 flex items-center gap-1.5" style={{ fontFamily: "var(--font-heading)" }}>
+            <MousePointerClick size={14} style={{ color: "rgba(255,255,255,0.3)" }} /> Clicks Over Time
+          </p>
+          <LineChart data={data?.charts.clicksByDay ?? []} color="#60a5fa" />
+        </div>
+        <div className="p-5" style={card}>
+          <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Devices</p>
+          <DonutChart segments={donutSegments} />
+          <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.2)" }}>
+            From opens only, and only opens recorded since device tracking was added — proxy-prefetched opens (Apple Mail Privacy, Gmail image proxy) count as &ldquo;Other.&rdquo;
+          </p>
+        </div>
+        <div className="p-5" style={card}>
+          <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Locations</p>
+          {topLocations.length === 0 ? (
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No location data for this window.</p>
+          ) : (
+            <ol className="flex flex-col gap-3">
+              {topLocations.map((l, i) => (
+                <li key={`${l.city}-${l.state}`} className="flex items-center gap-3 text-sm">
+                  <span className="text-xs font-bold w-4 shrink-0" style={{ color: "rgba(255,255,255,0.25)" }}>{i + 1}</span>
+                  <MapPin size={12} className="shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
+                  <span className="flex-1 min-w-0 truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                    {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
+                  </span>
+                  <span className="font-bold" style={{ color: "#fff" }}>{Math.round((l.count / locationsTotal) * 100)}%</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+        Visual reports to track performance &amp; trends.
+      </p>
 
       {/* Engagement totals (from your own send logs) */}
       <div>
@@ -490,6 +585,151 @@ export default function AnalyticsClient() {
           </>
         )}
       </div>
+      </>
+      )}
+
+      {tab === "campaigns" && (
+        <div style={card} className="overflow-hidden">
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Campaign History</p>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              Delivered/Clicks/Replies/Opt-Outs per campaign aren&apos;t tracked per-send yet — Opens is.
+            </p>
+          </div>
+          {campaignsLoading ? (
+            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
+          ) : campaigns.length === 0 ? (
+            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No campaigns sent yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{ minWidth: 560 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Campaign</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Status</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Recipients</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {campaigns.map((c, i) => (
+                    <tr key={c.id} style={{ borderBottom: i < campaigns.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <td className="px-5 py-3 text-sm text-white">
+                        <span className="truncate inline-block max-w-[280px] align-middle">{c.subject}</span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.status === "failed" ? "rgba(230,57,70,0.12)" : "rgba(74,222,128,0.1)", color: c.status === "failed" ? "#f87171" : "#4ade80" }}>
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>{c.recipient_count}</td>
+                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: Number(c.unique_opens) > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>{c.unique_opens ?? 0}</td>
+                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtUnixDate(c.sent_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "contacts" && (
+        <div style={card} className="overflow-hidden">
+          <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Contact Engagement</p>
+            <input
+              value={contactsSearch}
+              onChange={(e) => setContactsSearch(e.target.value)}
+              placeholder="Search name, email, company…"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 220 }}
+            />
+          </div>
+          {filteredContacts.length === 0 ? (
+            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+              {data?.contacts.length ? "No contacts match your search." : "No contacts emailed in this window yet."}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{ minWidth: 560 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Contact</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Sends</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Last Sent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContacts.slice(0, 100).map((c, i) => (
+                    <tr key={c.email} style={{ borderBottom: i < Math.min(filteredContacts.length, 100) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <td className="px-5 py-3">
+                        <p className="text-sm font-medium text-white truncate max-w-[260px]">{c.name}</p>
+                        <p className="text-xs truncate max-w-[260px]" style={{ color: "rgba(255,255,255,0.3)" }}>{c.email}{c.company ? ` · ${c.company}` : ""}</p>
+                      </td>
+                      <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>{c.sends}</td>
+                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: c.opens > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>{c.opens}</td>
+                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtUnixDate(c.last_sent)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredContacts.length > 100 && (
+                <p className="px-5 py-3 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Showing the first 100 of {filteredContacts.length}.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "geo" && (
+        <div style={card} className="overflow-hidden">
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Opens by Location</p>
+            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              From each contact&apos;s city/state on file, not IP geolocation.
+            </p>
+          </div>
+          {allLocations.length === 0 ? (
+            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No location data for this window.</div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Location</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allLocations.map((l, i) => (
+                  <tr key={`${l.city}-${l.state}`} style={{ borderBottom: i < allLocations.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <td className="px-5 py-3 text-sm flex items-center gap-2" style={{ color: "rgba(255,255,255,0.75)" }}>
+                      <MapPin size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+                      {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
+                    </td>
+                    <td className="px-5 py-3 text-right text-sm font-bold text-white">{l.count}</td>
+                    <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>{Math.round((l.count / locationsTotal) * 100)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {tab === "replies" && (
+        <div className="mx-auto max-w-md rounded-2xl p-10 text-center" style={card}>
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "rgba(230,57,70,0.12)" }}>
+            <Reply size={22} style={{ color: "#f87171" }} strokeWidth={1.75} />
+          </div>
+          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Reply reports — coming with Inbox</p>
+          <p className="text-xs mt-2 leading-5" style={{ color: "rgba(255,255,255,0.35)" }}>
+            This depends on replies actually being pulled into the app (see the Inbox page). Once that exists, reply rate and reply volume land here.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -122,13 +122,14 @@ export function DonutChart({
   const total = segments.reduce((s, x) => s + x.value, 0);
   const R = 38, C = 2 * Math.PI * R;
 
-  let cum = 0;
-  const arcs = segments.map((s) => {
-    const dash = total > 0 ? (s.value / total) * C : 0;
-    const arc = { ...s, dash, offset: cum };
-    cum += dash;
-    return arc;
-  });
+  const arcs = segments.reduce<{ label: string; value: number; color: string; dash: number; offset: number }[]>(
+    (acc, s) => {
+      const dash = total > 0 ? (s.value / total) * C : 0;
+      const offset = acc.length ? acc[acc.length - 1].offset + acc[acc.length - 1].dash : 0;
+      return [...acc, { ...s, dash, offset }];
+    },
+    [],
+  );
 
   if (total === 0) {
     return <div className="flex items-center justify-center text-xs" style={{ height: 96, color: "rgba(255,255,255,0.25)" }}>No opens in this window.</div>;
