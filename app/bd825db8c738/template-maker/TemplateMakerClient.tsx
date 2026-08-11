@@ -153,101 +153,115 @@ export default function TemplateMakerClient() {
           })}
         </div>
 
-        <form onSubmit={handleSave} className="flex flex-col gap-4 mt-4">
-          {/* STEP 1 — Basics */}
-          {step === 1 && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Template name</p>
-                  <input style={inputStyle} placeholder="e.g. NYC Employer Outreach" value={name} onChange={(e) => setName(e.target.value)} required />
+        {/* Fields (left) + persistent live preview (right) — every step
+            updates the same builder/footer state, so the preview on the
+            right reacts immediately no matter which step is open. */}
+        <div className="grid gap-6 lg:grid-cols-2 mt-4">
+          <form onSubmit={handleSave} className="flex flex-col gap-4">
+            {/* STEP 1 — Basics */}
+            {step === 1 && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Template name</p>
+                    <input style={inputStyle} placeholder="e.g. NYC Employer Outreach" value={name} onChange={(e) => setName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Email subject line</p>
+                    <input style={inputStyle} placeholder="What recipients see in their inbox" value={subject} onChange={(e) => setSubject(e.target.value)} required />
+                  </div>
                 </div>
                 <div>
-                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Email subject line</p>
-                  <input style={inputStyle} placeholder="What recipients see in their inbox" value={subject} onChange={(e) => setSubject(e.target.value)} required />
+                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional)</span></p>
+                  <select
+                    style={{ ...inputStyle, cursor: "pointer", maxWidth: 320 }}
+                    value={listId ?? ""}
+                    onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}
+                  >
+                    <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
+                    {lists.map((l) => (
+                      <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div>
-                <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional)</span></p>
-                <select
-                  style={{ ...inputStyle, cursor: "pointer", maxWidth: 320 }}
-                  value={listId ?? ""}
-                  onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
-                  {lists.map((l) => (
-                    <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
-                  ))}
-                </select>
-              </div>
-              <StepNav onNext={() => setStep(2)} nextLabel="Message" />
-            </>
-          )}
+                <StepNav onNext={() => setStep(2)} nextLabel="Message" />
+              </>
+            )}
 
-          {/* STEP 2 — Message */}
-          {step === 2 && (
-            <>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Tokens like <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere below.
-              </p>
-              <MessageFields builder={builder} setB={setB} />
-              <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
-              <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Lists & Buttons" />
-            </>
-          )}
+            {/* STEP 2 — Message */}
+            {step === 2 && (
+              <>
+                <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  Tokens like <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere below.
+                </p>
+                <MessageFields builder={builder} setB={setB} />
+                <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
+                <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Lists & Buttons" />
+              </>
+            )}
 
-          {/* STEP 3 — Lists & Buttons */}
-          {step === 3 && (
-            <>
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Check-lists</p>
-              <ListsFields builder={builder} setB={setB} />
-              <p className="text-xs font-bold uppercase tracking-wider mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>Call-to-action buttons</p>
-              <ButtonsFields builder={builder} setB={setB} />
-              <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Image & Footer" />
-            </>
-          )}
+            {/* STEP 3 — Lists & Buttons */}
+            {step === 3 && (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Check-lists</p>
+                <ListsFields builder={builder} setB={setB} />
+                <p className="text-xs font-bold uppercase tracking-wider mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>Call-to-action buttons</p>
+                <ButtonsFields builder={builder} setB={setB} />
+                <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Image & Footer" />
+              </>
+            )}
 
-          {/* STEP 4 — Image & Footer */}
-          {step === 4 && (
-            <>
-              <ImageAndFooterFields builder={builder} setB={setB} footer={footer} setF={setF} />
-              <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Preview" />
-            </>
-          )}
+            {/* STEP 4 — Image & Footer */}
+            {step === 4 && (
+              <>
+                <ImageAndFooterFields builder={builder} setB={setB} footer={footer} setF={setF} />
+                <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Preview" />
+              </>
+            )}
 
-          {/* STEP 5 — Preview & Save */}
-          {step === 5 && (
-            <>
-              <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
-              <EmailLivePreview builder={builder} footer={footer} previewHeight="60vh" />
-              <div className="flex flex-wrap items-center gap-3 pt-2">
-                <button
-                  type="submit" disabled={loading || saved}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
-                >
-                  <Check size={14} /> {saved ? "Saved!" : loading ? "Saving…" : "Save Template"}
-                </button>
-                <button
-                  type="button"
-                  onClick={useInCampaign}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
-                >
-                  <Eye size={14} /> Use in Campaign
-                </button>
+            {/* STEP 5 — Save */}
+            {step === 5 && (
+              <>
+                <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Ready to save</p>
+                  <p className="text-sm text-white">{name || "Untitled template"}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{subject || "No subject yet"}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <button
+                    type="submit" disabled={loading || saved}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
+                    style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+                  >
+                    <Check size={14} /> {saved ? "Saved!" : loading ? "Saving…" : "Save Template"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={useInCampaign}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5"
+                    style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  >
+                    <Eye size={14} /> Use in Campaign
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => setStep(4)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
+                  className="self-start flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
                   style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
                 >
                   <ChevronLeft size={14} /> Back
                 </button>
-              </div>
-            </>
-          )}
-        </form>
+              </>
+            )}
+          </form>
+
+          {/* Live preview — always visible, updates as you type on any step */}
+          <div className="lg:sticky lg:top-4 h-fit">
+            <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+            <EmailLivePreview builder={builder} footer={footer} previewHeight="70vh" />
+          </div>
+        </div>
       </div>
     </div>
   );
