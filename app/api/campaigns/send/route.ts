@@ -80,12 +80,22 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const where = listId ? "WHERE c.list_id = ?" : "";
   const args = listId ? [listId] : [];
 
+  // Open counts come from a pre-aggregated derived table (one scan of
+  // email_opens total) rather than a correlated subquery per campaign row
+  // (which was a full scan of email_opens for EACH of the 50 campaigns here —
+  // the main driver behind Turso's "rows read" blowing up once email_opens
+  // grew past a few thousand rows).
   const result = await db.execute({
     sql: `
       SELECT c.id, c.subject, c.recipient_count, c.status, c.target_list, c.list_id, c.sent_at,
-             (SELECT COUNT(*) FROM email_opens WHERE campaign_id = c.id) AS total_opens,
-             (SELECT COUNT(DISTINCT email) FROM email_opens WHERE campaign_id = c.id) AS unique_opens
+             COALESCE(o.total_opens, 0) AS total_opens,
+             COALESCE(o.unique_opens, 0) AS unique_opens
       FROM campaigns c
+      LEFT JOIN (
+        SELECT campaign_id, COUNT(*) AS total_opens, COUNT(DISTINCT email) AS unique_opens
+        FROM email_opens
+        GROUP BY campaign_id
+      ) o ON o.campaign_id = c.id
       ${where}
       ORDER BY c.sent_at DESC
       LIMIT 50

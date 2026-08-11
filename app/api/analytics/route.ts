@@ -208,6 +208,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // Per-contact engagement: who we've emailed, how many times, and when last —
   // built from the append-only send log so re-sends to the same person count.
   // Honours the same list/date scoping as the totals above (l = email_send_log).
+  //
+  // `opens` comes from a pre-aggregated derived table (one scan of
+  // email_opens total), not a correlated subquery per email — that subquery
+  // used to re-scan the whole (unindexed, tracking-pixel-fed) email_opens
+  // table once for every one of up to 200 rows here, which is the query that
+  // drove Turso's "rows read" into the billions. `suppressed` stays a
+  // correlated subquery since suppression_list.email is a primary key —
+  // that's an indexed point lookup, not a scan.
   const engRes = await db.execute({
     sql: `
       SELECT
@@ -218,10 +226,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         COALESCE(c.company, '')                   AS company,
         COUNT(*)                                  AS sends,
         MAX(l.sent_at)                            AS last_sent,
-        (SELECT COUNT(DISTINCT eo.campaign_id) FROM email_opens eo WHERE eo.email = l.email) AS opens,
-        (SELECT COUNT(*) FROM suppression_list s WHERE s.email = l.email)                    AS suppressed
+        COALESCE(oa.opens, 0)                     AS opens,
+        (SELECT COUNT(*) FROM suppression_list s WHERE s.email = l.email) AS suppressed
       FROM email_send_log l
       LEFT JOIN contacts c ON c.email = l.email
+      LEFT JOIN (
+        SELECT email, COUNT(DISTINCT campaign_id) AS opens FROM email_opens GROUP BY email
+      ) oa ON oa.email = l.email
       ${sendWhere ? sendWhere.replace(/\bcampaign_id\b/g, "l.campaign_id").replace(/\bsent_at\b/g, "l.sent_at") : ""}
       GROUP BY l.email
       ORDER BY last_sent DESC

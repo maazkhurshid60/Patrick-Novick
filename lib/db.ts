@@ -148,6 +148,19 @@ db.batch([
     error               TEXT,
     created_at          INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // Without these, every per-campaign open count and per-contact engagement
+  // lookup below is a full scan of email_opens/email_send_log — fine at a few
+  // thousand rows, catastrophic once the tracking pixel has logged millions
+  // (this is what drove Turso's "rows read" into the billions: unindexed
+  // correlated subqueries in /api/campaigns/send and /api/analytics, each
+  // re-scanning the whole table once per outer row).
+  `CREATE INDEX IF NOT EXISTS idx_email_opens_campaign ON email_opens(campaign_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_email_opens_email ON email_opens(email)`,
+  `CREATE INDEX IF NOT EXISTS idx_email_opens_opened_at ON email_opens(opened_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_email_send_log_campaign ON email_send_log(campaign_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_email_send_log_email ON email_send_log(email)`,
+  `CREATE INDEX IF NOT EXISTS idx_email_send_log_sent_at ON email_send_log(sent_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_campaign_recipients_email ON campaign_recipients(email)`,
 ], "write")
   .catch(console.error)
   .then(() => Promise.all([
