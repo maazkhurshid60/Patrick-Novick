@@ -37,7 +37,7 @@ const STARTER_TEMPLATES = [
   METRO_CLIENT_OUTREACH,
   METRO_MEP_OUTREACH,
   METRO_NYC_EMPLOYER_OUTREACH,
-  {
+  {  
     name: "CT Engineering — Email 1",
     subject: "engineering hiring in Connecticut",
     body: `Hi {{first_name}},

@@ -61,9 +61,18 @@ function displayStatus(r: ScheduledRow): string {
   return r.status;
 }
 
+const STEPS = [
+  { label: "Audience & Message", title: "Who & What", subtitle: "Pick your audience and write what you're sending." },
+  { label: "Send Settings", title: "Send Settings", subtitle: "Batching, skipping, and reply-to for this send." },
+  { label: "Schedule", title: "Schedule It", subtitle: "When this should go out, and whether it repeats." },
+  { label: "Review & Send", title: "Review & Send", subtitle: "Double check the details before this goes out." },
+] as const;
+
 export default function SchedulerClient({
   contactCount, lists, templates,
 }: { contactCount: number; lists: ListRow[]; templates: TemplateRow[] }) {
+  const [step, setStep] = useState(0);
+
   // compose
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -216,6 +225,11 @@ export default function SchedulerClient({
       ? `A ${repeatEvery} repeat with a ${excludeDays}-day exclusion will exclude almost everyone once the previous run has gone out. Lower it below ${REPEAT_INTERVAL_DAYS[repeatEvery as RepeatEvery]} days, or turn it off, if this should re-reach the same list each time.`
       : null;
 
+  const canContinue =
+    step === 0 ? !!subject.trim() && !!body.trim() :
+    step === 2 ? !!localDateTime && !repeatConflict :
+    true;
+
   async function schedule() {
     setMsg(null);
     if (!subject.trim() || !body.trim()) { setMsg({ type: "err", text: "Subject and message are required." }); return; }
@@ -250,6 +264,7 @@ export default function SchedulerClient({
           : "Scheduled! It will send automatically at the chosen time.",
       });
       setSubject(""); setBody(""); setTemplateId(""); setIsHtml(false);
+      setStep(0);
       loadRows();
     } catch {
       setMsg({ type: "err", text: "Network error — please try again." });
@@ -292,140 +307,226 @@ export default function SchedulerClient({
         </div>
       </div>
 
-      {/* Compose card */}
+      {/* Compose wizard */}
       <div style={CARD} className="p-5 sm:p-6 flex flex-col gap-5">
-        {/* Template + list row */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label style={LABEL}>Start from a template (optional)</label>
-            <select style={INPUT} value={templateId} onChange={(e) => applyTemplate(e.target.value ? Number(e.target.value) : "")}>
-              <option value="" style={{ background: "#16181e", color: "#fff" }}>— None —</option>
-              {templates.map((t) => <option key={t.id} value={t.id} style={{ background: "#16181e", color: "#fff" }}>{t.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={LABEL}>Send to</label>
-            <select style={INPUT} value={listId ?? ""} onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}>
-              <option value="" style={{ background: "#16181e", color: "#fff" }}>All active contacts ({contactCount})</option>
-              {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e", color: "#fff" }}>{l.name} ({l.member_count})</option>)}
-            </select>
-          </div>
+        {/* Step indicator */}
+        <div className="pb-1">
+          <ol className="flex items-center">
+            {STEPS.map((s, i) => {
+              const done = i < step;
+              const active = i === step;
+              return (
+                <li key={s.label} className={`flex items-center ${i < STEPS.length - 1 ? "flex-1" : ""}`}>
+                  <button type="button" onClick={() => i <= step && setStep(i)} disabled={i > step}
+                    className="flex shrink-0 flex-col items-center gap-1.5" style={{ cursor: i <= step ? "pointer" : "default" }}>
+                    <span className="grid h-8 w-8 place-items-center rounded-full text-xs font-bold transition-colors" style={{
+                        background: done || active ? "var(--color-red, #e63946)" : "transparent",
+                        border: done || active ? "none" : "2px solid rgba(255,255,255,0.15)",
+                        color: done || active ? "#fff" : "rgba(255,255,255,0.4)",
+                      }}>
+                      {done ? <CheckCircle2 size={14} /> : i + 1}
+                    </span>
+                    <span className="hidden text-[11px] font-semibold sm:block" style={{ color: active ? "#fff" : "rgba(255,255,255,0.4)" }}>
+                      {s.label}
+                    </span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <span className="mx-2 mb-5 h-0.5 flex-1 sm:mb-6" style={{ background: done ? "var(--color-red, #e63946)" : "rgba(255,255,255,0.1)" }} />
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </div>
 
         <div>
-          <label style={LABEL}>Subject</label>
-          <input style={INPUT} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Your email subject…" />
+          <h2 className="text-base font-bold text-white">{STEPS[step].title}</h2>
+          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{STEPS[step].subtitle}</p>
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label style={{ ...LABEL, marginBottom: 0 }}>Message</label>
-            <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-              <input type="checkbox" checked={isHtml} onChange={(e) => setIsHtml(e.target.checked)} />
-              Body is HTML
-            </label>
-          </div>
-          <textarea style={{ ...INPUT, minHeight: 160, resize: "vertical", fontFamily: isHtml ? "monospace" : undefined }}
-            value={body} onChange={(e) => setBody(e.target.value)}
-            placeholder={isHtml ? "<p>Paste your HTML here…</p>" : "Write your message… Use {{first_name}}, {{company}} etc. to personalize."} />
-        </div>
+        {/* Step 1: audience + message */}
+        {step === 0 && (
+          <div className="flex flex-col gap-5">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label style={LABEL}>Start from a template (optional)</label>
+                <select style={INPUT} value={templateId} onChange={(e) => applyTemplate(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="" style={{ background: "#16181e", color: "#fff" }}>— None —</option>
+                  {templates.map((t) => <option key={t.id} value={t.id} style={{ background: "#16181e", color: "#fff" }}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LABEL}>Send to</label>
+                <select style={INPUT} value={listId ?? ""} onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}>
+                  <option value="" style={{ background: "#16181e", color: "#fff" }}>All active contacts ({contactCount})</option>
+                  {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e", color: "#fff" }}>{l.name} ({l.member_count})</option>)}
+                </select>
+              </div>
+            </div>
 
-        {/* Send controls */}
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div>
-            <label style={LABEL}>Batch size (max to send)</label>
-            <input style={INPUT} type="number" min={1} value={dailyLimit} onChange={(e) => setDailyLimit(Math.max(1, Number(e.target.value)))} />
-          </div>
-          <div>
-            <label style={LABEL}>Skip first N recipients</label>
-            <input style={INPUT} type="number" min={0} value={sendOffset} onChange={(e) => setSendOffset(Math.max(0, Number(e.target.value)))} />
-          </div>
-          <div>
-            <label style={LABEL}>Reply-to (optional)</label>
-            <input style={INPUT} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="patrick@metroassoc.com" />
-          </div>
-        </div>
+            <div>
+              <label style={LABEL}>Subject</label>
+              <input style={INPUT} value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Your email subject…" />
+            </div>
 
-        <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-          <input type="checkbox" checked={excludeRecent} onChange={(e) => setExcludeRecent(e.target.checked)} />
-          Don&apos;t send to anyone emailed in the last
-          <input style={{ ...INPUT, width: 64, padding: "4px 8px" }} type="number" min={1} value={excludeDays}
-            disabled={!excludeRecent} onChange={(e) => setExcludeDays(Math.max(1, Number(e.target.value)))} />
-          days
-        </label>
-
-        {/* Schedule row */}
-        <div className="grid sm:grid-cols-2 gap-4 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div>
-            <label style={LABEL}><Calendar size={12} className="inline mr-1 -mt-0.5" />Send date &amp; time</label>
-            <input style={INPUT} type="datetime-local" value={localDateTime} onChange={(e) => setLocalDateTime(e.target.value)} />
-          </div>
-          <div>
-            <label style={LABEL}>Timezone</label>
-            <select style={INPUT} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-              {tzOptions.map((tz) => <option key={tz} value={tz} style={{ background: "#16181e", color: "#fff" }}>{tz.replace(/_/g, " ")}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Drip + repeat */}
-        <div className="grid sm:grid-cols-2 gap-4 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div>
-            <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-              <input type="checkbox" checked={drip} onChange={(e) => setDrip(e.target.checked)} />
-              Keep sending in batches, every
-              <input style={{ ...INPUT, width: 68, padding: "4px 8px" }} type="number" min={5} step={5} value={dripMinutes}
-                disabled={!drip} onChange={(e) => setDripMinutes(Math.max(5, Number(e.target.value)))} />
-              min
-            </label>
-            <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-              {drip
-                ? `Sends ${dailyLimit} at a time until the whole audience is covered.`
-                : `Off — this sends ${willSend} once and stops.`}
-            </p>
-          </div>
-          <div>
-            <label style={LABEL}><Repeat size={12} className="inline mr-1 -mt-0.5" />Repeat</label>
-            <select style={INPUT} value={repeatEvery} onChange={(e) => setRepeatEvery(e.target.value)}>
-              <option value="" style={{ background: "#16181e", color: "#fff" }}>Don&apos;t repeat</option>
-              <option value="daily" style={{ background: "#16181e", color: "#fff" }}>Daily</option>
-              <option value="weekly" style={{ background: "#16181e", color: "#fff" }}>Weekly</option>
-              <option value="monthly" style={{ background: "#16181e", color: "#fff" }}>Monthly</option>
-            </select>
-          </div>
-        </div>
-
-        {repeatConflict && (
-          <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
-            style={{ background: "rgba(245,158,11,0.12)", color: "#fbbf24" }}>
-            <AlertCircle size={15} className="shrink-0 mt-0.5" />
-            {repeatConflict}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label style={{ ...LABEL, marginBottom: 0 }}>Message</label>
+                <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                  <input type="checkbox" checked={isHtml} onChange={(e) => setIsHtml(e.target.checked)} />
+                  Body is HTML
+                </label>
+              </div>
+              <textarea style={{ ...INPUT, minHeight: 160, resize: "vertical", fontFamily: isHtml ? "monospace" : undefined }}
+                value={body} onChange={(e) => setBody(e.target.value)}
+                placeholder={isHtml ? "<p>Paste your HTML here…</p>" : "Write your message… Use {{first_name}}, {{company}} etc. to personalize."} />
+            </div>
           </div>
         )}
 
-        {/* Summary + submit */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-            {drip ? (
-              <>
-                Will send <span style={{ color: "#fff" }}>{dailyLimit}</span> at a time every {dripMinutes} min until all{" "}
-                <span style={{ color: "#fff" }}>{remaining}</span> of {targetCount} in{" "}
-                <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span> are reached.
-              </>
-            ) : (
-              <>
-                Will send to <span style={{ color: "#fff" }}>{willSend}</span> recipient{willSend === 1 ? "" : "s"}
-                {sendOffset > 0 ? ` (#${sendOffset + 1}–#${sendOffset + willSend})` : ""} of {targetCount} in{" "}
-                <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span>.
-              </>
+        {/* Step 2: send settings */}
+        {step === 1 && (
+          <div className="flex flex-col gap-5">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label style={LABEL}>Batch size (max to send)</label>
+                <input style={INPUT} type="number" min={1} value={dailyLimit} onChange={(e) => setDailyLimit(Math.max(1, Number(e.target.value)))} />
+              </div>
+              <div>
+                <label style={LABEL}>Skip first N recipients</label>
+                <input style={INPUT} type="number" min={0} value={sendOffset} onChange={(e) => setSendOffset(Math.max(0, Number(e.target.value)))} />
+              </div>
+              <div>
+                <label style={LABEL}>Reply-to (optional)</label>
+                <input style={INPUT} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="patrick@metroassoc.com" />
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+              <input type="checkbox" checked={excludeRecent} onChange={(e) => setExcludeRecent(e.target.checked)} />
+              Don&apos;t send to anyone emailed in the last
+              <input style={{ ...INPUT, width: 64, padding: "4px 8px" }} type="number" min={1} value={excludeDays}
+                disabled={!excludeRecent} onChange={(e) => setExcludeDays(Math.max(1, Number(e.target.value)))} />
+              days
+            </label>
+          </div>
+        )}
+
+        {/* Step 3: schedule */}
+        {step === 2 && (
+          <div className="flex flex-col gap-5">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label style={LABEL}><Calendar size={12} className="inline mr-1 -mt-0.5" />Send date &amp; time</label>
+                <input style={INPUT} type="datetime-local" value={localDateTime} onChange={(e) => setLocalDateTime(e.target.value)} />
+              </div>
+              <div>
+                <label style={LABEL}>Timezone</label>
+                <select style={INPUT} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                  {tzOptions.map((tz) => <option key={tz} value={tz} style={{ background: "#16181e", color: "#fff" }}>{tz.replace(/_/g, " ")}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
+                  <input type="checkbox" checked={drip} onChange={(e) => setDrip(e.target.checked)} />
+                  Keep sending in batches, every
+                  <input style={{ ...INPUT, width: 68, padding: "4px 8px" }} type="number" min={5} step={5} value={dripMinutes}
+                    disabled={!drip} onChange={(e) => setDripMinutes(Math.max(5, Number(e.target.value)))} />
+                  min
+                </label>
+                <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  {drip
+                    ? `Sends ${dailyLimit} at a time until the whole audience is covered.`
+                    : `Off — this sends ${willSend} once and stops.`}
+                </p>
+              </div>
+              <div>
+                <label style={LABEL}><Repeat size={12} className="inline mr-1 -mt-0.5" />Repeat</label>
+                <select style={INPUT} value={repeatEvery} onChange={(e) => setRepeatEvery(e.target.value)}>
+                  <option value="" style={{ background: "#16181e", color: "#fff" }}>Don&apos;t repeat</option>
+                  <option value="daily" style={{ background: "#16181e", color: "#fff" }}>Daily</option>
+                  <option value="weekly" style={{ background: "#16181e", color: "#fff" }}>Weekly</option>
+                  <option value="monthly" style={{ background: "#16181e", color: "#fff" }}>Monthly</option>
+                </select>
+              </div>
+            </div>
+
+            {repeatConflict && (
+              <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
+                style={{ background: "rgba(245,158,11,0.12)", color: "#fbbf24" }}>
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                {repeatConflict}
+              </div>
             )}
-          </p>
-          <button onClick={schedule} disabled={submitting}
-            className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors"
-            style={{ background: submitting ? "rgba(230,57,70,0.5)" : "var(--color-red, #e63946)", color: "#fff", cursor: submitting ? "default" : "pointer" }}>
-            {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            {submitting ? "Scheduling…" : "Schedule Send"}
+          </div>
+        )}
+
+        {/* Step 4: review */}
+        {step === 3 && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-0.5 rounded-xl px-4 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <ReviewRow label="Audience" value={listId ? `${lists.find((l) => l.id === listId)?.name} (${lists.find((l) => l.id === listId)?.member_count})` : `All active contacts (${contactCount})`} />
+              <ReviewRow label="Subject" value={subject || "—"} />
+              <ReviewRow label="Batch size" value={String(dailyLimit)} />
+              {sendOffset > 0 && <ReviewRow label="Skip first" value={String(sendOffset)} />}
+              {replyTo && <ReviewRow label="Reply-to" value={replyTo} />}
+              {excludeRecent && <ReviewRow label="Exclude recent" value={`Emailed in last ${excludeDays} days`} />}
+              <ReviewRow
+                label="Send date"
+                value={localDateTime ? `${localDateTime.replace("T", " ")} · ${timezone.replace(/_/g, " ")}` : "—"}
+                highlight
+              />
+              <ReviewRow label="Repeat" value={repeatEvery ? repeatEvery[0].toUpperCase() + repeatEvery.slice(1) : "Doesn't repeat"} />
+              <ReviewRow label="Drip" value={drip ? `${dailyLimit} every ${dripMinutes} min` : "Off — sends once"} last />
+            </div>
+
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+              {drip ? (
+                <>
+                  Will send <span style={{ color: "#fff" }}>{dailyLimit}</span> at a time every {dripMinutes} min until all{" "}
+                  <span style={{ color: "#fff" }}>{remaining}</span> of {targetCount} in{" "}
+                  <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span> are reached.
+                </>
+              ) : (
+                <>
+                  Will send to <span style={{ color: "#fff" }}>{willSend}</span> recipient{willSend === 1 ? "" : "s"}
+                  {sendOffset > 0 ? ` (#${sendOffset + 1}–#${sendOffset + willSend})` : ""} of {targetCount} in{" "}
+                  <span style={{ color: "#fff" }}>{listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"}</span>.
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
+        {/* Footer nav */}
+        <div className="flex items-center justify-between gap-3 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <button type="button" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}
+            className="text-sm font-semibold transition-colors"
+            style={{ color: step === 0 ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)", cursor: step === 0 ? "default" : "pointer" }}>
+            ← Previous
           </button>
+          <div className="flex items-center gap-4">
+            <span className="hidden text-xs sm:inline" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Step {step + 1} of {STEPS.length}
+            </span>
+            {step === STEPS.length - 1 ? (
+              <button onClick={schedule} disabled={submitting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors"
+                style={{ background: submitting ? "rgba(230,57,70,0.5)" : "var(--color-red, #e63946)", color: "#fff", cursor: submitting ? "default" : "pointer" }}>
+                {submitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {submitting ? "Scheduling…" : "Schedule Send"}
+              </button>
+            ) : (
+              <button type="button" onClick={() => canContinue && setStep((s) => s + 1)} disabled={!canContinue}
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors"
+                style={{ background: canContinue ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)", color: canContinue ? "#fff" : "rgba(255,255,255,0.3)", cursor: canContinue ? "pointer" : "default" }}>
+                Next step
+              </button>
+            )}
+          </div>
         </div>
 
         {msg && (
@@ -466,8 +567,8 @@ export default function SchedulerClient({
               return (
                 <div key={r.id} className="rounded-xl px-4 py-3"
                   style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                    <div className="flex-1 min-w-0" style={{ flexBasis: "60%" }}>
                       <p className="text-sm font-medium text-white truncate">
                         {r.subject || "—"}
                         {r.repeat_every && (
@@ -477,7 +578,6 @@ export default function SchedulerClient({
                         )}
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-                        {fmt(r.scheduled_at, r.timezone)} · {r.timezone.replace(/_/g, " ")} ·{" "}
                         {r.list_name ?? "All active contacts"}
                         {shown === "sent" ? ` · ${r.recipient_count} sent` : ""}
                         {shown === "sending" && r.next_batch_at
@@ -497,6 +597,19 @@ export default function SchedulerClient({
                         </div>
                       )}
                     </div>
+
+                    {/* Scheduled date/time — the detail people actually scan for,
+                        pulled out of the muted subtitle line and made to look like it. */}
+                    <div className="flex flex-col items-start sm:items-end shrink-0">
+                      <span className="text-sm font-bold tabular-nums flex items-center gap-1.5" style={{ color: "#fff" }}>
+                        <Calendar size={12} style={{ color: "#f87171" }} />
+                        {fmt(r.scheduled_at, r.timezone)}
+                      </span>
+                      <span className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {r.timezone.replace(/_/g, " ")}
+                      </span>
+                    </div>
+
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full capitalize shrink-0" style={{ background: ss.bg, color: ss.color }}>
                       {shown}
                     </span>
@@ -574,6 +687,20 @@ export default function SchedulerClient({
       <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.25)" }}>
         The scheduler checks for due sends every 5 minutes. A send fires at the next check after its scheduled time.
       </p>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value, highlight, last }: { label: string; value: string; highlight?: boolean; last?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2" style={last ? undefined : { borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</span>
+      <span
+        className={`text-sm text-right truncate ${highlight ? "font-bold" : "font-medium"}`}
+        style={{ color: highlight ? "#fca5a5" : "#fff", maxWidth: "70%" }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
