@@ -9,7 +9,8 @@
     "lint": "next lint",
     "db:dump": "node --env-file=.env.local scripts/dump-sql.mjs",
     "db:backup": "node --env-file=.env.local scripts/backup-db.mjs",
-    "db:verify": "node --experimental-sqlite --env-file=.env.local scripts/verify-dump.mjs"
+    "db:verify": "node --experimental-sqlite --env-file=.env.local scripts/verify-dump.mjs",
+    "db:restore-new": "node --env-file=.env.local scripts/restore-to-new.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
