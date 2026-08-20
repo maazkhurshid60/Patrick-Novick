@@ -158,9 +158,9 @@ export default function Sidebar({ active }: { active: string }) {
                   key={entry.key}
                   href={entry.href}
                   onClick={handleLinkClick}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? "" : "hover:bg-white/5"}`}
                   style={{
-                    background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
+                    background: isActive ? "rgba(230,57,70,0.12)" : undefined,
                     color: isActive ? "#f87171" : "rgba(255,255,255,0.38)",
                   }}
                 >
@@ -190,7 +190,7 @@ export default function Sidebar({ active }: { active: string }) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(entry.key)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isGroupActive ? "" : "hover:bg-white/5"}`}
                   style={{ color: isGroupActive ? "#f87171" : "rgba(255,255,255,0.38)" }}
                   aria-expanded={isOpen}
                 >
@@ -215,9 +215,9 @@ export default function Sidebar({ active }: { active: string }) {
                           key={item.key}
                           href={item.href}
                           onClick={handleLinkClick}
-                          className="px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150"
+                          className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? "" : "hover:bg-white/5"}`}
                           style={{
-                            background: isActive ? "rgba(230,57,70,0.12)" : "transparent",
+                            background: isActive ? "rgba(230,57,70,0.12)" : undefined,
                             color: isActive ? "#f87171" : "rgba(255,255,255,0.32)",
                           }}
                         >

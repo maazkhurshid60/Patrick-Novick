@@ -2,6 +2,7 @@
 
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
 import { useRef, useEffect } from "react";
+import Image from "next/image";
 import { ArrowRight, Users, Share2, FileSearch, TrendingUp } from "lucide-react";
 
 const points = [
@@ -83,56 +84,89 @@ export default function FindTheRightPeople() {
           </span>
         </div>
 
-        <div className="relative z-[1] max-w-4xl mx-auto px-6">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={heroInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6 }}
-            className="text-sm font-semibold uppercase tracking-widest mb-5 flex items-center gap-2"
-            style={{ color: "var(--color-red)" }}
-          >
-            <span className="inline-block w-6 h-0.5" style={{ background: "var(--color-red)" }} />
-            Why the right person hasn&apos;t applied
-          </motion.p>
+        <div className="relative z-[1] max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left — text */}
+            <div>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={heroInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6 }}
+                className="text-sm font-semibold uppercase tracking-widest mb-5 flex items-center gap-2"
+                style={{ color: "var(--color-red)" }}
+              >
+                <span className="inline-block w-6 h-0.5" style={{ background: "var(--color-red)" }} />
+                Why the right person hasn&apos;t applied
+              </motion.p>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={heroInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-black leading-[1.05] tracking-tight mb-8"
-            style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
-          >
-            A <span style={{ color: "var(--color-red)" }}>$185K</span> seat.
-            Posted 60 days.{" "}
-            <span style={{ color: "var(--color-red)" }}>Still empty.</span>
-          </motion.h1>
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={heroInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.7, delay: 0.1 }}
+                className="text-4xl sm:text-5xl md:text-6xl font-black leading-[1.05] tracking-tight mb-8"
+                style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
+              >
+                A <span style={{ color: "var(--color-red)" }}>$185K</span> seat.
+                Posted 60 days.{" "}
+                <span style={{ color: "var(--color-red)" }}>Still empty.</span>
+              </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={heroInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-xl md:text-2xl font-semibold leading-snug mb-8"
-            style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
-          >
-            The superintendent you really want is{" "}
-            <span style={{ color: "var(--color-red)" }}>not</span> on a job
-            board.
-          </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={heroInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-xl md:text-2xl font-semibold leading-snug mb-8"
+                style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}
+              >
+                The superintendent you really want is{" "}
+                <span style={{ color: "var(--color-red)" }}>not</span> on a job
+                board.
+              </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={heroInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <a
-              href="/contact"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm text-white transition-all duration-200 hover:scale-105"
-              style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={heroInView ? { opacity: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
+                <a
+                  href="/contact"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm text-white transition-all duration-200 hover:scale-105"
+                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
+                >
+                  Talk to Patrick
+                  <ArrowRight size={15} />
+                </a>
+              </motion.div>
+            </div>
+
+            {/* Right — the campaign flyer itself */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, x: 30 }}
+              animate={heroInView ? { opacity: 1, scale: 1, x: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.25 }}
+              className="flex justify-center lg:justify-end"
             >
-              Talk to Patrick
-              <ArrowRight size={15} />
-            </a>
-          </motion.div>
+              <div className="relative">
+                <div
+                  className="absolute -top-6 -right-6 w-56 h-56 md:w-72 md:h-72 rounded-full"
+                  style={{ background: "var(--color-red)", opacity: 0.1 }}
+                />
+                <div
+                  className="relative w-72 sm:w-80 md:w-96 rounded-3xl overflow-hidden"
+                  style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.2)" }}
+                >
+                  <Image
+                    src="/find-the-right-people-flyer.png"
+                    alt="A $185K seat. Posted 60 days. Still empty. The superintendent you really want is not on a job board."
+                    width={1122}
+                    height={1402}
+                    className="w-full h-auto"
+                    priority
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
