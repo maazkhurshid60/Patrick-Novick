@@ -22,9 +22,9 @@ const isHtmlTemplate = (s: string) =>
   /<!doctype html|<html[\s>]|<(table|div|p|a|img|span|body)[\s>]/i.test(s);
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.625rem 1rem",
   fontSize: "0.875rem",
@@ -103,7 +103,7 @@ export default function TemplateEditor({ id }: { id: string }) {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center py-24 gap-2 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <div className="flex items-center justify-center py-24 gap-2 text-sm" style={{ color: "var(--admin-text-muted)" }}>
         <Loader2 size={16} className="animate-spin" /> Loading template…
       </div>
     );
@@ -111,10 +111,10 @@ export default function TemplateEditor({ id }: { id: string }) {
 
   if (notFound) {
     return (
-      <div className="max-w-md mx-auto mt-16 rounded-2xl p-8 text-center" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <p className="text-base font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Template not found</p>
-        <p className="text-sm mb-5" style={{ color: "rgba(255,255,255,0.4)" }}>It may have been deleted.</p>
-        <button onClick={goBack} className="px-5 py-2 rounded-full text-sm font-bold text-white" style={{ background: "var(--color-red)" }}>Back to Templates</button>
+      <div className="max-w-md mx-auto mt-16 rounded-2xl p-8 text-center" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+        <p className="text-base font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>Template not found</p>
+        <p className="text-sm mb-5" style={{ color: "var(--admin-text-muted)" }}>It may have been deleted.</p>
+        <button onClick={goBack} className="px-5 py-2 rounded-full text-sm font-bold text-white" style={{ background: "var(--admin-accent)" }}>Back to Templates</button>
       </div>
     );
   }
@@ -122,12 +122,12 @@ export default function TemplateEditor({ id }: { id: string }) {
   const showToggle = isNew || hasBuilderJson;
 
   return (
-    <div className="rounded-2xl p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="rounded-2xl p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
+        <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
           {editingId != null ? "Edit Template" : "New Template"}
         </p>
-        <button onClick={goBack} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <button onClick={goBack} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-faint)" }}>
           <X size={15} />
         </button>
       </div>
@@ -141,8 +141,8 @@ export default function TemplateEditor({ id }: { id: string }) {
               onClick={() => { if (m === "blank" && mode === "builder") setForm((f) => ({ ...f, body: builderHtml })); setMode(m); }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all"
               style={mode === m
-                ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.3)" }
+                : { background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
             >
               <Icon size={13} /> {label}
             </button>
@@ -155,27 +155,27 @@ export default function TemplateEditor({ id }: { id: string }) {
         <input style={inputStyle} placeholder="Email subject line" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Category</p>
+            <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-faint)" }}>Category</p>
             <select
               style={{ ...inputStyle, cursor: "pointer" }}
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
             >
               {TEMPLATE_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value} style={{ background: "#16181e" }}>{c.label}</option>
+                <option key={c.value} value={c.value} style={{ background: "var(--admin-surface)" }}>{c.label}</option>
               ))}
             </select>
           </div>
           <div>
-            <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional)</span></p>
+            <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-faint)" }}>Contact list <span style={{ color: "var(--admin-text-faint)" }}>(optional)</span></p>
             <select
               style={{ ...inputStyle, cursor: "pointer" }}
               value={form.list_id ?? ""}
               onChange={(e) => setForm({ ...form, list_id: e.target.value ? Number(e.target.value) : null })}
             >
-              <option value="" style={{ background: "#16181e" }}>No specific list</option>
+              <option value="" style={{ background: "var(--admin-surface)" }}>No specific list</option>
               {lists.map((l) => (
-                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
               ))}
             </select>
           </div>
@@ -187,11 +187,11 @@ export default function TemplateEditor({ id }: { id: string }) {
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Editor */}
             <div className="flex flex-col">
-              <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-faint)" }}>
                 Body — plain text, or paste full HTML. Use{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
-                <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
+                <code style={{ background: "var(--admin-surface-2)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
+                <code style={{ background: "var(--admin-surface-2)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, and{" "}
+                <code style={{ background: "var(--admin-surface-2)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>.
               </p>
               <textarea
                 style={{ ...inputStyle, minHeight: "62vh", resize: "vertical", fontFamily: "monospace", fontSize: "0.78rem", flex: 1 }}
@@ -203,10 +203,10 @@ export default function TemplateEditor({ id }: { id: string }) {
             </div>
             {/* Live preview */}
             <div className="lg:sticky lg:top-4 h-fit">
-              <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+              <p className="text-xs mb-1.5 font-semibold" style={{ color: "var(--admin-text-muted)" }}>Live preview</p>
               {form.subject.trim() && (
-                <p className="text-xs mb-1.5 truncate" style={{ color: "rgba(255,255,255,0.3)" }}>
-                  Subject: <span style={{ color: "rgba(255,255,255,0.6)" }}>{form.subject}</span>
+                <p className="text-xs mb-1.5 truncate" style={{ color: "var(--admin-text-faint)" }}>
+                  Subject: <span style={{ color: "var(--admin-text-secondary)" }}>{form.subject}</span>
                 </p>
               )}
               {form.body.trim() ? (
@@ -230,7 +230,7 @@ export default function TemplateEditor({ id }: { id: string }) {
                   </div>
                 )
               ) : (
-                <div className="flex items-center justify-center text-xs" style={{ height: "62vh", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: "0.5rem", color: "rgba(255,255,255,0.3)" }}>
+                <div className="flex items-center justify-center text-xs" style={{ height: "62vh", border: "1px dashed var(--admin-border)", borderRadius: "0.5rem", color: "var(--admin-text-faint)" }}>
                   Start typing to see a live preview
                 </div>
               )}
@@ -242,11 +242,11 @@ export default function TemplateEditor({ id }: { id: string }) {
           <button
             type="submit" disabled={loading}
             className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+            style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {editingId != null ? "Save Changes" : "Save Template"}
           </button>
-          <button type="button" onClick={goBack} className="px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <button type="button" onClick={goBack} className="px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
             Cancel
           </button>
         </div>

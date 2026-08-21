@@ -87,10 +87,10 @@ function ToastCard({ item, onClose }: { item: ToastItem; onClose: () => void }) 
   }, []);
 
   const colors = {
-    success: { bg: "rgba(22,163,74,0.12)",  border: "rgba(74,222,128,0.25)",  text: "#4ade80",  icon: <CheckCircle size={15} /> },
-    error:   { bg: "rgba(230,57,70,0.13)",  border: "rgba(230,57,70,0.3)",   text: "#f87171",  icon: <XCircle size={15} />     },
-    info:    { bg: "rgba(99,102,241,0.12)", border: "rgba(167,139,250,0.25)", text: "#a5b4fc",  icon: <AlertCircle size={15} /> },
-    loading: { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.1)", text: "rgba(255,255,255,0.7)", icon: <Loader2 size={15} style={{ animation: "spin 0.9s linear infinite" }} /> },
+    success: { bg: "var(--admin-success-soft)",  border: "rgba(34,197,94,0.25)",  text: "var(--admin-success)",  icon: <CheckCircle size={15} /> },
+    error:   { bg: "var(--admin-danger-soft)",  border: "rgba(239,68,68,0.3)",   text: "var(--admin-danger-text)",  icon: <XCircle size={15} />     },
+    info:    { bg: "var(--admin-accent-soft)", border: "rgba(167,139,250,0.25)", text: "var(--admin-accent-text)",  icon: <AlertCircle size={15} /> },
+    loading: { bg: "var(--admin-surface-2)", border: "var(--admin-border)", text: "var(--admin-text-secondary)", icon: <Loader2 size={15} style={{ animation: "spin 0.9s linear infinite" }} /> },
   }[item.type];
 
   return (
@@ -103,7 +103,7 @@ function ToastCard({ item, onClose }: { item: ToastItem; onClose: () => void }) 
         maxWidth: 380,
         padding: "0.7rem 0.875rem",
         borderRadius: "0.875rem",
-        background: "#1a1d23",
+        background: "var(--admin-surface)",
         border: `1px solid ${colors.border}`,
         boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
         pointerEvents: "auto",
@@ -113,13 +113,13 @@ function ToastCard({ item, onClose }: { item: ToastItem; onClose: () => void }) 
       }}
     >
       <span style={{ color: colors.text, flexShrink: 0 }}>{colors.icon}</span>
-      <p style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.85)", fontWeight: 500, flex: 1, lineHeight: 1.4 }}>
+      <p style={{ fontSize: "0.8rem", color: "var(--admin-text)", fontWeight: 500, flex: 1, lineHeight: 1.4 }}>
         {item.message}
       </p>
       {item.type !== "loading" && (
         <button
           onClick={onClose}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)", display: "flex", flexShrink: 0, padding: 0 }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--admin-text-faint)", display: "flex", flexShrink: 0, padding: 0 }}
         >
           <X size={13} />
         </button>
@@ -149,18 +149,18 @@ export function Pagination({ page, total, perPage, onPage }: {
   const btn: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: "0.25rem",
     padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
-    fontSize: "0.72rem", fontWeight: 600, color: "rgba(255,255,255,0.6)",
-    border: "1px solid rgba(255,255,255,0.08)", background: "transparent", cursor: "pointer",
+    fontSize: "0.72rem", fontWeight: 600, color: "var(--admin-text-secondary)",
+    border: "1px solid var(--admin-border)", background: "transparent", cursor: "pointer",
   };
   return (
-    <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-      <p style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.35)" }}>{start}–{end} of {total}</p>
+    <div className="flex items-center justify-between gap-3 px-6 py-4 flex-wrap" style={{ borderTop: "1px solid var(--admin-border)" }}>
+      <p style={{ fontSize: "0.72rem", color: "var(--admin-text-muted)" }}>{start}–{end} of {total}</p>
       <div className="flex items-center gap-2">
         <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page <= 1}
           style={{ ...btn, opacity: page <= 1 ? 0.4 : 1, cursor: page <= 1 ? "not-allowed" : "pointer" }}>
           <ChevronLeft size={13} /> Prev
         </button>
-        <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>
+        <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "var(--admin-text-secondary)" }}>
           Page {page} of {totalPages}
         </span>
         <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages}
@@ -186,7 +186,7 @@ export function LoadingOverlay({ show, message }: { show: boolean; message?: str
         alignItems: "center",
         justifyContent: "center",
         padding: "1rem",
-        background: "rgba(0,0,0,0.6)",
+        background: "var(--admin-scrim)",
         backdropFilter: "blur(3px)",
       }}
     >
@@ -199,14 +199,14 @@ export function LoadingOverlay({ show, message }: { show: boolean; message?: str
           padding: "1.75rem 2.25rem",
           maxWidth: "90vw",
           borderRadius: "1rem",
-          background: "#1a1d23",
-          border: "1px solid rgba(255,255,255,0.08)",
+          background: "var(--admin-surface)",
+          border: "1px solid var(--admin-border)",
           boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
         }}
       >
-        <Loader2 size={30} style={{ color: "var(--color-red)", animation: "spin 0.8s linear infinite" }} />
+        <Loader2 size={30} style={{ color: "var(--admin-accent)", animation: "spin 0.8s linear infinite" }} />
         {message && (
-          <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
+          <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--admin-text)", textAlign: "center" }}>
             {message}
           </p>
         )}

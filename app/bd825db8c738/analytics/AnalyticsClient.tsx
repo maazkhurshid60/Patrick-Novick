@@ -93,22 +93,22 @@ type TabKey = (typeof TABS)[number]["key"];
 // Map a Brevo event type to a readable label + colors
 function eventStyle(ev: string): { label: string; color: string; bg: string } {
   switch (ev) {
-    case "delivered":    return { label: "Delivered",    color: "#4ade80", bg: "rgba(74,222,128,0.12)" };
+    case "delivered":    return { label: "Delivered",    color: "var(--admin-success)", bg: "rgba(34,197,94,0.12)" };
     case "requests":     return { label: "Sent",         color: "#93c5fd", bg: "rgba(147,197,253,0.12)" };
     case "opened":
-    case "uniqueOpened": return { label: "Opened",       color: "#fbbf24", bg: "rgba(251,191,36,0.14)" };
+    case "uniqueOpened": return { label: "Opened",       color: "var(--admin-warning)", bg: "rgba(245,158,11,0.14)" };
     case "clicks":
-    case "uniqueClicks": return { label: "Clicked",      color: "#a5b4fc", bg: "rgba(165,180,252,0.14)" };
-    case "loadedByProxy":return { label: "Proxy open",   color: "#fcd34d", bg: "rgba(252,211,77,0.10)" };
+    case "uniqueClicks": return { label: "Clicked",      color: "var(--admin-accent-text)", bg: "rgba(165,180,252,0.14)" };
+    case "loadedByProxy":return { label: "Proxy open",   color: "var(--admin-warning)", bg: "rgba(245,158,11,0.10)" };
     case "softBounces":  return { label: "Soft bounce",  color: "#fb923c", bg: "rgba(251,146,60,0.14)" };
-    case "hardBounces":  return { label: "Hard bounce",  color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "hardBounces":  return { label: "Hard bounce",  color: "var(--admin-danger-text)", bg: "rgba(248,113,113,0.14)" };
     case "deferred":     return { label: "Deferred",     color: "#fdba74", bg: "rgba(253,186,116,0.10)" };
-    case "blocked":      return { label: "Blocked",      color: "#f87171", bg: "rgba(248,113,113,0.14)" };
-    case "spam":         return { label: "Spam",         color: "#f87171", bg: "rgba(248,113,113,0.14)" };
+    case "blocked":      return { label: "Blocked",      color: "var(--admin-danger-text)", bg: "rgba(248,113,113,0.14)" };
+    case "spam":         return { label: "Spam",         color: "var(--admin-danger-text)", bg: "rgba(248,113,113,0.14)" };
     case "invalid":      return { label: "Invalid",      color: "#94a3b8", bg: "rgba(148,163,184,0.14)" };
-    case "unsubscribed": return { label: "Unsubscribed", color: "#f87171", bg: "rgba(248,113,113,0.14)" };
-    case "error":        return { label: "Error",        color: "#f87171", bg: "rgba(248,113,113,0.14)" };
-    default:             return { label: ev,             color: "rgba(255,255,255,0.6)", bg: "rgba(255,255,255,0.06)" };
+    case "unsubscribed": return { label: "Unsubscribed", color: "var(--admin-danger-text)", bg: "rgba(248,113,113,0.14)" };
+    case "error":        return { label: "Error",        color: "var(--admin-danger-text)", bg: "rgba(248,113,113,0.14)" };
+    default:             return { label: ev,             color: "var(--admin-text-secondary)", bg: "var(--admin-surface-2)" };
   }
 }
 
@@ -127,8 +127,8 @@ function fmtUnixDate(secs: number | null): string {
 }
 
 const card = {
-  background: "#1a1d23",
-  border: "1px solid rgba(255,255,255,0.06)",
+  background: "var(--admin-surface)",
+  border: "1px solid var(--admin-border)",
   borderRadius: "1rem",
 };
 
@@ -138,13 +138,13 @@ function StatCard({ icon: Icon, label, value, sub, color, dim }: {
   return (
     <div className="px-5 py-5" style={card}>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+        <p className="text-xs font-medium" style={{ color: "var(--admin-text-muted)" }}>{label}</p>
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: dim }}>
           <Icon size={14} style={{ color }} />
         </div>
       </div>
       <p className="text-3xl font-black" style={{ fontFamily: "var(--font-heading)", color }}>{value}</p>
-      {sub && <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>{sub}</p>}
+      {sub && <p className="text-xs mt-1" style={{ color: "var(--admin-text-faint)" }}>{sub}</p>}
     </div>
   );
 }
@@ -286,17 +286,17 @@ export default function AnalyticsClient() {
   return (
     <div className="flex flex-col gap-6">
       {/* Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="flex items-center gap-1 overflow-x-auto" style={{ borderBottom: "1px solid var(--admin-border)" }}>
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className="relative px-4 py-2.5 text-sm font-semibold shrink-0 transition-colors"
-            style={{ color: tab === t.key ? "#fff" : "rgba(255,255,255,0.4)" }}
+            style={{ color: tab === t.key ? "var(--admin-text)" : "var(--admin-text-muted)" }}
           >
             {t.label}
             {tab === t.key && (
-              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full" style={{ background: "var(--color-red)" }} />
+              <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full" style={{ background: "var(--admin-accent)" }} />
             )}
           </button>
         ))}
@@ -304,35 +304,35 @@ export default function AnalyticsClient() {
 
       {/* List scope + date-range selectors */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-          {selectedListName ? <>Showing analytics for <span className="font-semibold" style={{ color: "#f87171" }}>{selectedListName}</span></> : "Showing analytics across all contacts"}
-          {rangeActive && <> · <span className="font-semibold" style={{ color: "#f87171" }}>{from} → {to}</span></>}
+        <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
+          {selectedListName ? <>Showing analytics for <span className="font-semibold" style={{ color: "var(--admin-accent-text)" }}>{selectedListName}</span></> : "Showing analytics across all contacts"}
+          {rangeActive && <> · <span className="font-semibold" style={{ color: "var(--admin-accent-text)" }}>{from} → {to}</span></>}
         </p>
         <div className="flex items-center gap-2 flex-wrap">
           {/* From / To date range — the whole end day is included */}
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
             <input
               type="date"
               value={from}
               max={to || undefined}
               onChange={(e) => setFrom(e.target.value)}
-              style={{ background: "transparent", border: "none", color: "#fff", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
+              style={{ background: "transparent", border: "none", color: "var(--admin-text)", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
               title="From date (inclusive)"
             />
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.75rem" }}>→</span>
+            <span style={{ color: "var(--admin-text-faint)", fontSize: "0.75rem" }}>→</span>
             <input
               type="date"
               value={to}
               min={from || undefined}
               onChange={(e) => setTo(e.target.value)}
-              style={{ background: "transparent", border: "none", color: "#fff", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
+              style={{ background: "transparent", border: "none", color: "var(--admin-text)", fontSize: "0.75rem", outline: "none", colorScheme: "dark" }}
               title="To date (the entire day is included)"
             />
             {rangeActive && (
               <button
                 onClick={() => { setFrom(""); setTo(""); }}
-                className="px-1.5 py-0.5 rounded text-xs font-semibold transition-colors hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.5)" }}
+                className="px-1.5 py-0.5 rounded text-xs font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+                style={{ color: "var(--admin-text-secondary)" }}
                 title="Clear date range"
               >
                 Clear
@@ -342,12 +342,12 @@ export default function AnalyticsClient() {
           <select
             value={listFilter}
             onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.78rem", padding: "0.45rem 0.75rem", outline: "none", cursor: "pointer", maxWidth: 220 }}
+            style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.78rem", padding: "0.45rem 0.75rem", outline: "none", cursor: "pointer", maxWidth: 220 }}
             title="Scope analytics to a list"
           >
-            <option value="all" style={{ background: "#16181e" }}>All lists</option>
+            <option value="all" style={{ background: "var(--admin-surface)" }}>All lists</option>
             {lists.map((l) => (
-              <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+              <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
             ))}
           </select>
         </div>
@@ -358,75 +358,75 @@ export default function AnalyticsClient() {
       {/* Visual reports: opens/clicks trend, device split, top locations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-white mb-3" style={{ fontFamily: "var(--font-heading)" }}>Opens Over Time</p>
-          <LineChart data={data?.charts.opensByDay ?? []} color="#e63946" />
+          <p className="text-sm font-bold text-(--admin-text) mb-3" style={{ fontFamily: "var(--font-heading)" }}>Opens Over Time</p>
+          <LineChart data={data?.charts.opensByDay ?? []} color="var(--admin-accent)" />
         </div>
         <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-white mb-3 flex items-center gap-1.5" style={{ fontFamily: "var(--font-heading)" }}>
-            <MousePointerClick size={14} style={{ color: "rgba(255,255,255,0.3)" }} /> Clicks Over Time
+          <p className="text-sm font-bold text-(--admin-text) mb-3 flex items-center gap-1.5" style={{ fontFamily: "var(--font-heading)" }}>
+            <MousePointerClick size={14} style={{ color: "var(--admin-text-faint)" }} /> Clicks Over Time
           </p>
           <LineChart data={data?.charts.clicksByDay ?? []} color="#60a5fa" />
         </div>
         <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Devices</p>
+          <p className="text-sm font-bold text-(--admin-text) mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Devices</p>
           <DonutChart segments={donutSegments} />
-          <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.2)" }}>
+          <p className="text-xs mt-4" style={{ color: "var(--admin-text-faint)" }}>
             From opens only, and only opens recorded since device tracking was added — proxy-prefetched opens (Apple Mail Privacy, Gmail image proxy) count as &ldquo;Other.&rdquo;
           </p>
         </div>
         <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-white mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Locations</p>
+          <p className="text-sm font-bold text-(--admin-text) mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Locations</p>
           {topLocations.length === 0 ? (
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No location data for this window.</p>
+            <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>No location data for this window.</p>
           ) : (
             <ol className="flex flex-col gap-3">
               {topLocations.map((l, i) => (
                 <li key={`${l.city}-${l.state}`} className="flex items-center gap-3 text-sm">
-                  <span className="text-xs font-bold w-4 shrink-0" style={{ color: "rgba(255,255,255,0.25)" }}>{i + 1}</span>
-                  <MapPin size={12} className="shrink-0" style={{ color: "rgba(255,255,255,0.3)" }} />
-                  <span className="flex-1 min-w-0 truncate" style={{ color: "rgba(255,255,255,0.75)" }}>
+                  <span className="text-xs font-bold w-4 shrink-0" style={{ color: "var(--admin-text-faint)" }}>{i + 1}</span>
+                  <MapPin size={12} className="shrink-0" style={{ color: "var(--admin-text-faint)" }} />
+                  <span className="flex-1 min-w-0 truncate" style={{ color: "var(--admin-text)" }}>
                     {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
                   </span>
-                  <span className="font-bold" style={{ color: "#fff" }}>{Math.round((l.count / locationsTotal) * 100)}%</span>
+                  <span className="font-bold" style={{ color: "var(--admin-text)" }}>{Math.round((l.count / locationsTotal) * 100)}%</span>
                 </li>
               ))}
             </ol>
           )}
         </div>
       </div>
-      <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.2)" }}>
+      <p className="text-xs text-center" style={{ color: "var(--admin-text-faint)" }}>
         Visual reports to track performance &amp; trends.
       </p>
 
       {/* Engagement totals (from your own send logs) */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "var(--admin-text-faint)" }}>
           Your audience
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard icon={Users} label="Total Contacts" value={data?.totals.total_contacts ?? 0} color="#7dd3fc" dim="rgba(125,211,252,0.1)" />
-          <StatCard icon={Send} label={rangeActive ? "Emails Sent (in range)" : "Emails Sent (all time)"} value={data?.totals.total_sends ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="#4ade80" dim="rgba(74,222,128,0.1)" />
-          <StatCard icon={Eye} label={rangeActive ? "Opens (in range)" : "Total Opens"} value={data?.totals.total_opens ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
-          <StatCard icon={UserMinus} label="Unsubscribed / Suppressed" value={data?.totals.total_suppressed ?? 0} color="#f87171" dim="rgba(248,113,113,0.12)" />
+          <StatCard icon={Send} label={rangeActive ? "Emails Sent (in range)" : "Emails Sent (all time)"} value={data?.totals.total_sends ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="var(--admin-success)" dim="var(--admin-success-soft)" />
+          <StatCard icon={Eye} label={rangeActive ? "Opens (in range)" : "Total Opens"} value={data?.totals.total_opens ?? 0} sub={rangeActive ? `${from} → ${to}` : undefined} color="var(--admin-warning)" dim="var(--admin-warning-soft)" />
+          <StatCard icon={UserMinus} label="Unsubscribed / Suppressed" value={data?.totals.total_suppressed ?? 0} color="var(--admin-danger-text)" dim="rgba(248,113,113,0.12)" />
         </div>
       </div>
 
       {/* Deliverability (from Brevo) */}
       <div>
         <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Deliverability <span style={{ color: "rgba(255,255,255,0.2)" }}>· via Brevo · {b?.range ?? `last ${days} days`}</span>
-            {loading && <Loader2 className="animate-spin" size={12} style={{ color: "rgba(255,255,255,0.35)" }} />}
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--admin-text-faint)" }}>
+            Deliverability <span style={{ color: "var(--admin-text-faint)" }}>· via Brevo · {b?.range ?? `last ${days} days`}</span>
+            {loading && <Loader2 className="animate-spin" size={12} style={{ color: "var(--admin-text-muted)" }} />}
           </p>
-          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", opacity: rangeActive ? 0.4 : 1 }} title={rangeActive ? "Clear the date range to use these quick windows" : undefined}>
+          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: "var(--admin-surface-2)", opacity: rangeActive ? 0.4 : 1 }} title={rangeActive ? "Clear the date range to use these quick windows" : undefined}>
             {[7, 30, 90].map((d) => (
               <button
                 key={d}
                 onClick={() => { setFrom(""); setTo(""); setDays(d); }}
                 className="px-3 py-1 rounded-md text-xs font-semibold transition-colors"
                 style={{
-                  background: !rangeActive && days === d ? "rgba(230,57,70,0.15)" : "transparent",
-                  color: !rangeActive && days === d ? "#f87171" : "rgba(255,255,255,0.4)",
+                  background: !rangeActive && days === d ? "var(--admin-accent-soft)" : "transparent",
+                  color: !rangeActive && days === d ? "var(--admin-accent-text)" : "var(--admin-text-muted)",
                 }}
               >
                 {d}d
@@ -435,13 +435,13 @@ export default function AnalyticsClient() {
           </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Mail} label="Delivered" value={b?.delivered ?? 0} sub={`${deliveryRate}% of ${b?.requests ?? 0} sent`} color="#4ade80" dim="rgba(74,222,128,0.1)" />
-          <StatCard icon={Eye} label="Unique Opens" value={b?.uniqueOpens ?? 0} sub={`${openRate}% open rate`} color="#fbbf24" dim="rgba(251,191,36,0.12)" />
-          <StatCard icon={TrendingUp} label="Unique Clicks" value={b?.uniqueClicks ?? 0} color="#a5b4fc" dim="rgba(165,180,252,0.12)" />
+          <StatCard icon={Mail} label="Delivered" value={b?.delivered ?? 0} sub={`${deliveryRate}% of ${b?.requests ?? 0} sent`} color="var(--admin-success)" dim="var(--admin-success-soft)" />
+          <StatCard icon={Eye} label="Unique Opens" value={b?.uniqueOpens ?? 0} sub={`${openRate}% open rate`} color="var(--admin-warning)" dim="var(--admin-warning-soft)" />
+          <StatCard icon={TrendingUp} label="Unique Clicks" value={b?.uniqueClicks ?? 0} color="var(--admin-accent-text)" dim="rgba(165,180,252,0.12)" />
           <StatCard icon={AlertTriangle} label="Bounces" value={bounces} sub={`${b?.hardBounces ?? 0} hard · ${b?.softBounces ?? 0} soft`} color="#fb923c" dim="rgba(251,146,60,0.12)" />
         </div>
         {b && b.requests === 0 && (
-          <p className="text-xs mt-2" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-xs mt-2" style={{ color: "var(--admin-text-faint)" }}>
             No Brevo activity in this window yet (or the API couldn&apos;t be reached). Your send-log numbers above are always accurate.
           </p>
         )}
@@ -449,10 +449,10 @@ export default function AnalyticsClient() {
 
       {/* Recent email activity (live event log from Brevo, newest first) */}
       <div style={card} className="overflow-hidden">
-        <div className="px-5 py-4 flex items-start justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="px-5 py-4 flex items-start justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid var(--admin-border)" }}>
           <div>
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Recent Email Activity</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
               Newest first · via Brevo · {b?.range ?? `last ${days} days`} · {feed.length} loaded{feedHasMore ? "+" : ""}
             </p>
           </div>
@@ -462,25 +462,25 @@ export default function AnalyticsClient() {
               value={activitySearch}
               onChange={(e) => setActivitySearch(e.target.value)}
               placeholder="Search recipient or subject…"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 200 }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 200 }}
             />
             {/* Status / event-type filter */}
             <select
               value={eventTypeFilter}
               onChange={(e) => setEventTypeFilter(e.target.value)}
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", cursor: "pointer" }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", cursor: "pointer" }}
               title="Filter by status / event type"
             >
-              <option value="all" style={{ background: "#16181e" }}>All statuses</option>
+              <option value="all" style={{ background: "var(--admin-surface)" }}>All statuses</option>
               {eventTypeOptions.map((label) => (
-                <option key={label} value={label} style={{ background: "#16181e" }}>{label}</option>
+                <option key={label} value={label} style={{ background: "var(--admin-surface)" }}>{label}</option>
               ))}
             </select>
             {(eventTypeFilter !== "all" || activitySearch) && (
               <button
                 onClick={() => { setEventTypeFilter("all"); setActivitySearch(""); }}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:bg-white/10"
-                style={{ color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+                style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
               >
                 Clear
               </button>
@@ -489,9 +489,9 @@ export default function AnalyticsClient() {
         </div>
 
         {feedLoading && feed.length === 0 ? (
-          <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
+          <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>Loading…</div>
         ) : filteredEvents.length === 0 ? (
-          <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>
             {feed.length === 0
               ? "No email activity in this window (or Brevo couldn't be reached)."
               : "No events match your filters."}
@@ -501,12 +501,12 @@ export default function AnalyticsClient() {
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 640 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Event</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Recipient</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Subject</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }} title="How many times we've emailed this contact">Sent</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>When</th>
+                  <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Event</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Recipient</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Subject</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }} title="How many times we've emailed this contact">Sent</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>When</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -514,44 +514,44 @@ export default function AnalyticsClient() {
                     const s = eventStyle(ev.event);
                     const eng = engByEmail.get((ev.email || "").toLowerCase());
                     return (
-                      <tr key={`${ev.email}-${ev.date}-${i}`} style={{ borderBottom: i < pagedEvents.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <tr key={`${ev.email}-${ev.date}-${i}`} style={{ borderBottom: i < pagedEvents.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
                         <td className="px-5 py-3">
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.color }} title={ev.reason || s.label}>{s.label}</span>
                         </td>
-                        <td className="px-5 py-3 text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                        <td className="px-5 py-3 text-sm" style={{ color: "var(--admin-text-secondary)" }}>
                           <span className="truncate inline-block max-w-[220px] align-middle">{ev.email}</span>
                         </td>
-                        <td className="px-5 py-3 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+                        <td className="px-5 py-3 text-sm" style={{ color: "var(--admin-text-muted)" }}>
                           <span className="truncate inline-block max-w-[260px] align-middle" title={ev.subject}>{ev.subject || "—"}</span>
                         </td>
                         <td
                           className="px-5 py-3 text-right text-sm font-bold whitespace-nowrap"
-                          style={{ color: eng && eng.sends > 1 ? "#4ade80" : "rgba(255,255,255,0.5)" }}
+                          style={{ color: eng && eng.sends > 1 ? "var(--admin-success)" : "var(--admin-text-secondary)" }}
                           title={eng ? `Last sent: ${fmtUnixDate(eng.last_sent)}` : "Not in your contact list"}
                         >
                           {eng ? `${eng.sends}${eng.sends > 1 ? "×" : ""}` : "—"}
                         </td>
-                        <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtDateTime(ev.date)}</td>
+                        <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "var(--admin-text-muted)" }}>{fmtDateTime(ev.date)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between gap-3 px-5 py-4 flex-wrap" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <div className="flex items-center justify-between gap-3 px-5 py-4 flex-wrap" style={{ borderTop: "1px solid var(--admin-border)" }}>
+              <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
                 {(currentEventPage - 1) * EVENTS_PER_PAGE + 1}–{Math.min(currentEventPage * EVENTS_PER_PAGE, filteredEvents.length)} of {filteredEvents.length} loaded{feedHasMore ? "+" : ""}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEventPage((p) => Math.max(1, p - 1))}
                   disabled={currentEventPage <= 1}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-(--admin-hover-bg)"
+                  style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                 >
                   <ChevronLeft size={13} /> Prev
                 </button>
-                <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>
+                <span className="text-xs font-semibold" style={{ color: "var(--admin-text-secondary)" }}>
                   Page {currentEventPage} of {totalEventPages}
                 </span>
                 <button
@@ -564,8 +564,8 @@ export default function AnalyticsClient() {
                     }
                   }}
                   disabled={feedLoading || (currentEventPage >= totalEventPages && !feedHasMore)}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:bg-(--admin-hover-bg)"
+                  style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                 >
                   {feedLoading ? "Loading…" : "Next"} <ChevronRight size={13} />
                 </button>
@@ -574,7 +574,7 @@ export default function AnalyticsClient() {
                     onClick={() => fetchFeed(false, feedOffset)}
                     disabled={feedLoading}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 hover:scale-[1.02]"
-                    style={{ background: "rgba(230,57,70,0.1)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+                    style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.2)" }}
                     title="Fetch the next block of older events from Brevo"
                   >
                     {feedLoading ? "Loading…" : "Load more"}
@@ -590,42 +590,42 @@ export default function AnalyticsClient() {
 
       {tab === "campaigns" && (
         <div style={card} className="overflow-hidden">
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Campaign History</p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+            <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Campaign History</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
               Delivered/Clicks/Replies/Opt-Outs per campaign aren&apos;t tracked per-send yet — Opens is.
             </p>
           </div>
           {campaignsLoading ? (
-            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Loading…</div>
+            <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>Loading…</div>
           ) : campaigns.length === 0 ? (
-            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No campaigns sent yet.</div>
+            <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>No campaigns sent yet.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 560 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Campaign</th>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Status</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Recipients</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Date</th>
+                  <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Campaign</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Status</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Recipients</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Opens</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {campaigns.map((c, i) => (
-                    <tr key={c.id} style={{ borderBottom: i < campaigns.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                      <td className="px-5 py-3 text-sm text-white">
+                    <tr key={c.id} style={{ borderBottom: i < campaigns.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
+                      <td className="px-5 py-3 text-sm text-(--admin-text)">
                         <span className="truncate inline-block max-w-[280px] align-middle">{c.subject}</span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.status === "failed" ? "rgba(230,57,70,0.12)" : "rgba(74,222,128,0.1)", color: c.status === "failed" ? "#f87171" : "#4ade80" }}>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: c.status === "failed" ? "var(--admin-danger-soft)" : "var(--admin-success-soft)", color: c.status === "failed" ? "var(--admin-danger-text)" : "var(--admin-success)" }}>
                           {c.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>{c.recipient_count}</td>
-                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: Number(c.unique_opens) > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>{c.unique_opens ?? 0}</td>
-                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtUnixDate(c.sent_at)}</td>
+                      <td className="px-5 py-3 text-right text-sm" style={{ color: "var(--admin-text-secondary)" }}>{c.recipient_count}</td>
+                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: Number(c.unique_opens) > 0 ? "var(--admin-warning)" : "var(--admin-text-faint)" }}>{c.unique_opens ?? 0}</td>
+                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "var(--admin-text-muted)" }}>{fmtUnixDate(c.sent_at)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -637,46 +637,46 @@ export default function AnalyticsClient() {
 
       {tab === "contacts" && (
         <div style={card} className="overflow-hidden">
-          <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Contact Engagement</p>
+          <div className="px-5 py-4 flex items-center justify-between gap-3 flex-wrap" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+            <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Contact Engagement</p>
             <input
               value={contactsSearch}
               onChange={(e) => setContactsSearch(e.target.value)}
               placeholder="Search name, email, company…"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 220 }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.75rem", padding: "0.4rem 0.7rem", outline: "none", width: 220 }}
             />
           </div>
           {filteredContacts.length === 0 ? (
-            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+            <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>
               {data?.contacts.length ? "No contacts match your search." : "No contacts emailed in this window yet."}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full" style={{ minWidth: 560 }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Contact</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Sends</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
-                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Last Sent</th>
+                  <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Contact</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Sends</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Opens</th>
+                    <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Last Sent</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredContacts.slice(0, 100).map((c, i) => (
-                    <tr key={c.email} style={{ borderBottom: i < Math.min(filteredContacts.length, 100) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <tr key={c.email} style={{ borderBottom: i < Math.min(filteredContacts.length, 100) - 1 ? "1px solid var(--admin-border)" : "none" }}>
                       <td className="px-5 py-3">
-                        <p className="text-sm font-medium text-white truncate max-w-[260px]">{c.name}</p>
-                        <p className="text-xs truncate max-w-[260px]" style={{ color: "rgba(255,255,255,0.3)" }}>{c.email}{c.company ? ` · ${c.company}` : ""}</p>
+                        <p className="text-sm font-medium text-(--admin-text) truncate max-w-[260px]">{c.name}</p>
+                        <p className="text-xs truncate max-w-[260px]" style={{ color: "var(--admin-text-faint)" }}>{c.email}{c.company ? ` · ${c.company}` : ""}</p>
                       </td>
-                      <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>{c.sends}</td>
-                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: c.opens > 0 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>{c.opens}</td>
-                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "rgba(255,255,255,0.35)" }}>{fmtUnixDate(c.last_sent)}</td>
+                      <td className="px-5 py-3 text-right text-sm" style={{ color: "var(--admin-text-secondary)" }}>{c.sends}</td>
+                      <td className="px-5 py-3 text-right text-sm font-bold" style={{ color: c.opens > 0 ? "var(--admin-warning)" : "var(--admin-text-faint)" }}>{c.opens}</td>
+                      <td className="px-5 py-3 text-right text-xs whitespace-nowrap" style={{ color: "var(--admin-text-muted)" }}>{fmtUnixDate(c.last_sent)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {filteredContacts.length > 100 && (
-                <p className="px-5 py-3 text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>Showing the first 100 of {filteredContacts.length}.</p>
+                <p className="px-5 py-3 text-xs" style={{ color: "var(--admin-text-faint)" }}>Showing the first 100 of {filteredContacts.length}.</p>
               )}
             </div>
           )}
@@ -685,32 +685,32 @@ export default function AnalyticsClient() {
 
       {tab === "geo" && (
         <div style={card} className="overflow-hidden">
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Opens by Location</p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+            <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Opens by Location</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
               From each contact&apos;s city/state on file, not IP geolocation.
             </p>
           </div>
           {allLocations.length === 0 ? (
-            <div className="py-12 text-center text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No location data for this window.</div>
+            <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>No location data for this window.</div>
           ) : (
             <table className="w-full">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Location</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Opens</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>Share</th>
+                <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Location</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Opens</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Share</th>
                 </tr>
               </thead>
               <tbody>
                 {allLocations.map((l, i) => (
-                  <tr key={`${l.city}-${l.state}`} style={{ borderBottom: i < allLocations.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-                    <td className="px-5 py-3 text-sm flex items-center gap-2" style={{ color: "rgba(255,255,255,0.75)" }}>
-                      <MapPin size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
+                  <tr key={`${l.city}-${l.state}`} style={{ borderBottom: i < allLocations.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
+                    <td className="px-5 py-3 text-sm flex items-center gap-2" style={{ color: "var(--admin-text)" }}>
+                      <MapPin size={12} style={{ color: "var(--admin-text-faint)" }} />
                       {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
                     </td>
-                    <td className="px-5 py-3 text-right text-sm font-bold text-white">{l.count}</td>
-                    <td className="px-5 py-3 text-right text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>{Math.round((l.count / locationsTotal) * 100)}%</td>
+                    <td className="px-5 py-3 text-right text-sm font-bold text-(--admin-text)">{l.count}</td>
+                    <td className="px-5 py-3 text-right text-sm" style={{ color: "var(--admin-text-muted)" }}>{Math.round((l.count / locationsTotal) * 100)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -721,11 +721,11 @@ export default function AnalyticsClient() {
 
       {tab === "replies" && (
         <div className="mx-auto max-w-md rounded-2xl p-10 text-center" style={card}>
-          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "rgba(230,57,70,0.12)" }}>
-            <Reply size={22} style={{ color: "#f87171" }} strokeWidth={1.75} />
+          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--admin-accent-soft)" }}>
+            <Reply size={22} style={{ color: "var(--admin-accent-text)" }} strokeWidth={1.75} />
           </div>
-          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Reply reports — coming with Inbox</p>
-          <p className="text-xs mt-2 leading-5" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Reply reports — coming with Inbox</p>
+          <p className="text-xs mt-2 leading-5" style={{ color: "var(--admin-text-muted)" }}>
             This depends on replies actually being pulled into the app (see the Inbox page). Once that exists, reply rate and reply volume land here.
           </p>
         </div>

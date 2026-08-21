@@ -28,26 +28,19 @@ export default async function AdminPage() {
   const campaignCount = Number(campaignRes.rows[0]?.count ?? 0);
   const templateCount = Number(templateRes.rows[0]?.count ?? 0);
   const recentCampaigns = recentRes.rows as unknown as { id: number; subject: string; recipient_count: number; status: string; target_list: string | null; sent_at: number }[];
-  const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER);
 
   return (
-    <div className="min-h-screen" style={{ background: "#0d0f12" }}>
+    <div className="min-h-screen" style={{ background: "var(--admin-bg)" }}>
       <Sidebar active="dashboard" />
 
       <div className="lg:ml-56">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14"
-          style={{ background: "#0d0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14 border-b border-(--admin-border)"
+          style={{ background: "var(--admin-bg)" }}
         >
-          <p className="text-sm font-semibold text-white/60">Dashboard</p>
+          <p className="text-sm font-semibold text-(--admin-text-secondary)">Dashboard</p>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: smtpConfigured ? "rgba(22,163,74,0.12)" : "rgba(230,57,70,0.12)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: smtpConfigured ? "#16a34a" : "#e63946" }} />
-              <span className="text-xs font-medium" style={{ color: smtpConfigured ? "#4ade80" : "#f87171" }}>
-                {smtpConfigured ? "SMTP active" : "SMTP not set"}
-              </span>
-            </div>
             <LogoutButton />
           </div>
         </header>
@@ -57,32 +50,32 @@ export default async function AdminPage() {
           {/* Action cards row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-7">
             {/* New Campaign */}
-            <div className="relative rounded-2xl p-6 overflow-hidden" style={{ background: "linear-gradient(135deg, #1a1d23 0%, #12151a 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div className="absolute -right-4 -top-4 w-28 h-28 rounded-full opacity-10" style={{ background: "var(--color-red)", filter: "blur(20px)" }} />
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Quick Action</p>
-              <h3 className="text-base font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>
+            <div className="relative rounded-2xl p-6 overflow-hidden border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
+              <div className="absolute -right-4 -top-4 w-28 h-28 rounded-full opacity-10" style={{ background: "var(--admin-accent)", filter: "blur(20px)" }} />
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-(--admin-text-muted)">Quick Action</p>
+              <h3 className="text-base font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>
                 Launch a Campaign
               </h3>
-              <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs mb-5 text-(--admin-text-muted)">
                 Write, preview and send to your full contact list in minutes.
               </p>
               <Link
                 href={`${BASE}/campaigns`}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white transition-all hover:scale-[1.03]"
-                style={{ background: "var(--color-red)", boxShadow: "0 4px 20px rgba(230,57,70,0.35)" }}
+                style={{ background: "var(--admin-accent)", boxShadow: "0 4px 20px rgba(99,102,241,0.35)" }}
               >
                 <Plus size={13} /> New Campaign
               </Link>
             </div>
 
             {/* Templates */}
-            <div className="relative rounded-2xl p-6 overflow-hidden" style={{ background: "linear-gradient(135deg, #1a1d23 0%, #12151a 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="relative rounded-2xl p-6 overflow-hidden border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
               <div className="absolute -right-4 -top-4 w-28 h-28 rounded-full opacity-10" style={{ background: "#7c3aed", filter: "blur(20px)" }} />
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Templates</p>
-              <h3 className="text-base font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-(--admin-text-muted)">Templates</p>
+              <h3 className="text-base font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>
                 Email Templates
               </h3>
-              <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs mb-5 text-(--admin-text-muted)">
                 Build reusable templates with personalization variables.
               </p>
               <Link
@@ -95,13 +88,13 @@ export default async function AdminPage() {
             </div>
 
             {/* Contacts */}
-            <div className="relative rounded-2xl p-6 overflow-hidden" style={{ background: "linear-gradient(135deg, #1a1d23 0%, #12151a 100%)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div className="relative rounded-2xl p-6 overflow-hidden border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
               <div className="absolute -right-4 -top-4 w-28 h-28 rounded-full opacity-10" style={{ background: "#0284c7", filter: "blur(20px)" }} />
-              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Contacts</p>
-              <h3 className="text-base font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2 text-(--admin-text-muted)">Contacts</p>
+              <h3 className="text-base font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>
                 Manage Contacts
               </h3>
-              <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs mb-5 text-(--admin-text-muted)">
                 Add, import, or remove contacts from your email list.
               </p>
               <Link
@@ -117,13 +110,13 @@ export default async function AdminPage() {
           {/* Stat row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
             {[
-              { label: "Total Contacts",    value: contactCount,  change: null,   color: "#e63946", dim: "rgba(230,57,70,0.12)" },
-              { label: "Campaigns Sent",    value: campaignCount, change: null,   color: "#4ade80", dim: "rgba(74,222,128,0.1)" },
-              { label: "Email Templates",   value: templateCount, change: null,   color: "#c4b5fd", dim: "rgba(196,181,253,0.1)" },
+              { label: "Total Contacts",    value: contactCount,  color: "var(--admin-accent)",  dim: "var(--admin-accent-soft)" },
+              { label: "Campaigns Sent",    value: campaignCount, color: "var(--admin-success)", dim: "var(--admin-success-soft)" },
+              { label: "Email Templates",   value: templateCount, color: "#c4b5fd", dim: "rgba(196,181,253,0.1)" },
             ].map(({ label, value, color, dim }) => (
-              <div key={label} className="rounded-2xl px-5 py-5" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={label} className="rounded-2xl px-5 py-5 border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+                  <p className="text-xs font-medium text-(--admin-text-muted)">{label}</p>
                   <div className="w-7 h-7 rounded-lg" style={{ background: dim }} />
                 </div>
                 <p className="text-3xl font-black" style={{ fontFamily: "var(--font-heading)", color }}>{value}</p>
@@ -132,25 +125,25 @@ export default async function AdminPage() {
           </div>
 
           {/* Campaign table */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <h2 className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Latest Campaigns</h2>
-              <Link href={`${BASE}/campaigns`} className="flex items-center gap-1 text-xs font-semibold transition-opacity hover:opacity-70" style={{ color: "var(--color-red)" }}>
+          <div className="rounded-2xl overflow-hidden border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-(--admin-border)">
+              <h2 className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Latest Campaigns</h2>
+              <Link href={`${BASE}/campaigns`} className="flex items-center gap-1 text-xs font-semibold text-(--admin-accent) transition-opacity hover:opacity-70">
                 New campaign <ArrowUpRight size={12} />
               </Link>
             </div>
 
             {recentCampaigns.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(230,57,70,0.1)" }}>
-                  <Send size={20} style={{ color: "var(--color-red)" }} strokeWidth={1.5} />
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--admin-accent-soft)" }}>
+                  <Send size={20} className="text-(--admin-accent)" strokeWidth={1.5} />
                 </div>
-                <p className="text-sm font-semibold text-white mb-1">No campaigns yet</p>
-                <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.35)" }}>Send your first campaign to get started.</p>
+                <p className="text-sm font-semibold text-(--admin-text) mb-1">No campaigns yet</p>
+                <p className="text-xs mb-5 text-(--admin-text-muted)">Send your first campaign to get started.</p>
                 <Link
                   href={`${BASE}/campaigns`}
                   className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-xs font-bold text-white"
-                  style={{ background: "var(--color-red)" }}
+                  style={{ background: "var(--admin-accent)" }}
                 >
                   <Plus size={12} /> New Campaign
                 </Link>
@@ -159,9 +152,9 @@ export default async function AdminPage() {
               <div className="overflow-x-auto">
               <table className="w-full min-w-[480px]">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <tr className="border-b border-(--admin-border)">
                     {["Name", "Status", "List", "Recipients", "Date"].map((h) => (
-                      <th key={h} className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.25)" }}>
+                      <th key={h} className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-(--admin-text-faint)">
                         {h}
                       </th>
                     ))}
@@ -171,35 +164,34 @@ export default async function AdminPage() {
                   {recentCampaigns.map((c, i) => (
                     <tr
                       key={c.id}
-                      className="transition-colors hover:bg-white/2"
-                      style={{ borderBottom: i < recentCampaigns.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                      className={`transition-colors hover:bg-(--admin-hover-bg) ${i < recentCampaigns.length - 1 ? "border-b border-(--admin-border)" : ""}`}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(230,57,70,0.1)" }}>
-                            <Send size={13} style={{ color: "var(--color-red)" }} strokeWidth={1.75} />
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--admin-accent-soft)" }}>
+                            <Send size={13} className="text-(--admin-accent)" strokeWidth={1.75} />
                           </div>
-                          <p className="text-sm font-medium text-white truncate max-w-xs">{c.subject}</p>
+                          <p className="text-sm font-medium text-(--admin-text) truncate max-w-xs">{c.subject}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)" }}>
                           {c.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {c.target_list ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc" }}>
+                          <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}>
                             {c.target_list}
                           </span>
                         ) : (
-                          <span className="text-white/30 text-xs">—</span>
+                          <span className="text-(--admin-text-faint) text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                      <td className="px-6 py-4 text-sm text-(--admin-text-secondary)">
                         {c.recipient_count}
                       </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      <td className="px-6 py-4 text-sm text-(--admin-text-muted)">
                         {formatDate(c.sent_at)}
                       </td>
                     </tr>

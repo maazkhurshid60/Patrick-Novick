@@ -10,7 +10,7 @@ export default function SpreadsheetPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0d0f12", overflowX: "hidden" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--admin-bg)", overflowX: "hidden" }}>
       <div className={isSidebarCollapsed ? "hidden lg:hidden" : ""}>
         <Sidebar active="spreadsheet" />
       </div>
@@ -18,17 +18,17 @@ export default function SpreadsheetPage() {
         <header className={`sticky top-0 z-20 flex items-center justify-between pr-4 h-14 transition-all duration-200 shrink-0 ${
           isSidebarCollapsed ? "pl-4 lg:px-8" : "pl-16 lg:px-8"
         }`}
-          style={{ background: "#0d0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          style={{ background: "var(--admin-bg)", borderBottom: "1px solid var(--admin-border)" }}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/5 transition-all cursor-pointer select-none"
-              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-(--admin-hover-bg) transition-all cursor-pointer select-none"
+              style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)", background: "var(--admin-surface-2)" }}
             >
               {isSidebarCollapsed ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
               {isSidebarCollapsed ? "Show Sidebar" : "Maximize"}
             </button>
-            <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Spreadsheet</p>
+            <p className="text-sm font-semibold" style={{ color: "var(--admin-text-secondary)" }}>Spreadsheet</p>
           </div>
           <LogoutButton />
         </header>

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState, useEffect, type ComponentType } from "react";
 import {
   ExternalLink, BarChart2, Mail, Users, Layout, Activity, Menu, X, UserCog,
-  Inbox, ChevronDown,
+  Inbox, ChevronDown, Sun, Moon,
 } from "lucide-react";
+import { useAdminTheme } from "./ThemeProvider";
 
 const BASE = "/bd825db8c738";
 
@@ -61,6 +62,7 @@ export default function Sidebar({ active }: { active: string }) {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<{ username: string; role: string } | null>(null);
   const close = () => setOpen(false);
+  const { theme, toggle: toggleTheme } = useAdminTheme();
 
   // A group starts expanded when the current page lives inside it, so the
   // active link is never hidden behind a collapsed section on load.
@@ -104,8 +106,7 @@ export default function Sidebar({ active }: { active: string }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="lg:hidden fixed top-0 left-0 z-30 h-14 w-14 flex items-center justify-center transition-colors hover:bg-white/5"
-        style={{ color: "rgba(255,255,255,0.6)" }}
+        className="lg:hidden fixed top-0 left-0 z-30 h-14 w-14 flex items-center justify-center text-(--admin-text-secondary) transition-colors hover:bg-(--admin-hover-bg)"
       >
         <Menu size={20} />
       </button>
@@ -114,38 +115,37 @@ export default function Sidebar({ active }: { active: string }) {
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-40"
-          style={{ background: "rgba(0,0,0,0.6)" }}
+          style={{ background: "var(--admin-scrim)" }}
           onClick={close}
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-56 flex flex-col z-50 transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
-        style={{ background: "#0d0f12", borderRight: "1px solid rgba(255,255,255,0.06)" }}
+        className={`fixed top-0 left-0 h-full w-56 flex flex-col z-50 border-r border-(--admin-border) transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ background: "var(--admin-bg)" }}
       >
         {/* Close button (mobile only) */}
         <button
           onClick={close}
           aria-label="Close menu"
-          className="lg:hidden absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5"
-          style={{ color: "rgba(255,255,255,0.5)" }}
+          className="lg:hidden absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center text-(--admin-text-muted) transition-colors hover:bg-(--admin-hover-bg)"
         >
           <X size={16} />
         </button>
 
         {/* Logo */}
-        <div className="px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="px-5 py-5 border-b border-(--admin-border)">
           <div className="flex items-center gap-1 mb-0.5">
-            <span className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Patrick</span>
-            <span className="text-sm font-bold" style={{ color: "var(--color-red)" }}>.</span>
-            <span className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Novick</span>
+            <span className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Patrick</span>
+            <span className="text-sm font-bold" style={{ color: "var(--admin-accent)" }}>.</span>
+            <span className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Novick</span>
           </div>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>Admin Panel</p>
+          <p className="text-xs text-(--admin-text-faint)">Admin Panel</p>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-5 flex flex-col gap-0.5 overflow-y-auto">
-          <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: "rgba(255,255,255,0.18)" }}>
+          <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3 text-(--admin-text-faint)">
             Application
           </p>
 
@@ -158,10 +158,14 @@ export default function Sidebar({ active }: { active: string }) {
                   key={entry.key}
                   href={entry.href}
                   onClick={handleLinkClick}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? "" : "hover:bg-white/5"}`}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    isActive
+                      ? ""
+                      : "text-(--admin-text-muted) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
+                  }`}
                   style={{
-                    background: isActive ? "rgba(230,57,70,0.12)" : undefined,
-                    color: isActive ? "#f87171" : "rgba(255,255,255,0.38)",
+                    background: isActive ? "var(--admin-accent-soft)" : undefined,
+                    color: isActive ? "var(--admin-accent-text)" : undefined,
                   }}
                 >
                   <Icon size={15} strokeWidth={1.75} />
@@ -169,7 +173,7 @@ export default function Sidebar({ active }: { active: string }) {
                   {entry.badge && (
                     <span
                       className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
+                      style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}
                     >
                       {entry.badge}
                     </span>
@@ -190,8 +194,12 @@ export default function Sidebar({ active }: { active: string }) {
                 <button
                   type="button"
                   onClick={() => toggleGroup(entry.key)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${isGroupActive ? "" : "hover:bg-white/5"}`}
-                  style={{ color: isGroupActive ? "#f87171" : "rgba(255,255,255,0.38)" }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    isGroupActive
+                      ? ""
+                      : "text-(--admin-text-muted) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
+                  }`}
+                  style={{ color: isGroupActive ? "var(--admin-accent-text)" : undefined }}
                   aria-expanded={isOpen}
                 >
                   <GroupIcon size={15} strokeWidth={1.75} />
@@ -207,7 +215,7 @@ export default function Sidebar({ active }: { active: string }) {
                   />
                 </button>
                 {isOpen && (
-                  <div className="ml-4 pl-3 flex flex-col gap-0.5" style={{ borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="ml-4 pl-3 flex flex-col gap-0.5 border-l border-(--admin-border)">
                     {items.map((item) => {
                       const isActive = active === item.key;
                       return (
@@ -215,10 +223,14 @@ export default function Sidebar({ active }: { active: string }) {
                           key={item.key}
                           href={item.href}
                           onClick={handleLinkClick}
-                          className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${isActive ? "" : "hover:bg-white/5"}`}
+                          className={`block px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                            isActive
+                              ? ""
+                              : "text-(--admin-text-faint) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
+                          }`}
                           style={{
-                            background: isActive ? "rgba(230,57,70,0.12)" : undefined,
-                            color: isActive ? "#f87171" : "rgba(255,255,255,0.32)",
+                            background: isActive ? "var(--admin-accent-soft)" : undefined,
+                            color: isActive ? "var(--admin-accent-text)" : undefined,
                           }}
                         >
                           {item.label}
@@ -231,31 +243,42 @@ export default function Sidebar({ active }: { active: string }) {
             );
           })}
 
-          <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3" style={{ color: "rgba(255,255,255,0.18)" }}>
+          <div className="mt-4 pt-4 border-t border-(--admin-border)">
+            <p className="text-xs font-semibold uppercase tracking-widest px-3 mb-3 text-(--admin-text-faint)">
               Others
             </p>
             <Link
               href="/"
               onClick={handleLinkClick}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/5"
-              style={{ color: "rgba(255,255,255,0.38)" }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--admin-text-muted) transition-all hover:bg-(--admin-hover-bg)"
             >
               <ExternalLink size={15} strokeWidth={1.75} />
               View Site
             </Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-(--admin-text-muted) transition-all hover:bg-(--admin-hover-bg)"
+            >
+              {theme === "dark" ? (
+                <Sun size={15} strokeWidth={1.75} />
+              ) : (
+                <Moon size={15} strokeWidth={1.75} />
+              )}
+              {theme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
           </div>
         </nav>
 
         {/* User badge */}
-        <div className="px-4 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.04)" }}>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "var(--color-red)", color: "#fff" }}>
+        <div className="px-4 py-4 border-t border-(--admin-border)">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-xl" style={{ background: "var(--admin-surface-2)" }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "var(--admin-accent)", color: "#fff" }}>
               {(me?.username?.[0] ?? "P").toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-semibold text-white truncate">{me?.username ?? "Patrick Novick"}</p>
-              <p className="text-xs truncate capitalize" style={{ color: "rgba(255,255,255,0.3)" }}>{me?.role ?? "Admin"}</p>
+              <p className="text-xs font-semibold text-(--admin-text) truncate">{me?.username ?? "Patrick Novick"}</p>
+              <p className="text-xs truncate capitalize text-(--admin-text-muted)">{me?.role ?? "Admin"}</p>
             </div>
           </div>
         </div>

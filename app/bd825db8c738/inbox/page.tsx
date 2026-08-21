@@ -19,30 +19,30 @@ const ACTIONS: { icon: typeof Reply; label: string }[] = [
    reorg. */
 export default function InboxPage() {
   return (
-    <div className="min-h-screen" style={{ background: "#0d0f12" }}>
+    <div className="min-h-screen" style={{ background: "var(--admin-bg)" }}>
       <Sidebar active="inbox" />
       <div className="lg:ml-56">
         <header
           className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14"
-          style={{ background: "#0d0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+          style={{ background: "var(--admin-bg)", borderBottom: "1px solid var(--admin-border)" }}
         >
-          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Inbox</p>
+          <p className="text-sm font-semibold" style={{ color: "var(--admin-text-secondary)" }}>Inbox</p>
           <LogoutButton />
         </header>
 
         <main className="px-4 sm:px-6 lg:px-8 py-7">
           <div
             className="mx-auto max-w-2xl rounded-2xl p-10 text-center"
-            style={{ background: "#14161b", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}
           >
             <div
               className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full"
-              style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}
+              style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}
             >
               <InboxIcon size={22} strokeWidth={1.75} />
             </div>
-            <h1 className="text-base font-semibold text-white">Reply inbox — coming in the next phase</h1>
-            <p className="mt-2 text-sm leading-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <h1 className="text-base font-semibold text-(--admin-text)">Reply inbox — coming in the next phase</h1>
+            <p className="mt-2 text-sm leading-6" style={{ color: "var(--admin-text-muted)" }}>
               Replies to your campaigns will land here instead of only in your
               email client, sorted so you can act on interest without leaving
               the app.
@@ -53,16 +53,16 @@ export default function InboxPage() {
                 <span
                   key={c}
                   className="rounded-full px-3 py-1 text-xs font-medium"
-                  style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.4)" }}
+                  style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}
                 >
                   {c}
                 </span>
               ))}
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 pt-6" style={{ borderTop: "1px solid var(--admin-border)" }}>
               {ACTIONS.map(({ icon: Icon, label }) => (
-                <span key={label} className="flex items-center gap-1.5 text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <span key={label} className="flex items-center gap-1.5 text-xs" style={{ color: "var(--admin-text-faint)" }}>
                   <Icon size={13} strokeWidth={1.75} />
                   {label}
                 </span>

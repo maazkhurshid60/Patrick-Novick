@@ -168,8 +168,8 @@ const GridCell = memo(function GridCell({
 
   const cellStyle: React.CSSProperties = {
     width: colW,
-    background: isFocused ? "rgba(59,130,246,0.08)" : isDirty ? "rgba(245,158,11,0.02)" : "transparent",
-    color: "#e5e7eb",
+    background: isFocused ? "rgba(59,130,246,0.08)" : isDirty ? "var(--admin-warning-soft)" : "transparent",
+    color: "var(--admin-text)",
     border: isFocused
       ? "2px solid #3b82f6"
       : "2px solid transparent",
@@ -190,11 +190,11 @@ const GridCell = memo(function GridCell({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={(e) => onKeyDown(e, r, c)}
-          style={{ ...cellStyle, color: "#fff", cursor: saving ? "not-allowed" : "pointer", paddingRight: saving ? "28px" : "8px" }}
+          style={{ ...cellStyle, color: "var(--admin-text)", cursor: saving ? "not-allowed" : "pointer", paddingRight: saving ? "28px" : "8px" }}
         >
-          <option value="" style={{ background: "#16181e" }}>— None —</option>
+          <option value="" style={{ background: "var(--admin-surface)" }}>— None —</option>
           {lists?.map((l) => (
-            <option key={l.id} value={String(l.id)} style={{ background: "#16181e" }}>
+            <option key={l.id} value={String(l.id)} style={{ background: "var(--admin-surface)" }}>
               {l.name}
             </option>
           ))}
@@ -218,11 +218,11 @@ const GridCell = memo(function GridCell({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={(e) => onKeyDown(e, r, c)}
-          style={{ ...cellStyle, color: "#fff", cursor: "pointer" }}
+          style={{ ...cellStyle, color: "var(--admin-text)", cursor: "pointer" }}
         >
-          <option value="active" style={{ background: "#16181e" }}>active</option>
-          <option value="unsubscribed" style={{ background: "#16181e" }}>unsubscribed</option>
-          <option value="invalid" style={{ background: "#16181e" }}>invalid</option>
+          <option value="active" style={{ background: "var(--admin-surface)" }}>active</option>
+          <option value="unsubscribed" style={{ background: "var(--admin-surface)" }}>unsubscribed</option>
+          <option value="invalid" style={{ background: "var(--admin-surface)" }}>invalid</option>
         </select>
         {isDirty && (
           <div style={{
@@ -233,7 +233,7 @@ const GridCell = memo(function GridCell({
             height: 0,
             borderStyle: "solid",
             borderWidth: "0 6px 6px 0",
-            borderColor: `transparent #f59e0b transparent transparent`,
+            borderColor: `transparent var(--admin-warning) transparent transparent`,
             pointerEvents: "none"
           }} />
         )}
@@ -262,7 +262,7 @@ const GridCell = memo(function GridCell({
           height: 0,
           borderStyle: "solid",
           borderWidth: "0 6px 6px 0",
-          borderColor: `transparent #f59e0b transparent transparent`,
+          borderColor: `transparent var(--admin-warning) transparent transparent`,
           pointerEvents: "none"
         }} />
       )}
@@ -886,29 +886,29 @@ export default function SpreadsheetClient() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">
         <div>
-          <p className="text-lg font-black text-white" style={{ fontFamily: "var(--font-heading)" }}>
-            {selectedName ?? "All contacts"} <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>· {filtered.length}</span>
+          <p className="text-lg font-black text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
+            {selectedName ?? "All contacts"} <span className="text-sm font-medium" style={{ color: "var(--admin-text-muted)" }}>· {filtered.length}</span>
           </p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Click a cell to edit · Tab / Enter / arrows to move · <span style={{ color: "rgba(255,255,255,0.45)" }}>click a header to sort</span> · <span style={{ color: "rgba(255,255,255,0.45)" }}>drag a header to reorder (a blue line shows where it lands)</span> · Save when done.
+          <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
+            Click a cell to edit · Tab / Enter / arrows to move · <span style={{ color: "var(--admin-text-muted)" }}>click a header to sort</span> · <span style={{ color: "var(--admin-text-muted)" }}>drag a header to reorder (a blue line shows where it lands)</span> · Save when done.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
-            <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }} />
+            <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-faint)" }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem 0.45rem 2rem", outline: "none", width: 200 }} />
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.8rem", padding: "0.45rem 0.7rem 0.45rem 2rem", outline: "none", width: 200 }} />
           </div>
           <select value={listFilter} onChange={(e) => { const v = e.target.value; setListFilter(v === "all" ? "all" : v === "none" ? "none" : Number(v)); }}
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.625rem", color: "#fff", fontSize: "0.8rem", padding: "0.45rem 0.7rem", outline: "none", cursor: "pointer", maxWidth: 220 }}>
-            <option value="all" style={{ background: "#16181e" }}>All contacts</option>
-            <option value="none" style={{ background: "#16181e" }}>— No list —</option>
-            {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
+            style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.625rem", color: "var(--admin-text)", fontSize: "0.8rem", padding: "0.45rem 0.7rem", outline: "none", cursor: "pointer", maxWidth: 220 }}>
+            <option value="all" style={{ background: "var(--admin-surface)" }}>All contacts</option>
+            <option value="none" style={{ background: "var(--admin-surface)" }}>— No list —</option>
+            {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>)}
           </select>
           {listFilter === "none" && noListCount > 0 && (
             <button onClick={() => setShowBulkDeleteNoList(true)} title="Permanently delete every contact that isn't in any list"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
-              style={{ background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}>
+              style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid rgba(239,68,68,0.3)" }}>
               <Trash2 size={14} /> Delete all with no list ({noListCount})
             </button>
           )}
@@ -919,14 +919,14 @@ export default function SpreadsheetClient() {
             renderTrigger={(open, busy) => (
               <button onClick={open} disabled={busy} title="Upload a CSV/Excel file and map its columns to contact fields"
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer disabled:opacity-50"
-                style={{ background: "rgba(165,180,252,0.12)", color: "#a5b4fc", border: "1px solid rgba(165,180,252,0.25)" }}>
+                style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(165,180,252,0.25)" }}>
                 {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} Import
               </button>
             )}
           />
           <button onClick={openExport} title="Export contacts to CSV — choose a list or all contacts"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
-            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
             <Download size={14} /> Export
           </button>
           <button onClick={openQuickAdd} title="Pick a list, then add a blank row at the top ready to edit"
@@ -936,7 +936,7 @@ export default function SpreadsheetClient() {
           </button>
           <button onClick={addRow} title="Add a row and choose which list it goes to"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] cursor-pointer"
-            style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+            style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)", border: "1px solid rgba(34,197,94,0.2)" }}>
             <Plus size={14} /> Add row
           </button>
         </div>
@@ -949,18 +949,18 @@ export default function SpreadsheetClient() {
       )}
 
       {/* Grid */}
-      <div ref={gridRef} className="spreadsheet-grid" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "#14161b", width: "100%", maxWidth: "100%" }}>
+      <div ref={gridRef} className="spreadsheet-grid" style={{ border: "1px solid var(--admin-border)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "var(--admin-surface)", width: "100%", maxWidth: "100%" }}>
         {loading ? (
-          <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--admin-text-muted)" }}>
             <Loader2 size={14} className="animate-spin" /> Loading contacts…
           </div>
         ) : pageRows.length === 0 ? (
-          <div className="py-20 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No contacts here.</div>
+          <div className="py-20 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>No contacts here.</div>
         ) : (
           <table style={{ borderCollapse: "separate", borderSpacing: 0, fontSize: "0.78rem", width: "max-content" }}>
             <thead>
               <tr>
-                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#1e2128", color: "rgba(255,255,255,0.4)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.15)", minWidth: 44 }}>#</th>
+                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "var(--admin-surface)", color: "var(--admin-text-muted)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", minWidth: 44 }}>#</th>
                 {orderedCols.map((col) => {
                   const active = sortKey === col.key;
                   const isDragging = draggingKey === col.key;
@@ -978,10 +978,10 @@ export default function SpreadsheetClient() {
                       title="Click to sort · drag to reorder"
                       style={{
                         position: "sticky", top: 0, zIndex: 2,
-                        background: side ? "rgba(59,130,246,0.18)" : active ? "#242832" : "#1e2128",
-                        color: active ? "#fff" : "rgba(255,255,255,0.5)",
+                        background: side ? "rgba(59,130,246,0.18)" : active ? "var(--admin-surface)" : "var(--admin-surface)",
+                        color: active ? "var(--admin-text)" : "var(--admin-text-secondary)",
                         padding: "8px 10px", fontWeight: 600, textAlign: "left",
-                        borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)",
+                        borderBottom: "2px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)",
                         minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
                         opacity: isDragging ? 0.4 : 1,
                         boxShadow: side === "left" ? `inset ${dropLine}` : side === "right" ? `inset -2px 0 0 #3b82f6` : "none",
@@ -999,13 +999,13 @@ export default function SpreadsheetClient() {
             <tbody>
               {pageRows.map((row, r) => {
                 const isNew = newRowIds.has(row.id);
-                const rowBg = isNew ? "#14251b" : r % 2 === 0 ? "#14161b" : "#171a20";
+                const rowBg = isNew ? "var(--admin-surface)" : r % 2 === 0 ? "var(--admin-surface)" : "var(--admin-surface)";
                 return (
-                <tr key={row.id} style={{ background: rowBg, boxShadow: isNew ? "inset 3px 0 0 #22c55e" : "none" }}>
+                <tr key={row.id} style={{ background: rowBg, boxShadow: isNew ? "inset 3px 0 0 var(--admin-success)" : "none" }}>
                   {(() => {
                     const hasPendingChangesInRow = Object.keys(pendingEdits).some((k) => k.startsWith(`${row.id}-`));
                     return (
-                      <td className="group" style={{ position: "sticky", left: 0, zIndex: 1, background: isNew ? "#14251b" : "#171a20", color: "rgba(255,255,255,0.3)", padding: 0, textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.15)", fontVariantNumeric: "tabular-nums" }}>
+                      <td className="group" style={{ position: "sticky", left: 0, zIndex: 1, background: isNew ? "var(--admin-surface)" : "var(--admin-surface)", color: "var(--admin-text-faint)", padding: 0, textAlign: "right", borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", fontVariantNumeric: "tabular-nums" }}>
                         <div className="relative flex items-center justify-end w-[44px] h-[36px] px-[10px]">
                           {isNew && (
                             <span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-1.5 shrink-0 animate-pulse" title="Just added — fill it in and Save" />
@@ -1018,7 +1018,7 @@ export default function SpreadsheetClient() {
                           </span>
                           <button
                             onClick={() => deleteRow(row.id)}
-                            className="opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center text-red-400 hover:text-red-300 transition-all cursor-pointer bg-[#171a20]"
+                            className="opacity-0 group-hover:opacity-100 absolute inset-0 flex items-center justify-center text-red-400 hover:text-red-300 transition-all cursor-pointer bg-(--admin-surface)"
                             title="Delete Row"
                           >
                             <Trash2 size={13} />
@@ -1031,7 +1031,7 @@ export default function SpreadsheetClient() {
                     const ck = `${row.id}-${col.key}`;
                     const pendingValue = pendingEdits[ck];
                     return (
-                      <td key={col.key} style={{ padding: 0, borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+                      <td key={col.key} style={{ padding: 0, borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", position: "relative" }}>
                         <GridCell
                           rowId={row.id}
                           colKey={col.key}
@@ -1061,19 +1061,19 @@ export default function SpreadsheetClient() {
       {/* Pager */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 shrink-0">
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
             {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} of {filtered.length}
           </p>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5 cursor-pointer"
-              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-(--admin-hover-bg) cursor-pointer"
+              style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
               <ChevronLeft size={13} /> Prev
             </button>
-            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Page {currentPage} of {totalPages}</span>
+            <span className="text-xs font-semibold" style={{ color: "var(--admin-text-secondary)" }}>Page {currentPage} of {totalPages}</span>
             <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5 cursor-pointer"
-              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-(--admin-hover-bg) cursor-pointer"
+              style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
               Next <ChevronRight size={13} />
             </button>
           </div>
@@ -1084,8 +1084,8 @@ export default function SpreadsheetClient() {
       {Object.keys(pendingEdits).length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 px-4 py-3 rounded-xl shadow-2xl border transition-all duration-300 flex-wrap sm:flex-nowrap"
              style={{
-               background: "#1a1d23",
-               borderColor: "rgba(245,158,11,0.3)",
+               background: "var(--admin-surface)",
+               borderColor: "var(--admin-warning-soft)",
                width: "calc(100% - 32px)",
                maxWidth: "460px",
                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)"
@@ -1095,7 +1095,7 @@ export default function SpreadsheetClient() {
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               Unsaved changes ({Object.keys(pendingEdits).length})
             </p>
-            <p className="text-[0.7rem] text-slate-400 truncate">
+            <p className="text-[0.7rem] text-(--admin-text-muted) truncate">
               {Object.keys(pendingEdits).map(k => {
                 const [id, key] = k.split("-");
                 const contact = all.find(c => String(c.id) === id);
@@ -1105,7 +1105,7 @@ export default function SpreadsheetClient() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={discardChanges} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-white/5 cursor-pointer text-slate-400 disabled:opacity-40 select-none">
+            <button onClick={discardChanges} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:bg-(--admin-hover-bg) cursor-pointer text-(--admin-text-muted) disabled:opacity-40 select-none">
               Discard
             </button>
             <button onClick={saveChanges} disabled={saving} className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:opacity-50 select-none">
@@ -1118,47 +1118,47 @@ export default function SpreadsheetClient() {
 
       {/* Export Modal — choose which list to export (or all contacts) */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
           onKeyDown={(e) => { if (e.key === "Enter") confirmExport(); if (e.key === "Escape") setShowExportModal(false); }}>
-          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Download size={14} /> Export contacts</h3>
-            <p className="text-xs text-slate-400 mb-4">Export every contact, or only the members of a specific list.</p>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-1 flex items-center gap-1.5"><Download size={14} /> Export contacts</h3>
+            <p className="text-xs text-(--admin-text-muted) mb-4">Export every contact, or only the members of a specific list.</p>
 
-            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Export from</label>
+            <label className="text-[0.7rem] uppercase tracking-wide text-(--admin-text-faint) font-semibold">Export from</label>
             <select
               autoFocus
               value={exportListId}
               onChange={(e) => setExportListId(e.target.value === "all" ? "all" : Number(e.target.value))}
               className="w-full mt-1 mb-4 px-3 py-2 rounded-lg text-xs"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", outline: "none", cursor: "pointer" }}
             >
-              <option value="all" style={{ background: "#16181e" }}>All contacts</option>
+              <option value="all" style={{ background: "var(--admin-surface)" }}>All contacts</option>
               {lists.map((l) => (
-                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
               ))}
             </select>
 
-            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Format</label>
-            <div className="flex gap-1 mt-1 mb-1.5 p-1 rounded-lg" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <label className="text-[0.7rem] uppercase tracking-wide text-(--admin-text-faint) font-semibold">Format</label>
+            <div className="flex gap-1 mt-1 mb-1.5 p-1 rounded-lg" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
               {(["csv", "xlsx"] as const).map((f) => (
                 <button key={f} type="button" onClick={() => setExportFormat(f)}
                   className="flex-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors cursor-pointer"
                   style={exportFormat === f
                     ? { background: "rgba(96,165,250,0.18)", color: "#93c5fd" }
-                    : { background: "transparent", color: "rgba(255,255,255,0.5)" }}>
+                    : { background: "transparent", color: "var(--admin-text-secondary)" }}>
                   {f === "csv" ? "CSV" : "Excel (.xlsx)"}
                 </button>
               ))}
             </div>
-            <p className="text-[0.7rem] text-slate-500 mb-5">
+            <p className="text-[0.7rem] text-(--admin-text-faint) mb-5">
               {exportFormat === "xlsx"
                 ? "Excel keeps ZIP codes as text, so leading zeros (02886) are preserved."
                 : "CSV opens anywhere; ZIP codes are written as text to keep leading zeros."}
             </p>
 
             <div className="flex justify-end gap-2 text-xs font-bold">
-              <button onClick={() => setShowExportModal(false)} disabled={exportBusy} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer disabled:opacity-50">Cancel</button>
-              <button onClick={confirmExport} disabled={exportBusy} className="px-4 py-1.5 rounded-lg bg-white/10 text-white hover:bg-white/15 cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
+              <button onClick={() => setShowExportModal(false)} disabled={exportBusy} className="px-3 py-1.5 rounded-lg text-(--admin-text-muted) hover:bg-(--admin-hover-bg) cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={confirmExport} disabled={exportBusy} className="px-4 py-1.5 rounded-lg bg-(--admin-hover-bg) text-(--admin-text) hover:bg-(--admin-hover-bg) cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
                 {exportBusy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download {exportFormat === "csv" ? "CSV" : "Excel"}
               </button>
             </div>
@@ -1168,28 +1168,28 @@ export default function SpreadsheetClient() {
 
       {/* Quick Add Modal — choose the destination list, then jump into editing */}
       {showQuickAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
           onKeyDown={(e) => { if (e.key === "Enter") confirmQuickAdd(); if (e.key === "Escape") setShowQuickAddModal(false); }}>
-          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(96,165,250,0.25)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-1.5"><Zap size={14} className="text-blue-400" /> Quick add contact</h3>
-            <p className="text-xs text-slate-400 mb-4">Which list should this new contact go into? A blank row will appear at the top, marked <span className="text-green-400 font-semibold">NEW</span>, ready to edit.</p>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "rgba(96,165,250,0.25)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-1 flex items-center gap-1.5"><Zap size={14} className="text-blue-400" /> Quick add contact</h3>
+            <p className="text-xs text-(--admin-text-muted) mb-4">Which list should this new contact go into? A blank row will appear at the top, marked <span className="text-green-400 font-semibold">NEW</span>, ready to edit.</p>
 
-            <label className="text-[0.7rem] uppercase tracking-wide text-slate-500 font-semibold">Add to list</label>
+            <label className="text-[0.7rem] uppercase tracking-wide text-(--admin-text-faint) font-semibold">Add to list</label>
             <select
               autoFocus
               value={quickAddListId}
               onChange={(e) => setQuickAddListId(e.target.value === "all" ? "all" : Number(e.target.value))}
               className="w-full mt-1 mb-5 px-3 py-2 rounded-lg text-xs"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", outline: "none", cursor: "pointer" }}
             >
-              <option value="all" style={{ background: "#16181e" }}>All Contacts (no specific list)</option>
+              <option value="all" style={{ background: "var(--admin-surface)" }}>All Contacts (no specific list)</option>
               {lists.map((l) => (
-                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
               ))}
             </select>
 
             <div className="flex justify-end gap-2 text-xs font-bold">
-              <button onClick={() => setShowQuickAddModal(false)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer">Cancel</button>
+              <button onClick={() => setShowQuickAddModal(false)} className="px-3 py-1.5 rounded-lg text-(--admin-text-muted) hover:bg-(--admin-hover-bg) cursor-pointer">Cancel</button>
               <button onClick={confirmQuickAdd} className="px-4 py-1.5 rounded-lg bg-blue-500 text-white hover:bg-blue-400 cursor-pointer flex items-center gap-1.5">
                 <Zap size={13} /> Add &amp; edit
               </button>
@@ -1200,27 +1200,27 @@ export default function SpreadsheetClient() {
 
       {/* Add Row Modal */}
       {showAddRowModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-3">Add Row to List</h3>
-            <p className="text-xs text-slate-400 mb-4">Choose which list this new contact should be added to:</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-3">Add Row to List</h3>
+            <p className="text-xs text-(--admin-text-muted) mb-4">Choose which list this new contact should be added to:</p>
             
             <select
               value={selectedAddListId}
               onChange={(e) => setSelectedAddListId(e.target.value === "all" ? "all" : Number(e.target.value))}
               className="w-full mb-5 px-3 py-2 rounded-lg text-xs"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", outline: "none", cursor: "pointer" }}
+              style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", color: "var(--admin-text)", outline: "none", cursor: "pointer" }}
             >
-              <option value="all" style={{ background: "#16181e" }}>All Contacts (No specific list)</option>
+              <option value="all" style={{ background: "var(--admin-surface)" }}>All Contacts (No specific list)</option>
               {lists.map((l) => (
-                <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
               ))}
             </select>
 
             <div className="flex justify-end gap-2 text-xs font-bold">
               <button
                 onClick={() => setShowAddRowModal(false)}
-                className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-(--admin-text-muted) hover:bg-(--admin-hover-bg) cursor-pointer"
               >
                 Cancel
               </button>
@@ -1237,27 +1237,27 @@ export default function SpreadsheetClient() {
 
       {/* Delete/Remove Row Modal */}
       {deleteContactInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-2">Delete or Remove Row</h3>
-            <p className="text-xs text-slate-300 mb-4">
-              You are about to delete <span className="font-semibold text-white">{deleteContactInfo.name}</span>.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-2">Delete or Remove Row</h3>
+            <p className="text-xs text-(--admin-text-secondary) mb-4">
+              You are about to delete <span className="font-semibold text-(--admin-text)">{deleteContactInfo.name}</span>.
             </p>
 
             {listFilter === "all" || listFilter === "none" ? (
-              <p className="text-xs text-slate-400 mb-5">
+              <p className="text-xs text-(--admin-text-muted) mb-5">
                 This will permanently delete the contact entirely from the database and remove them from all lists. This action cannot be undone.
               </p>
             ) : (
-              <p className="text-xs text-slate-400 mb-5">
-                Do you want to just remove them from the current list <span className="font-semibold text-white">"{selectedName}"</span>, or delete them entirely from the database?
+              <p className="text-xs text-(--admin-text-muted) mb-5">
+                Do you want to just remove them from the current list <span className="font-semibold text-(--admin-text)">"{selectedName}"</span>, or delete them entirely from the database?
               </p>
             )}
 
             <div className="flex justify-end gap-2 text-xs font-bold flex-wrap">
               <button
                 onClick={() => setDeleteContactInfo(null)}
-                className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-(--admin-text-muted) hover:bg-(--admin-hover-bg) cursor-pointer"
               >
                 Cancel
               </button>
@@ -1284,18 +1284,18 @@ export default function SpreadsheetClient() {
 
       {/* Bulk delete — every contact that isn't in any list */}
       {showBulkDeleteNoList && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
           onKeyDown={(e) => { if (e.key === "Escape") setShowBulkDeleteNoList(false); }}>
-          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(248,113,113,0.3)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5"><Trash2 size={14} className="text-red-400" /> Delete contacts with no list</h3>
-            <p className="text-xs text-slate-300 mb-2">
-              This permanently deletes all <span className="font-semibold text-white">{noListCount}</span> contact{noListCount === 1 ? "" : "s"} that aren&apos;t in any list.
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "var(--admin-danger-soft)", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-2 flex items-center gap-1.5"><Trash2 size={14} className="text-red-400" /> Delete contacts with no list</h3>
+            <p className="text-xs text-(--admin-text-secondary) mb-2">
+              This permanently deletes all <span className="font-semibold text-(--admin-text)">{noListCount}</span> contact{noListCount === 1 ? "" : "s"} that aren&apos;t in any list.
             </p>
-            <p className="text-xs text-slate-400 mb-5">
+            <p className="text-xs text-(--admin-text-muted) mb-5">
               They&apos;ll be removed from the database entirely and this cannot be undone. Contacts that belong to at least one list are not affected.
             </p>
             <div className="flex justify-end gap-2 text-xs font-bold">
-              <button onClick={() => setShowBulkDeleteNoList(false)} disabled={bulkDeleting} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5 cursor-pointer disabled:opacity-50">Cancel</button>
+              <button onClick={() => setShowBulkDeleteNoList(false)} disabled={bulkDeleting} className="px-3 py-1.5 rounded-lg text-(--admin-text-muted) hover:bg-(--admin-hover-bg) cursor-pointer disabled:opacity-50">Cancel</button>
               <button onClick={executeDeleteNoList} disabled={bulkDeleting} className="px-4 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400 cursor-pointer flex items-center gap-1.5 disabled:opacity-50">
                 {bulkDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />} Delete {noListCount} contact{noListCount === 1 ? "" : "s"}
               </button>

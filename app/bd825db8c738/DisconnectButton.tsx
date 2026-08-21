@@ -18,8 +18,7 @@ export default function DisconnectButton() {
     <button
       onClick={handleDisconnect}
       disabled={loading}
-      className="px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 hover:border-red-500 hover:text-red-500 disabled:opacity-50"
-      style={{ borderColor: "var(--color-border)", color: "var(--color-gray)" }}
+      className="px-5 py-2.5 rounded-full text-sm font-semibold border border-(--admin-border) text-(--admin-text-muted) transition-all duration-200 hover:border-red-500 hover:text-red-500 disabled:opacity-50"
     >
       {loading ? "Disconnecting…" : "Disconnect"}
     </button>

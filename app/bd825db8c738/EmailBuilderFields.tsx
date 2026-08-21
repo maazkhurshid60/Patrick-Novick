@@ -5,9 +5,9 @@ import { Upload, Loader2, X, Plus, Check } from "lucide-react";
 import { EmailBuilderInput, FooterSettings, buildMetroEmail } from "@/lib/emailBuilder";
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.55rem 0.85rem",
   fontSize: "0.82rem",
@@ -22,7 +22,7 @@ export function BField({ label, value, onChange, area, rows }: {
 }) {
   return (
     <div>
-      <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+      <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>{label}</p>
       {area ? (
         <textarea
           value={value}
@@ -60,15 +60,14 @@ export function ListsFields({ builder, setB }: BuilderProps) {
       {builder.lists.map((list, i) => (
         <div key={i} className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
               {i === 0 ? "List heading (optional)" : `List ${i + 1} heading (optional)`}
             </p>
             {builder.lists.length > 1 && (
               <button
                 type="button"
                 onClick={() => setB({ lists: builder.lists.filter((_, idx) => idx !== i) })}
-                className="flex items-center gap-1 text-xs transition-colors hover:text-white"
-                style={{ color: "rgba(255,255,255,0.4)" }}
+                className="flex items-center gap-1 text-xs text-(--admin-text-muted) transition-colors hover:text-(--admin-text)"
               >
                 <X size={12} /> Remove
               </button>
@@ -92,8 +91,8 @@ export function ListsFields({ builder, setB }: BuilderProps) {
       <button
         type="button"
         onClick={() => setB({ lists: [...builder.lists, { heading: "", items: [] }] })}
-        className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/5"
-        style={{ border: "1px dashed rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.6)" }}
+        className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-(--admin-hover-bg)"
+        style={{ border: "1px dashed var(--admin-border)", color: "var(--admin-text-secondary)" }}
       >
         <Plus size={13} /> Add another list
       </button>
@@ -109,17 +108,16 @@ export function ButtonsFields({ builder, setB }: BuilderProps) {
       {builder.buttons.map((btn, i) => (
         <div key={i}>
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
               {i === 0 ? "Button (blank = no button)" : `Button ${i + 1}`}
-              {i === 0 && <span style={{ color: "rgba(255,255,255,0.25)" }}> · gold</span>}
-              {i > 0 && <span style={{ color: "rgba(255,255,255,0.25)" }}> · navy</span>}
+              {i === 0 && <span style={{ color: "var(--admin-text-faint)" }}> · gold</span>}
+              {i > 0 && <span style={{ color: "var(--admin-text-faint)" }}> · navy</span>}
             </p>
             {builder.buttons.length > 1 && (
               <button
                 type="button"
                 onClick={() => setB({ buttons: builder.buttons.filter((_, idx) => idx !== i) })}
-                className="flex items-center gap-1 text-xs transition-colors hover:text-white"
-                style={{ color: "rgba(255,255,255,0.4)" }}
+                className="flex items-center gap-1 text-xs text-(--admin-text-muted) transition-colors hover:text-(--admin-text)"
               >
                 <X size={12} /> Remove
               </button>
@@ -144,8 +142,8 @@ export function ButtonsFields({ builder, setB }: BuilderProps) {
       <button
         type="button"
         onClick={() => setB({ buttons: [...builder.buttons, { label: "", href: "" }] })}
-        className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-white/5"
-        style={{ border: "1px dashed rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.6)" }}
+        className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all hover:bg-(--admin-hover-bg)"
+        style={{ border: "1px dashed var(--admin-border)", color: "var(--admin-text-secondary)" }}
       >
         <Plus size={13} /> Add another button
       </button>
@@ -241,7 +239,7 @@ export function ImageAndFooterFields({
     <>
       {/* Header / hero image — upload one or paste a URL */}
       <div>
-        <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Header / hero image (optional)</p>
+        <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Header / hero image (optional)</p>
         <div className="flex gap-2">
           <input
             value={builder.heroUrl}
@@ -250,8 +248,8 @@ export function ImageAndFooterFields({
             style={inputStyle}
           />
           <label
-            className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-white/5"
-            style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+            className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-(--admin-hover-bg)"
+            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
           >
             {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
             {uploading ? "Uploading…" : "Upload"}
@@ -264,32 +262,31 @@ export function ImageAndFooterFields({
             />
           </label>
         </div>
-        {uploadErr && <p className="text-xs mt-1" style={{ color: "#f87171" }}>{uploadErr}</p>}
+        {uploadErr && <p className="text-xs mt-1" style={{ color: "var(--admin-danger-text)" }}>{uploadErr}</p>}
         {builder.heroUrl && (
           <div className="mt-2 flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={builder.heroUrl} alt="Header preview" style={{ height: 44, width: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }} />
+            <img src={builder.heroUrl} alt="Header preview" style={{ height: 44, width: "auto", borderRadius: 6, border: "1px solid var(--admin-border)" }} />
             <button
               type="button"
               onClick={() => setB({ heroUrl: "" })}
-              className="flex items-center gap-1 text-xs transition-colors hover:text-white"
-              style={{ color: "rgba(255,255,255,0.4)" }}
+              className="flex items-center gap-1 text-xs text-(--admin-text-muted) transition-colors hover:text-(--admin-text)"
             >
               <X size={12} /> Remove
             </button>
           </div>
         )}
-        <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>
+        <p className="text-xs mt-1" style={{ color: "var(--admin-text-faint)" }}>
           Uploaded images are saved to your database and served from this app — no external host needed.
         </p>
       </div>
       <BField label="Inbox preview text (optional)" value={builder.previewText} onChange={(v) => setB({ previewText: v })} />
 
       {footer && (
-        <div className="mt-2 pt-4 flex flex-col gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="mt-2 pt-4 flex flex-col gap-3" style={{ borderTop: "1px solid var(--admin-border)" }}>
           <div>
-            <p className="text-sm font-bold text-white">Footer</p>
-            <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <p className="text-sm font-bold text-(--admin-text)">Footer</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
               Shared by every template — saving here updates it everywhere, not just this one.
             </p>
           </div>
@@ -315,7 +312,7 @@ export function ImageAndFooterFields({
 
           {/* Footer logo — upload/URL + where it sits */}
           <div>
-            <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Footer logo (optional)</p>
+            <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Footer logo (optional)</p>
             <div className="flex gap-2">
               <input
                 value={footer.logoUrl}
@@ -324,8 +321,8 @@ export function ImageAndFooterFields({
                 style={inputStyle}
               />
               <label
-                className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-white/5"
-                style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+                className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-(--admin-hover-bg)"
+                style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
               >
                 {logoUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                 {logoUploading ? "Uploading…" : "Upload"}
@@ -338,16 +335,15 @@ export function ImageAndFooterFields({
                 />
               </label>
             </div>
-            {logoUploadErr && <p className="text-xs mt-1" style={{ color: "#f87171" }}>{logoUploadErr}</p>}
+            {logoUploadErr && <p className="text-xs mt-1" style={{ color: "var(--admin-danger-text)" }}>{logoUploadErr}</p>}
             {footer.logoUrl && (
               <div className="mt-2 flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={footer.logoUrl} alt="Footer logo preview" style={{ height: 36, width: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }} />
+                <img src={footer.logoUrl} alt="Footer logo preview" style={{ height: 36, width: "auto", borderRadius: 6, border: "1px solid var(--admin-border)" }} />
                 <button
                   type="button"
                   onClick={() => setF({ logoUrl: "" })}
-                  className="flex items-center gap-1 text-xs transition-colors hover:text-white"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
+                  className="flex items-center gap-1 text-xs text-(--admin-text-muted) transition-colors hover:text-(--admin-text)"
                 >
                   <X size={12} /> Remove
                 </button>
@@ -356,7 +352,7 @@ export function ImageAndFooterFields({
 
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
-                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Position</p>
+                <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Position</p>
                 <div className="flex gap-2">
                   {(["top", "bottom"] as const).map((pos) => (
                     <button
@@ -365,8 +361,8 @@ export function ImageAndFooterFields({
                       onClick={() => setF({ logoPosition: pos })}
                       className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
                       style={footer.logoPosition === pos
-                        ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.3)" }
+                        : { background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                     >
                       {pos === "top" ? "Above signature" : "Below signature"}
                     </button>
@@ -374,7 +370,7 @@ export function ImageAndFooterFields({
                 </div>
               </div>
               <div>
-                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Alignment</p>
+                <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Alignment</p>
                 <div className="flex gap-2">
                   {(["left", "center", "right"] as const).map((align) => (
                     <button
@@ -383,8 +379,8 @@ export function ImageAndFooterFields({
                       onClick={() => setF({ logoAlign: align })}
                       className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
                       style={footer.logoAlign === align
-                        ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.3)" }
+                        : { background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                     >
                       {align}
                     </button>
@@ -398,8 +394,8 @@ export function ImageAndFooterFields({
             type="button"
             onClick={saveFooter}
             disabled={footerSaving}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-white/5 disabled:opacity-50 w-fit px-4"
-            style={{ border: "1px solid rgba(255,255,255,0.12)", color: footerSaved ? "#4ade80" : "rgba(255,255,255,0.7)" }}
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all hover:bg-(--admin-hover-bg) disabled:opacity-50 w-fit px-4"
+            style={{ border: "1px solid var(--admin-border)", color: footerSaved ? "var(--admin-success)" : "var(--admin-text-secondary)" }}
           >
             {footerSaving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             {footerSaved ? "Footer saved" : footerSaving ? "Saving…" : "Save footer (applies to every template)"}
@@ -425,7 +421,7 @@ export function EmailLivePreview({
       title="Email builder preview"
       srcDoc={previewSrc}
       sandbox=""
-      style={{ width: "100%", height: previewHeight, border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff" }}
+      style={{ width: "100%", height: previewHeight, border: "1px solid var(--admin-border)", borderRadius: "0.5rem", background: "#fff" }}
     />
   );
 }
@@ -463,10 +459,10 @@ export default function EmailBuilderFields({
     <div className="grid gap-5 lg:grid-cols-2">
       {/* Fields */}
       <div className="flex flex-col gap-3">
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
           Fill in the pieces — the branded HTML (680px layout, gold button, Patrick&apos;s
           signature &amp; unsubscribe) is generated automatically. Tokens like{" "}
-          <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere.
+          <code style={{ background: "var(--admin-surface-2)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere.
         </p>
         <MessageFields builder={builder} setB={setB} />
         <ListsFields builder={builder} setB={setB} />
@@ -477,7 +473,7 @@ export default function EmailBuilderFields({
 
       {/* Live preview */}
       <div className="lg:sticky lg:top-4 h-fit">
-        <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+        <p className="text-xs mb-1.5 font-semibold" style={{ color: "var(--admin-text-muted)" }}>Live preview</p>
         <EmailLivePreview builder={builder} footer={footer} previewHeight={previewHeight} />
       </div>
     </div>

@@ -14,12 +14,14 @@ export default async function CampaignsPage() {
   const contactCount = Number(countResult.rows[0]?.count ?? 0);
 
   return (
-    <div className="min-h-screen" style={{ background: "#0d0f12" }}>
+    <div className="min-h-screen" style={{ background: "var(--admin-bg)" }}>
       <Sidebar active="campaigns" />
       <div className="lg:ml-56">
-        <header className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14"
-          style={{ background: "#0d0f12", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Email Campaigns</p>
+        <header
+          className="sticky top-0 z-20 flex items-center justify-between pl-16 pr-4 lg:px-8 h-14 border-b border-(--admin-border)"
+          style={{ background: "var(--admin-bg)" }}
+        >
+          <p className="text-sm font-semibold text-(--admin-text-secondary)">Email Campaigns</p>
           <LogoutButton />
         </header>
         <main className="px-4 sm:px-6 lg:px-8 py-7">

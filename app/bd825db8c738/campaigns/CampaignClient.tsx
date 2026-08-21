@@ -65,9 +65,9 @@ function friendlyError(raw?: string, status?: number): string {
 }
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.75rem 1rem",
   fontSize: "0.875rem",
@@ -82,7 +82,7 @@ const labelStyle = {
   textTransform: "uppercase" as const,
   letterSpacing: "0.05em",
   marginBottom: "0.375rem",
-  color: "rgba(255,255,255,0.35)",
+  color: "var(--admin-text-muted)",
 };
 
 // Back / Next row shown at the bottom of every step except the last (which
@@ -94,8 +94,8 @@ function StepNav({ onBack, onNext, nextLabel }: { onBack?: () => void; onNext: (
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
-          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+          style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
         >
           <ChevronLeft size={14} /> Back
         </button>
@@ -104,7 +104,7 @@ function StepNav({ onBack, onNext, nextLabel }: { onBack?: () => void; onNext: (
         type="button"
         onClick={onNext}
         className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-        style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+        style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
       >
         Next: {nextLabel} <ChevronRight size={14} />
       </button>
@@ -372,17 +372,17 @@ export default function CampaignClient({
     {/* Pre-send checklist — a last-look before a real campaign goes out */}
     {showConfirm && (
       <div
-        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--admin-scrim)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
         onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}
       >
-        <div style={{ background: "#151821", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1.25rem", width: "100%", maxWidth: 460, padding: "1.75rem", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
+        <div style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", borderRadius: "1.25rem", width: "100%", maxWidth: 460, padding: "1.75rem", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(230,57,70,0.12)" }}>
-              <Send size={17} style={{ color: "#f87171" }} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--admin-accent-soft)" }}>
+              <Send size={17} style={{ color: "var(--admin-accent-text)" }} />
             </div>
             <div>
-              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Ready to send?</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Quick check before this goes out.</p>
+              <p className="text-base font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Ready to send?</p>
+              <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>Quick check before this goes out.</p>
             </div>
           </div>
 
@@ -390,42 +390,42 @@ export default function CampaignClient({
             {/* Recipients */}
             <div className="flex items-start gap-2.5">
               <Users size={15} className="mt-0.5 shrink-0" style={{ color: "#7dd3fc" }} />
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
-                Sending to <strong className="text-white">{sendCount}</strong> {sendCount === 1 ? "contact" : "contacts"}
-                <span style={{ color: "rgba(255,255,255,0.4)" }}> (#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount} · {listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"})</span>
+              <p className="text-sm" style={{ color: "var(--admin-text-secondary)" }}>
+                Sending to <strong className="text-(--admin-text)">{sendCount}</strong> {sendCount === 1 ? "contact" : "contacts"}
+                <span style={{ color: "var(--admin-text-muted)" }}> (#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount} · {listId ? lists.find((l) => l.id === listId)?.name : "all active contacts"})</span>
               </p>
             </div>
             {/* Subject */}
             <div className="flex items-start gap-2.5">
-              <Mail size={15} className="mt-0.5 shrink-0" style={{ color: "#4ade80" }} />
-              <p className="text-sm truncate" style={{ color: "rgba(255,255,255,0.75)" }} title={subject}>
-                Subject: <span className="text-white">{subject.trim() || "—"}</span>
+              <Mail size={15} className="mt-0.5 shrink-0" style={{ color: "var(--admin-success)" }} />
+              <p className="text-sm truncate" style={{ color: "var(--admin-text-secondary)" }} title={subject}>
+                Subject: <span className="text-(--admin-text)">{subject.trim() || "—"}</span>
               </p>
             </div>
             {/* Reply-to */}
             <div className="flex items-start gap-2.5">
-              <Reply size={15} className="mt-0.5 shrink-0" style={{ color: "#a5b4fc" }} />
-              <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
-                Replies go to <span className="text-white">{replyTo.trim() || "patrick@metroassoc.com"}</span>
+              <Reply size={15} className="mt-0.5 shrink-0" style={{ color: "var(--admin-accent-text)" }} />
+              <p className="text-sm" style={{ color: "var(--admin-text-secondary)" }}>
+                Replies go to <span className="text-(--admin-text)">{replyTo.trim() || "patrick@metroassoc.com"}</span>
               </p>
             </div>
             {/* Attachment — highlighted when missing */}
             <div
               className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
               style={ hasAttachment
-                ? { background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.15)" }
-                : { background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)" } }
+                ? { background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }
+                : { background: "var(--admin-warning-soft)", border: "1px solid rgba(245,158,11,0.2)" } }
             >
               {hasAttachment
-                ? <CheckCircle2 size={15} className="mt-0.5 shrink-0" style={{ color: "#4ade80" }} />
-                : <AlertTriangle size={15} className="mt-0.5 shrink-0" style={{ color: "#fbbf24" }} />}
+                ? <CheckCircle2 size={15} className="mt-0.5 shrink-0" style={{ color: "var(--admin-success)" }} />
+                : <AlertTriangle size={15} className="mt-0.5 shrink-0" style={{ color: "var(--admin-warning)" }} />}
               <div className="min-w-0">
                 {hasAttachment ? (
-                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.85)" }}>
-                    <Paperclip size={12} className="inline mb-0.5" /> Attaching: <span className="text-white">{attachmentNames.join(", ")}</span>
+                  <p className="text-sm" style={{ color: "var(--admin-text)" }}>
+                    <Paperclip size={12} className="inline mb-0.5" /> Attaching: <span className="text-(--admin-text)">{attachmentNames.join(", ")}</span>
                   </p>
                 ) : (
-                  <p className="text-sm" style={{ color: "#fbbf24" }}>
+                  <p className="text-sm" style={{ color: "var(--admin-warning)" }}>
                     No attachment added — send without one?
                   </p>
                 )}
@@ -433,7 +433,7 @@ export default function CampaignClient({
             </div>
             {/* Skip-recent reminder */}
             {excludeRecent && (
-              <p className="text-xs pl-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <p className="text-xs pl-1" style={{ color: "var(--admin-text-muted)" }}>
                 Skipping anyone emailed in the last {excludeDays} day{excludeDays === 1 ? "" : "s"}.
               </p>
             )}
@@ -442,15 +442,15 @@ export default function CampaignClient({
           <div className="flex items-center justify-end gap-2">
             <button
               onClick={() => setShowConfirm(false)}
-              className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors hover:bg-white/5"
-              style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+              style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
             >
               Back
             </button>
             <button
               onClick={doSend}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
-              style={{ background: "#e63946" }}
+              style={{ background: "var(--admin-accent)" }}
             >
               <Send size={14} /> Send now
             </button>
@@ -461,27 +461,27 @@ export default function CampaignClient({
     {/* Recipient preview — the actual people this send resolves to */}
     {showRecipients && (
       <div
-        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
+        style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--admin-scrim)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
         onClick={(e) => { if (e.target === e.currentTarget) setShowRecipients(false); }}
       >
-        <div style={{ background: "#151821", border: "1px solid rgba(255,255,255,0.09)", borderRadius: "1.25rem", width: "100%", maxWidth: 620, maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
-          <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", borderRadius: "1.25rem", width: "100%", maxWidth: 620, maxHeight: "86vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 40px 100px rgba(0,0,0,0.8)" }}>
+          <div className="px-5 py-4 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
             <div>
-              <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
-                Recipients for this send {!recipientsLoading && <span style={{ color: "rgba(255,255,255,0.4)" }}>· {recipients.length}</span>}
+              <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
+                Recipients for this send {!recipientsLoading && <span style={{ color: "var(--admin-text-muted)" }}>· {recipients.length}</span>}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
                 Exactly who gets this email with the current settings, and how many times we&apos;ve emailed each before.
               </p>
             </div>
-            <button onClick={() => setShowRecipients(false)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5 shrink-0" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <button onClick={() => setShowRecipients(false)} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--admin-hover-bg) shrink-0" style={{ color: "var(--admin-text-muted)" }}>
               <X size={16} />
             </button>
           </div>
 
-          <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="px-5 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
             <div className="relative">
-              <Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }} />
+              <Search size={13} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-faint)" }} />
               <input
                 value={recipientSearch}
                 onChange={(e) => setRecipientSearch(e.target.value)}
@@ -493,29 +493,29 @@ export default function CampaignClient({
 
           <div style={{ overflowY: "auto" }}>
             {recipientsLoading ? (
-              <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Resolving recipients…</div>
+              <div className="py-16 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>Resolving recipients…</div>
             ) : (() => {
               const rq = recipientSearch.trim().toLowerCase();
               const shown = recipients.filter((r) =>
                 !rq || r.email.toLowerCase().includes(rq) || (r.name || "").toLowerCase().includes(rq) || (r.company || "").toLowerCase().includes(rq)
               );
               if (shown.length === 0) {
-                return <div className="py-16 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{recipients.length === 0 ? "No eligible recipients for these settings." : "No recipients match your search."}</div>;
+                return <div className="py-16 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>{recipients.length === 0 ? "No eligible recipients for these settings." : "No recipients match your search."}</div>;
               }
               return shown.map((r, i) => (
-                <div key={r.id} className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: i < shown.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                <div key={r.id} className="flex items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: i < shown.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171" }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}>
                       {(r.name || r.email)[0].toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{r.name || r.email}</p>
-                      <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      <p className="text-sm font-medium text-(--admin-text) truncate">{r.name || r.email}</p>
+                      <p className="text-xs truncate" style={{ color: "var(--admin-text-muted)" }}>
                         {r.name ? r.email : ""}
                         {(r.title || r.company) && <>{r.name ? " · " : ""}{[r.title, r.company].filter(Boolean).join(" at ")}</>}
                       </p>
                       {[r.city, r.state].filter(Boolean).length > 0 && (
-                        <p className="text-xs flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        <p className="text-xs flex items-center gap-1" style={{ color: "var(--admin-text-faint)" }}>
                           <MapPin size={9} /> {[r.city, r.state].filter(Boolean).join(", ")}
                         </p>
                       )}
@@ -528,13 +528,13 @@ export default function CampaignClient({
                           sent {r.send_count}×
                         </span>
                         {r.last_sent && (
-                          <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          <p className="text-xs mt-1" style={{ color: "var(--admin-text-faint)" }}>
                             last {new Date(r.last_sent * 1000).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })}
                           </p>
                         )}
                       </>
                     ) : (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80" }}>first time</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)" }}>first time</span>
                     )}
                   </div>
                 </div>
@@ -547,9 +547,9 @@ export default function CampaignClient({
 
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
-      <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
         <div className="flex items-center justify-between mb-6">
-          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
+          <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
         </div>
 
         {/* Stepper */}
@@ -572,20 +572,20 @@ export default function CampaignClient({
                         ? { background: "#3b82f6", color: "#fff" }
                         : isDone
                         ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.4)" }
-                        : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }
+                        : { background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)", border: "1px solid var(--admin-border)" }
                     }
                   >
                     {isDone ? <Check size={12} /> : s.n}
                   </span>
                   <span
                     className="text-xs font-semibold hidden sm:inline"
-                    style={{ color: isActive ? "#fff" : isDone ? "#60a5fa" : "rgba(255,255,255,0.35)" }}
+                    style={{ color: isActive ? "#fff" : isDone ? "#60a5fa" : "var(--admin-text-muted)" }}
                   >
                     {s.label}
                   </span>
                 </button>
                 {i < STEPS.length - 1 && (
-                  <span className="w-5 sm:w-10 h-px shrink-0 mx-1.5 sm:mx-2.5" style={{ background: "rgba(255,255,255,0.1)" }} />
+                  <span className="w-5 sm:w-10 h-px shrink-0 mx-1.5 sm:mx-2.5" style={{ background: "var(--admin-border)" }} />
                 )}
               </div>
             );
@@ -597,11 +597,11 @@ export default function CampaignClient({
           {step === 1 && (
             <>
               {/* Send to — summary + inline edit */}
-              <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="rounded-xl p-4" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p style={labelStyle}>Send to</p>
-                    <p className="text-sm text-white font-medium">
+                    <p className="text-sm text-(--admin-text) font-medium">
                       {listId ? `${lists.find(l => l.id === listId)?.name} (${Number(lists.find(l => l.id === listId)?.member_count)})` : `All active contacts (${contactCount})`}
                     </p>
                   </div>
@@ -609,14 +609,14 @@ export default function CampaignClient({
                     type="button"
                     onClick={() => setRecipientsEditOpen((v) => !v)}
                     className="flex items-center gap-1 text-xs font-semibold shrink-0"
-                    style={{ color: "#fbbf24" }}
+                    style={{ color: "var(--admin-warning)" }}
                   >
                     <Pencil size={11} /> Edit
                   </button>
                 </div>
 
                 {recipientsEditOpen && (
-                  <div className="mt-4 pt-4 flex flex-col gap-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="mt-4 pt-4 flex flex-col gap-4" style={{ borderTop: "1px solid var(--admin-border)" }}>
                     <div>
                       <label style={labelStyle}>List</label>
                       <div className="relative" ref={dropdownRef}>
@@ -627,14 +627,14 @@ export default function CampaignClient({
                           style={{ ...inputStyle, cursor: "pointer", textAlign: "left" }}
                         >
                           <span>{listId ? `${lists.find(l => l.id === listId)?.name} (${Number(lists.find(l => l.id === listId)?.member_count)})` : `All active contacts (${contactCount})`}</span>
-                          <ChevronDown size={14} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+                          <ChevronDown size={14} style={{ color: "var(--admin-text-faint)", flexShrink: 0, transform: dropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
                         </button>
                         {dropdownOpen && (
-                          <div className="absolute z-50 w-full mt-1 rounded-xl overflow-hidden" style={{ background: "#1e2128", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                          <div className="absolute z-50 w-full mt-1 rounded-xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
                             <div
                               className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                              style={{ color: listId === null ? "#fff" : "rgba(255,255,255,0.6)", background: listId === null ? "rgba(230,57,70,0.1)" : "transparent" }}
-                              onMouseEnter={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                              style={{ color: listId === null ? "var(--admin-text)" : "var(--admin-text-secondary)", background: listId === null ? "var(--admin-accent-soft)" : "transparent" }}
+                              onMouseEnter={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "var(--admin-hover-bg)"; }}
                               onMouseLeave={e => { if (listId !== null) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
                               onClick={() => { setListId(null); setDropdownOpen(false); }}
                             >
@@ -644,8 +644,8 @@ export default function CampaignClient({
                               <div
                                 key={l.id}
                                 className="px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                                style={{ color: listId === l.id ? "#fff" : "rgba(255,255,255,0.6)", background: listId === l.id ? "rgba(230,57,70,0.1)" : "transparent", borderTop: "1px solid rgba(255,255,255,0.04)" }}
-                                onMouseEnter={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)"; }}
+                                style={{ color: listId === l.id ? "var(--admin-text)" : "var(--admin-text-secondary)", background: listId === l.id ? "var(--admin-accent-soft)" : "transparent", borderTop: "1px solid var(--admin-border)" }}
+                                onMouseEnter={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "var(--admin-hover-bg)"; }}
                                 onMouseLeave={e => { if (listId !== l.id) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
                                 onClick={() => { setListId(l.id); setDropdownOpen(false); }}
                               >
@@ -680,8 +680,8 @@ export default function CampaignClient({
                             type="button"
                             onClick={() => setSendOffset((o) => Math.max(0, o - (dailyLimit || 1)))}
                             disabled={sendOffset === 0}
-                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed"
-                            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-(--admin-hover-bg) disabled:opacity-30 disabled:cursor-not-allowed"
+                            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
                             title="Back one batch"
                           >
                             −
@@ -700,8 +700,8 @@ export default function CampaignClient({
                           <button
                             type="button"
                             onClick={() => setSendOffset((o) => o + (dailyLimit || 1))}
-                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-white/10"
-                            style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+                            className="shrink-0 w-9 rounded-xl text-lg font-bold transition-colors hover:bg-(--admin-hover-bg)"
+                            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
                             title="Forward one batch"
                           >
                             +
@@ -711,16 +711,16 @@ export default function CampaignClient({
                     </div>
 
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Skip recently emailed</span>
+                      <span className="text-xs" style={{ color: "var(--admin-text-muted)" }}>Skip recently emailed</span>
                       <div
                         className="relative w-8 h-4 rounded-full transition-colors"
-                        style={{ background: excludeRecent ? "rgba(230,57,70,0.6)" : "rgba(255,255,255,0.1)" }}
+                        style={{ background: excludeRecent ? "rgba(99,102,241,0.6)" : "var(--admin-hover-bg)" }}
                         onClick={() => setExcludeRecent(!excludeRecent)}
                       >
                         <div className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform" style={{ left: excludeRecent ? "calc(100% - 14px)" : "2px" }} />
                       </div>
                       {excludeRecent && (
-                        <span className="flex items-center gap-1 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        <span className="flex items-center gap-1 text-xs" style={{ color: "var(--admin-text-muted)" }}>
                           in last
                           <input
                             type="text"
@@ -732,7 +732,7 @@ export default function CampaignClient({
                             }}
                             onBlur={() => setExcludeDays((v) => Math.max(1, Math.min(90, v || 1)))}
                             onClick={(e) => e.stopPropagation()}
-                            style={{ width: "42px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "6px", color: "#fff", padding: "1px 6px", fontSize: "0.75rem", outline: "none", textAlign: "center" }}
+                            style={{ width: "42px", background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "6px", color: "var(--admin-text)", padding: "1px 6px", fontSize: "0.75rem", outline: "none", textAlign: "center" }}
                           />
                           days
                         </span>
@@ -743,26 +743,26 @@ export default function CampaignClient({
               </div>
 
               {/* Exclude — the baseline is always on; only "recently emailed" is editable (above) */}
-              <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="rounded-xl p-4" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <p style={labelStyle}>Exclude</p>
-                <p className="text-sm text-white font-medium">
+                <p className="text-sm text-(--admin-text) font-medium">
                   Unsubscribed, Bounced, Suppressed{excludeRecent ? `, emailed in the last ${excludeDays}d` : ""}
                 </p>
               </div>
 
               {/* Recipient count + who-gets-this preview */}
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl flex-wrap gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl flex-wrap gap-2" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <div className="flex items-center gap-2">
-                  <Users size={13} style={{ color: "rgba(255,255,255,0.3)" }} />
-                  <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  <Users size={13} style={{ color: "var(--admin-text-faint)" }} />
+                  <span className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
                     {sendCount === 0 ? (
                       <>Nothing to send — &ldquo;skip first&rdquo; ({sendOffset}) is past the {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}</>
                     ) : (
                       <>
-                        Will send to <strong className="text-white">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
+                        Will send to <strong className="text-(--admin-text)">{sendCount}</strong> contact{sendCount !== 1 ? "s" : ""}
                         {" "}(#{sendOffset + 1}–#{sendOffset + sendCount} of {recipientCount})
                         {recipientCount > sendOffset + sendCount && (
-                          <span style={{ color: "rgba(255,255,255,0.25)" }}> · {recipientCount - sendOffset - sendCount} remaining after this batch</span>
+                          <span style={{ color: "var(--admin-text-faint)" }}> · {recipientCount - sendOffset - sendCount} remaining after this batch</span>
                         )}
                       </>
                     )}
@@ -782,13 +782,13 @@ export default function CampaignClient({
               <div className="flex items-center justify-between pt-1">
                 <div>
                   <p style={labelStyle}>Est. recipients</p>
-                  <p className="text-2xl font-black" style={{ fontFamily: "var(--font-heading)", color: "#fff" }}>{recipientCount}</p>
+                  <p className="text-2xl font-black" style={{ fontFamily: "var(--font-heading)", color: "var(--admin-text)" }}>{recipientCount}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setStep(2)}
                   className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+                  style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
                 >
                   Next: Subject <ChevronRight size={14} />
                 </button>
@@ -802,7 +802,7 @@ export default function CampaignClient({
               <div>
                 <label style={labelStyle}>Subject</label>
                 <input style={inputStyle} type="text" placeholder="Email subject line" value={subject} onChange={(e) => setSubject(e.target.value)} autoFocus />
-                <p className="text-xs mt-1.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                <p className="text-xs mt-1.5" style={{ color: "var(--admin-text-faint)" }}>
                   Personalize with {"{{first_name}}"}, {"{{title}}"}, or {"{{company}}"} — these also work in the body.
                 </p>
               </div>
@@ -816,7 +816,7 @@ export default function CampaignClient({
               {/* Reply-to */}
               <div>
                 <label style={labelStyle}>
-                  Reply-to email <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — replies land here)</span>
+                  Reply-to email <span style={{ color: "var(--admin-text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional — replies land here)</span>
                 </label>
                 <input
                   style={inputStyle}
@@ -828,12 +828,12 @@ export default function CampaignClient({
               </div>
 
               {/* Attachments */}
-              <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="flex flex-col gap-3.5 p-4 rounded-2xl" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-white">Campaign Attachments</span>
-                  <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Attach a document to this email campaign</span>
+                  <span className="text-xs font-semibold text-(--admin-text)">Campaign Attachments</span>
+                  <span className="text-[10px]" style={{ color: "var(--admin-text-muted)" }}>Attach a document to this email campaign</span>
                 </div>
-                <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="flex flex-col gap-3 pt-2" style={{ borderTop: "1px solid var(--admin-border)" }}>
                   <div className="flex flex-col gap-2">
                     <label style={{ ...labelStyle, marginBottom: 0 }}>Attach a file</label>
                     <div className="flex items-center gap-3">
@@ -865,16 +865,16 @@ export default function CampaignClient({
               <div>
                 <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
                   <label style={{ ...labelStyle, marginBottom: 0 }}>
-                    Body <span style={{ color: "rgba(255,255,255,0.2)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
+                    Body <span style={{ color: "var(--admin-text-faint)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(use {"{{first_name}}"}, {"{{title}}"}, {"{{company}}"} etc.)</span>
                   </label>
-                  <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: "var(--admin-hover-bg)" }}>
                     {([["Plain text", false], ["HTML", true]] as [string, boolean][]).map(([lbl, val]) => (
                       <button
                         key={lbl}
                         type="button"
                         onClick={() => setBodyIsHtml(val)}
                         className="px-2.5 py-1 rounded-md text-xs font-semibold transition-colors"
-                        style={{ background: bodyIsHtml === val ? "rgba(230,57,70,0.15)" : "transparent", color: bodyIsHtml === val ? "#f87171" : "rgba(255,255,255,0.4)" }}
+                        style={{ background: bodyIsHtml === val ? "var(--admin-accent-soft)" : "transparent", color: bodyIsHtml === val ? "var(--admin-accent-text)" : "var(--admin-text-muted)" }}
                       >
                         {lbl}
                       </button>
@@ -890,7 +890,7 @@ export default function CampaignClient({
                   onChange={(e) => setBody(e.target.value)}
                 />
                 {bodyIsHtml && (
-                  <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                  <p className="text-xs mt-1" style={{ color: "var(--admin-text-faint)" }}>
                     HTML mode: your markup is sent as-is (newlines are not auto-converted). The standard header/footer &amp; unsubscribe link are still added.
                   </p>
                 )}
@@ -903,11 +903,13 @@ export default function CampaignClient({
           {/* STEP 4 — Preview & test */}
           {step === 4 && (
             <>
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between" style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.4)" }}>
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--admin-border)" }}>
+                <div className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between" style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-muted)" }}>
                   <span>Preview — sample contact (Alex Morgan · Principal Engineer · Acme Corp)</span>
-                  <span style={{ color: "rgba(255,255,255,0.25)" }}>{bodyIsHtml ? "HTML" : "Plain text"}</span>
+                  <span style={{ color: "var(--admin-text-faint)" }}>{bodyIsHtml ? "HTML" : "Plain text"}</span>
                 </div>
+                {/* Rendered-email canvas — simulates the recipient's inbox view; kept as
+                    a literal white surface with fixed text colors regardless of admin theme. */}
                 <div style={{ background: "#ffffff", padding: "24px", maxHeight: 420, overflowY: "auto" }}>
                   <div className="text-sm mb-1" style={{ color: "#111", fontWeight: 600 }}>{subject.trim() || "(no subject yet)"}</div>
                   <div style={{ borderTop: "1px solid #eee", margin: "8px 0 16px" }} />
@@ -930,7 +932,7 @@ export default function CampaignClient({
               </div>
 
               {/* Send a real test to your own inbox before committing */}
-              <div className="flex flex-col gap-2.5 p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="flex flex-col gap-2.5 p-4 rounded-2xl" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
@@ -941,15 +943,15 @@ export default function CampaignClient({
                         setTestEmail("patrick@metroassoc.com");
                       }
                     }}
-                    className="w-4 h-4 rounded border-white/20 bg-white/5 accent-red-500 shrink-0"
+                    className="w-4 h-4 rounded border-(--admin-border) bg-(--admin-surface-2) accent-indigo-500 shrink-0"
                   />
                   <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-white">Send a test email first</span>
-                    <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Doesn&apos;t write a log entry to sent history</span>
+                    <span className="text-xs font-semibold text-(--admin-text)">Send a test email first</span>
+                    <span className="text-[10px]" style={{ color: "var(--admin-text-muted)" }}>Doesn&apos;t write a log entry to sent history</span>
                   </div>
                 </label>
                 {isTestSend && (
-                  <div className="mt-1 pt-2 flex flex-col gap-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="mt-1 pt-2 flex flex-col gap-2.5" style={{ borderTop: "1px solid var(--admin-border)" }}>
                     <div>
                       <label style={{ ...labelStyle, marginBottom: "0.25rem" }}>Test Email Address</label>
                       <input
@@ -980,10 +982,10 @@ export default function CampaignClient({
           {/* STEP 5 — Schedule / Send */}
           {step === 5 && (
             <>
-              <div className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <p style={labelStyle}>Ready to go</p>
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
-                  <strong className="text-white">{sendCount}</strong> recipient{sendCount !== 1 ? "s" : ""} · subject &ldquo;{subject.trim() || "—"}&rdquo;
+                <p className="text-sm" style={{ color: "var(--admin-text-secondary)" }}>
+                  <strong className="text-(--admin-text)">{sendCount}</strong> recipient{sendCount !== 1 ? "s" : ""} · subject &ldquo;{subject.trim() || "—"}&rdquo;
                 </p>
               </div>
 
@@ -992,7 +994,7 @@ export default function CampaignClient({
                   type="submit"
                   disabled={loading || (!isTestSend && recipientCount === 0)}
                   className="flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(230,57,70,0.3)" }}
+                  style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 20px rgba(99,102,241,0.3)" }}
                 >
                   {loading ? <Spinner size={14} /> : <Send size={14} />}
                   {loading ? "Sending…" : `Send now to ${sendCount} contacts`}
@@ -1010,8 +1012,8 @@ export default function CampaignClient({
               <button
                 type="button"
                 onClick={() => setStep(4)}
-                className="self-start flex items-center gap-1.5 text-sm font-semibold transition-colors hover:bg-white/5 px-4 py-2.5 rounded-full"
-                style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+                className="self-start flex items-center gap-1.5 text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg) px-4 py-2.5 rounded-full"
+                style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
               >
                 <ChevronLeft size={14} /> Back
               </button>
@@ -1021,27 +1023,27 @@ export default function CampaignClient({
       </div>
 
       {/* History */}
-      <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="flex items-center gap-2 px-5 py-4 flex-wrap" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <Clock size={14} style={{ color: "rgba(255,255,255,0.3)" }} />
-          <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Sent History</p>
+      <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+        <div className="flex items-center gap-2 px-5 py-4 flex-wrap" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+          <Clock size={14} style={{ color: "var(--admin-text-faint)" }} />
+          <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Sent History</p>
           <select
             value={historyFilter}
             onChange={(e) => setHistoryFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="ml-auto"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", color: "#fff", fontSize: "0.72rem", padding: "0.25rem 0.5rem", outline: "none", cursor: "pointer", maxWidth: 160 }}
+            style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.5rem", color: "var(--admin-text)", fontSize: "0.72rem", padding: "0.25rem 0.5rem", outline: "none", cursor: "pointer", maxWidth: 160 }}
             title="Filter sent history by list"
           >
-            <option value="all" style={{ background: "#1a1d23" }}>All lists</option>
+            <option value="all" style={{ background: "var(--admin-surface)" }}>All lists</option>
             {lists.map((l) => (
-              <option key={l.id} value={l.id} style={{ background: "#1a1d23" }}>{l.name}</option>
+              <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
             ))}
           </select>
         </div>
 
         {history.length === 0 ? (
           <div className="flex-1 flex items-center justify-center py-12 text-center px-4">
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>No campaigns sent yet.</p>
+            <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>No campaigns sent yet.</p>
           </div>
         ) : (
           <div className="overflow-y-auto">
@@ -1049,28 +1051,28 @@ export default function CampaignClient({
               <div
                 key={c.id}
                 className="px-5 py-4 relative group"
-                style={{ borderBottom: i < history.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                style={{ borderBottom: i < history.length - 1 ? "1px solid var(--admin-border)" : "none" }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white mb-1.5 truncate">{c.subject}</p>
+                    <p className="text-sm font-semibold text-(--admin-text) mb-1.5 truncate">{c.subject}</p>
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: c.status === "failed" ? "rgba(230,57,70,0.12)" : "rgba(74,222,128,0.1)", color: c.status === "failed" ? "#f87171" : "#4ade80" }}>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: c.status === "failed" ? "var(--admin-danger-soft)" : "var(--admin-success-soft)", color: c.status === "failed" ? "var(--admin-danger-text)" : "var(--admin-success)" }}>
                         {c.status}
                       </span>
-                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{c.recipient_count} sent</span>
+                      <span className="text-xs" style={{ color: "var(--admin-text-muted)" }}>{c.recipient_count} sent</span>
                       {Number(c.unique_opens) > 0 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(251,191,36,0.12)", color: "#fbbf24" }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--admin-warning-soft)", color: "var(--admin-warning)" }}>
                           {c.unique_opens} opened
                         </span>
                       )}
                       {c.target_list && (
-                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}>
                           {c.target_list}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>{formatDate(c.sent_at)}</p>
+                    <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>{formatDate(c.sent_at)}</p>
                   </div>
                   <button
                     onClick={() => handleDeleteCampaign(c.id)}

@@ -63,16 +63,16 @@ interface ContactList {
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 
 const card = {
-  background: "#1a1d23",
-  border: "1px solid rgba(255,255,255,0.06)",
+  background: "var(--admin-surface)",
+  border: "1px solid var(--admin-border)",
   borderRadius: "1rem",
   padding: "1.5rem",
 } as const;
 
 const inp = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.625rem",
   padding: "0.5rem 0.75rem",
   fontSize: "0.8125rem",
@@ -84,7 +84,7 @@ const label = {
   display: "block",
   fontSize: "0.6875rem",
   fontWeight: 600,
-  color: "rgba(255,255,255,0.35)",
+  color: "var(--admin-text-muted)",
   marginBottom: "0.3rem",
   letterSpacing: "0.04em",
   textTransform: "uppercase" as const,
@@ -148,9 +148,9 @@ const BLANK = {
 
 function SectionLabel({ icon: Icon, label: txt }: { icon: React.ElementType; label: string }) {
   return (
-    <div className="flex items-center gap-1.5 mb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "0.5rem" }}>
-      <Icon size={12} style={{ color: "rgba(255,255,255,0.3)" }} />
-      <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{txt}</span>
+    <div className="flex items-center gap-1.5 mb-3" style={{ borderBottom: "1px solid var(--admin-border)", paddingBottom: "0.5rem" }}>
+      <Icon size={12} style={{ color: "var(--admin-text-faint)" }} />
+      <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--admin-text-faint)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{txt}</span>
     </div>
   );
 }
@@ -481,16 +481,16 @@ export default function ContactsClient() {
       {showAdd && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          style={{ background: "var(--admin-scrim)", backdropFilter: "blur(6px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowAdd(false); }}
         >
           <div
             className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", padding: "2rem" }}
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", borderRadius: "1.25rem", padding: "2rem" }}
           >
             <div className="flex items-center justify-between mb-6">
-              <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Add Contact</p>
-              <button onClick={() => setShowAdd(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+              <p className="text-base font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Add Contact</p>
+              <button onClick={() => setShowAdd(false)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-muted)" }}><X size={16} /></button>
             </div>
 
             <form onSubmit={handleAdd} className="flex flex-col gap-5">
@@ -555,13 +555,13 @@ export default function ContactsClient() {
                   <div>
                     <label style={label}>Assign to Lists</label>
                     {allLists.length === 0 ? (
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No lists created yet.</p>
+                      <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>No lists created yet.</p>
                     ) : (
-                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-white/10" style={{ background: "rgba(255,255,255,0.02)" }}>
+                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-(--admin-border)" style={{ background: "var(--admin-surface-2)" }}>
                         {allLists.map((l) => {
                           const checked = selectedAddLists.includes(l.id);
                           return (
-                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-(--admin-text)">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -572,8 +572,8 @@ export default function ContactsClient() {
                                     setSelectedAddLists(selectedAddLists.filter((id) => id !== l.id));
                                   }
                                 }}
-                                className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0 animate-none"
-                                style={{ accentColor: "#f87171" }}
+                                className="rounded border-(--admin-border) bg-(--admin-surface-2) text-(--admin-accent) focus:ring-0 animate-none"
+                                style={{ accentColor: "var(--admin-accent-text)" }}
                               />
                               <span>{l.name} ({l.member_count})</span>
                             </label>
@@ -589,18 +589,18 @@ export default function ContactsClient() {
                       value={newAddListName}
                       onChange={(e) => setNewAddListName(e.target.value)}
                       placeholder="e.g. New List Name"
-                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
-                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      className="h-9 px-3 rounded-lg text-xs text-(--admin-text) outline-none border border-(--admin-border) w-full"
+                      style={{ background: "var(--admin-surface-2)" }}
                     />
                   </div>
                 </div>
               </div>
 
-              {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
+              {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid var(--admin-danger-soft)" }}>{error}</div>}
 
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
-                <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
+                <button type="button" onClick={() => setShowAdd(false)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-muted)", border: "1px solid var(--admin-border)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+                <button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}>
                 {loading ? <Spinner size={14} /> : <Plus size={14} />} Add Contact
               </button>
               </div>
@@ -613,42 +613,42 @@ export default function ContactsClient() {
       {drawer && (
         <div
           className="fixed inset-0 z-50 flex justify-end"
-          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+          style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setDrawer(null); }}
         >
           <div
             className="h-full w-full max-w-lg overflow-y-auto flex flex-col"
-            style={{ background: "#16181e", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ background: "var(--admin-surface)", borderLeft: "1px solid var(--admin-border)" }}
           >
             {/* Drawer header */}
-            <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid var(--admin-border)" }}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "rgba(230,57,70,0.15)", color: "#f87171" }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}>
                   {initials(drawer)}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{displayName(drawer)}</p>
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{drawer.email}</p>
+                  <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>{displayName(drawer)}</p>
+                  <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>{drawer.email}</p>
                 </div>
               </div>
-              <button onClick={() => setDrawer(null)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+              <button onClick={() => setDrawer(null)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-muted)" }}><X size={16} /></button>
             </div>
 
             {/* Status badges */}
-            <div className="flex items-center gap-2 px-6 py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {(drawer.status === "active" || !drawer.status) && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>Active</span>}
-              {drawer.status === "unsubscribed" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>Unsubscribed</span>}
-              {drawer.status === "invalid" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>Invalid</span>}
+            <div className="flex items-center gap-2 px-6 py-3" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+              {(drawer.status === "active" || !drawer.status) && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)", border: "1px solid var(--admin-success-soft)" }}>Active</span>}
+              {drawer.status === "unsubscribed" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)" }}>Unsubscribed</span>}
+              {drawer.status === "invalid" && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--admin-warning-soft)", color: "var(--admin-warning)" }}>Invalid</span>}
               {drawer.tags?.includes("test_seed") && <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>}
-              {Number(drawer.campaigns_sent) > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>Sent ×{drawer.campaigns_sent}</span>}
+              {Number(drawer.campaigns_sent) > 0 && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)" }}>Sent ×{drawer.campaigns_sent}</span>}
               {drawer.lists && <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>Lists: {drawer.lists}</span>}
               <div className="ml-auto flex items-center gap-1.5">
                 {drawer.status !== "invalid" && (
-                  <button onClick={() => handleToggleStatus(drawer.id, drawer.status)} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                  <button onClick={() => handleToggleStatus(drawer.id, drawer.status)} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
                     {drawer.status === "unsubscribed" ? <><UserCheck size={10} className="inline mr-1" />Reactivate</> : <><UserMinus size={10} className="inline mr-1" />Unsubscribe</>}
                   </button>
                 )}
-                <button onClick={() => { if (confirm("Delete this contact?")) handleDelete(drawer.id); }} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)" }}>
+                <button onClick={() => { if (confirm("Delete this contact?")) handleDelete(drawer.id); }} className="text-xs px-2.5 py-1 rounded-full font-semibold transition-all hover:scale-[1.02]" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid var(--admin-danger-soft)" }}>
                   <Trash2 size={10} className="inline mr-1" />Delete
                 </button>
               </div>
@@ -692,18 +692,18 @@ export default function ContactsClient() {
                         }
                       };
                       return (
-                        <div className="mt-2 rounded-xl p-3" style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.2)" }}>
-                          <p className="text-xs mb-2" style={{ color: "#fbbf24" }}>
+                        <div className="mt-2 rounded-xl p-3" style={{ background: "var(--admin-warning-soft)", border: "1px solid var(--admin-warning-soft)" }}>
+                          <p className="text-xs mb-2" style={{ color: "var(--admin-warning)" }}>
                             This field holds {addrs.length} email addresses. Only the first (<span style={{ fontWeight: 700 }}>{addrs[0]}</span>) is used as the primary. Move or delete the extras:
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             {extras.map((addr) => (
-                              <span key={addr} className="inline-flex items-center gap-2 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                              <span key={addr} className="inline-flex items-center gap-2 text-xs pl-2.5 pr-1.5 py-1 rounded-full" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>
                                 {addr}
-                                <button type="button" title="Keep as a secondary email" onClick={() => moveToSecondary(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-white/10" style={{ color: "rgba(255,255,255,0.5)" }}>
+                                <button type="button" title="Keep as a secondary email" onClick={() => moveToSecondary(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-secondary)" }}>
                                   <CornerDownRight size={11} />
                                 </button>
-                                <button type="button" title="Delete this email" onClick={() => removeAddr(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-red-500/15" style={{ color: "#f87171" }}>
+                                <button type="button" title="Delete this email" onClick={() => removeAddr(addr)} className="w-5 h-5 rounded-full flex items-center justify-center transition-all hover:bg-red-500/15" style={{ color: "var(--admin-danger-text)" }}>
                                   <X size={11} />
                                 </button>
                               </span>
@@ -742,9 +742,9 @@ export default function ContactsClient() {
 
               {/* Mailing label preview */}
               {(editForm.street_address && editForm.city && editForm.state) && (
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.1)", borderRadius: "0.75rem", padding: "1rem" }}>
-                  <p className="text-xs font-semibold mb-2" style={{ color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.05em" }}><MapPin size={10} className="inline mr-1" />Mailing Label Preview</p>
-                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.7)", fontFamily: "monospace", lineHeight: 1.6 }}>
+                <div style={{ background: "var(--admin-surface-2)", border: "1px dashed var(--admin-border)", borderRadius: "0.75rem", padding: "1rem" }}>
+                  <p className="text-xs font-semibold mb-2" style={{ color: "var(--admin-text-faint)", textTransform: "uppercase", letterSpacing: "0.05em" }}><MapPin size={10} className="inline mr-1" />Mailing Label Preview</p>
+                  <p className="text-sm" style={{ color: "var(--admin-text-secondary)", fontFamily: "monospace", lineHeight: 1.6 }}>
                     {[editForm.first_name, editForm.last_name].filter(Boolean).join(" ") || "—"}<br />
                     {editForm.company && <>{editForm.company}<br /></>}
                     {editForm.street_address}<br />
@@ -762,7 +762,7 @@ export default function ContactsClient() {
                 {editForm.segments && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {editForm.segments.split(",").map((s) => s.trim()).filter(Boolean).map((seg) => (
-                      <span key={seg} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}>{seg}</span>
+                      <span key={seg} className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid var(--admin-accent-soft)" }}>{seg}</span>
                     ))}
                   </div>
                 )}
@@ -780,13 +780,13 @@ export default function ContactsClient() {
                   <div>
                     <label style={label}>Assigned Lists</label>
                     {allLists.length === 0 ? (
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>No lists created yet.</p>
+                      <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>No lists created yet.</p>
                     ) : (
-                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-white/10" style={{ background: "rgba(255,255,255,0.02)" }}>
+                      <div className="flex flex-col gap-2 max-h-36 overflow-y-auto p-2.5 rounded-lg border border-(--admin-border)" style={{ background: "var(--admin-surface-2)" }}>
                         {allLists.map((l) => {
                           const checked = selectedEditLists.includes(l.id);
                           return (
-                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-white">
+                            <label key={l.id} className="flex items-center gap-2 cursor-pointer text-xs text-(--admin-text)">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -797,8 +797,8 @@ export default function ContactsClient() {
                                     setSelectedEditLists(selectedEditLists.filter((id) => id !== l.id));
                                   }
                                 }}
-                                className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0 animate-none"
-                                style={{ accentColor: "#f87171" }}
+                                className="rounded border-(--admin-border) bg-(--admin-surface-2) text-(--admin-accent) focus:ring-0 animate-none"
+                                style={{ accentColor: "var(--admin-accent-text)" }}
                               />
                               <span>{l.name}</span>
                             </label>
@@ -814,8 +814,8 @@ export default function ContactsClient() {
                       value={newEditListName}
                       onChange={(e) => setNewEditListName(e.target.value)}
                       placeholder="e.g. New List Name"
-                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
-                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      className="h-9 px-3 rounded-lg text-xs text-(--admin-text) outline-none border border-(--admin-border) w-full"
+                      style={{ background: "var(--admin-surface-2)" }}
                     />
                   </div>
                 </div>
@@ -825,17 +825,17 @@ export default function ContactsClient() {
               <div>
                 <SectionLabel icon={Send} label="Email Activity History" />
                 {activity.length === 0 ? (
-                  <p className="text-xs py-2" style={{ color: "rgba(255,255,255,0.25)" }}>No campaigns sent to this contact yet.</p>
+                  <p className="text-xs py-2" style={{ color: "var(--admin-text-faint)" }}>No campaigns sent to this contact yet.</p>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {activity.map((a) => (
-                      <div key={a.campaign_id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: a.opened ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.05)" }}>
-                          {a.opened ? <Eye size={12} style={{ color: "#4ade80" }} /> : <Send size={12} style={{ color: "rgba(255,255,255,0.3)" }} />}
+                      <div key={a.campaign_id} className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: a.opened ? "var(--admin-success-soft)" : "var(--admin-hover-bg)" }}>
+                          {a.opened ? <Eye size={12} style={{ color: "var(--admin-success)" }} /> : <Send size={12} style={{ color: "var(--admin-text-faint)" }} />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.7)" }}>{a.subject}</p>
-                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>{new Date(a.sent_at * 1000).toLocaleDateString()}{a.opened ? " · Opened" : ""}</p>
+                          <p className="text-xs font-medium truncate" style={{ color: "var(--admin-text-secondary)" }}>{a.subject}</p>
+                          <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>{new Date(a.sent_at * 1000).toLocaleDateString()}{a.opened ? " · Opened" : ""}</p>
                         </div>
                       </div>
                     ))}
@@ -845,9 +845,9 @@ export default function ContactsClient() {
             </div>
 
             {/* Save bar */}
-            <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <button onClick={() => setDrawer(null)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>Cancel</button>
-            <button onClick={handleSaveDrawer} disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}>
+            <div className="px-6 py-4 flex gap-3" style={{ borderTop: "1px solid var(--admin-border)" }}>
+              <button onClick={() => setDrawer(null)} className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-muted)", border: "1px solid var(--admin-border)", fontFamily: "var(--font-heading)" }}>Cancel</button>
+            <button onClick={handleSaveDrawer} disabled={loading} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}>
               {loading ? <Spinner size={14} /> : null} Save Changes
             </button>
             </div>
@@ -865,16 +865,16 @@ export default function ContactsClient() {
           <button
             onClick={() => { setShowAdd(true); setError(""); setSuccess(""); }}
             className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white transition-all hover:scale-[1.02]"
-            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.28)" }}
+            style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.28)" }}
           >
             <Plus size={15} /> Add Contact
           </button>
 
           {/* Bulk */}
           <div style={card}>
-            <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Bulk Import</p>
-            <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
-              One per line: <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>Name &lt;email&gt;</code> or just email
+            <p className="text-sm font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>Bulk Import</p>
+            <p className="text-xs mb-3" style={{ color: "var(--admin-text-muted)" }}>
+              One per line: <code style={{ background: "var(--admin-hover-bg)", padding: "1px 5px", borderRadius: 4 }}>Name &lt;email&gt;</code> or just email
             </p>
             <form onSubmit={handleBulk} className="flex flex-col gap-3">
               <textarea
@@ -888,11 +888,11 @@ export default function ContactsClient() {
               <div className="mt-1">
                 <label style={label}>Add to Lists (Optional)</label>
                 {allLists.length > 0 && (
-                  <div className="flex flex-col gap-2 max-h-24 overflow-y-auto p-2 rounded-lg border border-white/5 mb-2" style={{ background: "rgba(255,255,255,0.02)" }}>
+                  <div className="flex flex-col gap-2 max-h-24 overflow-y-auto p-2 rounded-lg border border-(--admin-border) mb-2" style={{ background: "var(--admin-surface-2)" }}>
                     {allLists.map((l) => {
                       const checked = selectedBulkLists.includes(l.id);
                       return (
-                        <label key={l.id} className="flex items-center gap-1.5 cursor-pointer text-[11px] text-white">
+                        <label key={l.id} className="flex items-center gap-1.5 cursor-pointer text-[11px] text-(--admin-text)">
                           <input
                             type="checkbox"
                             checked={checked}
@@ -903,8 +903,8 @@ export default function ContactsClient() {
                                 setSelectedBulkLists(selectedBulkLists.filter((id) => id !== l.id));
                               }
                             }}
-                            className="rounded border-white/20 bg-white/5 text-red-500 focus:ring-0"
-                            style={{ accentColor: "#f87171" }}
+                            className="rounded border-(--admin-border) bg-(--admin-surface-2) text-(--admin-accent) focus:ring-0"
+                            style={{ accentColor: "var(--admin-accent-text)" }}
                           />
                           <span>{l.name}</span>
                         </label>
@@ -917,24 +917,24 @@ export default function ContactsClient() {
                   value={newBulkListName}
                   onChange={(e) => setNewBulkListName(e.target.value)}
                   placeholder="Or create new list..."
-                  className="h-8 px-2.5 rounded-lg text-[11px] text-white outline-none border border-white/10 w-full"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
+                  className="h-8 px-2.5 rounded-lg text-[11px] text-(--admin-text) outline-none border border-(--admin-border) w-full"
+                  style={{ background: "var(--admin-surface-2)" }}
                 />
               </div>
 
               <button
                 type="submit" disabled={loading}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-                style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
+                style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", fontFamily: "var(--font-heading)" }}
               >
                 <Upload size={14} /> Import All
               </button>
             </form>
 
             {/* Spreadsheet (CSV & Excel) Upload */}
-            <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Or upload a spreadsheet (<strong style={{ color: "rgba(255,255,255,0.5)" }}>.csv, .xlsx, .xls</strong>) with column field mapping
+            <div className="mt-4 pt-4" style={{ borderTop: "1px solid var(--admin-border)" }}>
+              <p className="text-xs mb-2" style={{ color: "var(--admin-text-muted)" }}>
+                Or upload a spreadsheet (<strong style={{ color: "var(--admin-text-secondary)" }}>.csv, .xlsx, .xls</strong>) with column field mapping
               </p>
               <ContactImportModal
                 lists={allLists}
@@ -943,7 +943,7 @@ export default function ContactsClient() {
                   <button
                     type="button" disabled={busy} onClick={open}
                     className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-                    style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
+                    style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid var(--admin-accent-soft)", fontFamily: "var(--font-heading)" }}
                   >
                     {busy ? <Spinner /> : <FileText size={14} />} Upload Spreadsheet
                   </button>
@@ -952,32 +952,32 @@ export default function ContactsClient() {
             </div>
           </div>
 
-          {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error}</div>}
-          {success && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>{success}</div>}
+          {error && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid var(--admin-danger-soft)" }}>{error}</div>}
+          {success && <div className="px-4 py-3 rounded-xl text-xs font-medium" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)", border: "1px solid var(--admin-success-soft)" }}>{success}</div>}
 
           {/* Export */}
           <div style={card}>
-            <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Export Data</p>
-            <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <p className="text-sm font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>Export Data</p>
+            <p className="text-xs mb-3" style={{ color: "var(--admin-text-muted)" }}>
               Download CSVs for external systems, mail houses, or third-party tools.
             </p>
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => triggerDownload("/api/export/contacts?filter=all")}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-                style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontFamily: "var(--font-heading)" }}
+                style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", fontFamily: "var(--font-heading)" }}
               >
                 <Download size={13} /> All Contacts
               </button>
               {/* Mailing list export — new */}
               <div className="flex flex-col gap-1.5" style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: "0.75rem", padding: "0.75rem" }}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold" style={{ color: "#a5b4fc", fontFamily: "var(--font-heading)" }}><MapPin size={11} className="inline mr-1" />Mailing List (Direct Mail)</span>
+                  <span className="text-xs font-bold" style={{ color: "var(--admin-accent-text)", fontFamily: "var(--font-heading)" }}><MapPin size={11} className="inline mr-1" />Mailing List (Direct Mail)</span>
                   {mailingCount !== null && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>{mailingCount} with address</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}>{mailingCount} with address</span>
                   )}
                 </div>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>For postcard printers & mail houses. Includes address-complete contacts only.</p>
+                <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>For postcard printers & mail houses. Includes address-complete contacts only.</p>
                 <div className="flex gap-1.5 mt-1">
                   <input
                     style={{ ...inp, flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.75rem" }}
@@ -988,7 +988,7 @@ export default function ContactsClient() {
                   <button
                     onClick={() => triggerDownload(`/api/export/mailing-list${segmentFilter ? `?segment=${encodeURIComponent(segmentFilter)}` : ""}`)}
                     className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02]"
-                    style={{ background: "rgba(99,102,241,0.25)", color: "#a5b4fc", fontFamily: "var(--font-heading)" }}
+                    style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", fontFamily: "var(--font-heading)" }}
                   >
                     <Download size={12} className="inline mr-1" />Download
                   </button>
@@ -997,14 +997,14 @@ export default function ContactsClient() {
               <button
                 onClick={() => triggerDownload("/api/export/suppression")}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-                style={{ background: "rgba(230,57,70,0.08)", color: "#f87171", border: "1px solid rgba(230,57,70,0.15)", fontFamily: "var(--font-heading)" }}
+                style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid var(--admin-danger-soft)", fontFamily: "var(--font-heading)" }}
               >
                 <Download size={13} /> Suppression List
               </button>
               <button
                 onClick={() => triggerDownload("/api/export/contacts?filter=removed")}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02]"
-                style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.15)", fontFamily: "var(--font-heading)" }}
+                style={{ background: "var(--admin-warning-soft)", color: "var(--admin-warning)", border: "1px solid var(--admin-warning-soft)", fontFamily: "var(--font-heading)" }}
               >
                 <Download size={13} /> Removed / Opted Out
               </button>
@@ -1013,20 +1013,20 @@ export default function ContactsClient() {
         </div>
 
         {/* Right: contact list */}
-        <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
           {/* List header */}
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
             <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
-              <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
+              <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>All Contacts</p>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}>
                   {contactSearch || contactStatusFilter !== "all" ? `${filteredContacts.length} / ` : ""}{activeCount} active / {contacts.length} total
                 </span>
                 <button
                   onClick={handleValidate}
                   disabled={loading}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-                  style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.2)" }}
+                  style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid var(--admin-accent-soft)" }}
                   title="Check all emails for valid domains"
                 >
                   <ShieldCheck size={12} /> Validate Emails
@@ -1036,7 +1036,7 @@ export default function ContactsClient() {
             {/* Search + filter row */}
             <div className="flex flex-wrap gap-2">
               <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
-                <Search size={13} style={{ position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                <Search size={13} style={{ position: "absolute", left: "0.7rem", top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-faint)", pointerEvents: "none" }} />
                 <input
                   style={{ ...inp, paddingLeft: "2.1rem", borderRadius: "0.625rem" }}
                   placeholder="Search name, email, company, city, phone…"
@@ -1044,7 +1044,7 @@ export default function ContactsClient() {
                   onChange={(e) => setContactSearch(e.target.value)}
                 />
                 {contactSearch && (
-                  <button onClick={() => setContactSearch("")} style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", display: "flex" }}>
+                  <button onClick={() => setContactSearch("")} style={{ position: "absolute", right: "0.6rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--admin-text-faint)", display: "flex" }}>
                     <X size={12} />
                   </button>
                 )}
@@ -1054,10 +1054,10 @@ export default function ContactsClient() {
                 onChange={(e) => setContactStatusFilter(e.target.value as typeof contactStatusFilter)}
                 style={{ ...inp, width: "auto", fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
               >
-                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All statuses</option>
-                <option value="active" style={{ background: "#16181e", color: "#fff" }}>Active</option>
-                <option value="unsubscribed" style={{ background: "#16181e", color: "#fff" }}>Unsubscribed</option>
-                <option value="invalid" style={{ background: "#16181e", color: "#fff" }}>Invalid</option>
+                <option value="all" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>All statuses</option>
+                <option value="active" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>Active</option>
+                <option value="unsubscribed" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>Unsubscribed</option>
+                <option value="invalid" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>Invalid</option>
               </select>
 
               {/* Company filter */}
@@ -1067,9 +1067,9 @@ export default function ContactsClient() {
                 style={{ ...inp, width: "auto", maxWidth: 200, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
                 title="Filter by company"
               >
-                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All companies</option>
+                <option value="all" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>All companies</option>
                 {companyOptions.map((co) => (
-                  <option key={co} value={co} style={{ background: "#16181e", color: "#fff" }}>{co}</option>
+                  <option key={co} value={co} style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>{co}</option>
                 ))}
               </select>
 
@@ -1080,9 +1080,9 @@ export default function ContactsClient() {
                 style={{ ...inp, width: "auto", maxWidth: 160, fontSize: "0.76rem", borderRadius: "0.625rem", cursor: "pointer" }}
                 title="Filter by location (state)"
               >
-                <option value="all" style={{ background: "#16181e", color: "#fff" }}>All locations</option>
+                <option value="all" style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>All locations</option>
                 {stateOptions.map((st) => (
-                  <option key={st} value={st} style={{ background: "#16181e", color: "#fff" }}>{st}</option>
+                  <option key={st} value={st} style={{ background: "var(--admin-surface)", color: "var(--admin-text)" }}>{st}</option>
                 ))}
               </select>
             </div>
@@ -1090,75 +1090,75 @@ export default function ContactsClient() {
 
           {contacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(230,57,70,0.1)" }}>
-                <Users size={20} style={{ color: "var(--color-red)" }} strokeWidth={1.5} />
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "var(--admin-accent-soft)" }}>
+                <Users size={20} style={{ color: "var(--admin-accent)" }} strokeWidth={1.5} />
               </div>
-              <p className="text-sm font-semibold text-white mb-1">No contacts yet</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>Click "Add Contact" to get started.</p>
+              <p className="text-sm font-semibold text-(--admin-text) mb-1">No contacts yet</p>
+              <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>Click "Add Contact" to get started.</p>
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-sm font-semibold text-white mb-1">No results</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                No contacts match <span style={{ color: "rgba(255,255,255,0.55)" }}>"{contactSearch}"</span>. Try a different search.
+              <p className="text-sm font-semibold text-(--admin-text) mb-1">No results</p>
+              <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>
+                No contacts match <span style={{ color: "var(--admin-text-secondary)" }}>"{contactSearch}"</span>. Try a different search.
               </p>
-              <button onClick={() => { setContactSearch(""); setContactStatusFilter("all"); }} className="mt-3 text-xs px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer" }}>Clear filters</button>
+              <button onClick={() => { setContactSearch(""); setContactStatusFilter("all"); }} className="mt-3 text-xs px-3 py-1.5 rounded-full" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", border: "none", cursor: "pointer" }}>Clear filters</button>
             </div>
           ) : (
             <div>
               {pagedContacts.map((c, i) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between px-6 py-3 transition-colors cursor-pointer hover:bg-white/[0.02]"
-                  style={{ borderBottom: i < pagedContacts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                  className="flex items-center justify-between px-6 py-3 transition-colors cursor-pointer hover:bg-(--admin-hover-bg)"
+                  style={{ borderBottom: i < pagedContacts.length - 1 ? "1px solid var(--admin-border)" : "none" }}
                   onClick={() => openDrawer(c)}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{
-                        background: c.status === "active" || !c.status ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.06)",
-                        color: c.status === "active" || !c.status ? "#f87171" : "rgba(255,255,255,0.3)",
+                        background: c.status === "active" || !c.status ? "var(--admin-accent-soft)" : "var(--admin-hover-bg)",
+                        color: c.status === "active" || !c.status ? "var(--admin-accent-text)" : "var(--admin-text-faint)",
                       }}
                     >
                       {initials(c)}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-sm font-medium truncate" style={{ color: c.status === "active" || !c.status ? "#fff" : "rgba(255,255,255,0.4)" }}>
+                        <p className="text-sm font-medium truncate" style={{ color: c.status === "active" || !c.status ? "var(--admin-text)" : "var(--admin-text-muted)" }}>
                           {displayName(c)}
                         </p>
-                        {c.status === "unsubscribed" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(230,57,70,0.1)", color: "#f87171" }}>unsub</span>}
-                        {c.status === "invalid" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(234,179,8,0.1)", color: "#fbbf24" }}>invalid</span>}
+                        {c.status === "unsubscribed" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)" }}>unsub</span>}
+                        {c.status === "invalid" && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--admin-warning-soft)", color: "var(--admin-warning)" }}>invalid</span>}
                         {c.tags?.includes("test_seed") && <span className="text-xs px-1.5 py-0.5 rounded-full font-bold shrink-0" style={{ background: "rgba(20,184,166,0.15)", color: "#2dd4bf", border: "1px solid rgba(20,184,166,0.25)" }}>SEED</span>}
-                        {Number(c.campaigns_sent) > 0 && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>sent ×{c.campaigns_sent}</span>}
-                        {hasAddress(c) && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(99,102,241,0.1)", color: "#a5b4fc" }}><MapPin size={8} className="inline mr-0.5" />addr</span>}
+                        {Number(c.campaigns_sent) > 0 && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)" }}>sent ×{c.campaigns_sent}</span>}
+                        {hasAddress(c) && <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)" }}><MapPin size={8} className="inline mr-0.5" />addr</span>}
                         {contactTags(c).slice(0, 3).map((t) => (
                           <span key={t} className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(168,85,247,0.12)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>{t}</span>
                         ))}
                         {contactTags(c).length > 3 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>+{contactTags(c).length - 3}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}>+{contactTags(c).length - 3}</span>
                         )}
                       </div>
-                      <p className="text-xs truncate mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                      <p className="text-xs truncate mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
                         {c.name !== displayName(c) ? c.email : ""}
                         {(c.title || c.company) && (
                           <>
                             {c.name !== displayName(c) ? " · " : ""}
-                            <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.title}</span>
+                            <span style={{ color: "var(--admin-text-muted)" }}>{c.title}</span>
                             {c.title && c.company ? " at " : ""}
-                            <span style={{ color: "rgba(255,255,255,0.45)" }}>{c.company}</span>
+                            <span style={{ color: "var(--admin-text-muted)" }}>{c.company}</span>
                           </>
                         )}
                       </p>
                       {cityState(c) && (
-                        <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        <p className="text-xs truncate mt-0.5 flex items-center gap-1" style={{ color: "var(--admin-text-faint)" }}>
                           <MapPin size={9} style={{ flexShrink: 0 }} /> {cityState(c)}
                         </p>
                       )}
                     </div>
                   </div>
-                  <ChevronRight size={14} style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }} />
+                  <ChevronRight size={14} style={{ color: "var(--admin-text-faint)", flexShrink: 0 }} />
                 </div>
               ))}
               <Pagination

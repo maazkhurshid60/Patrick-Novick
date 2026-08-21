@@ -84,9 +84,9 @@ ${SIGNATURE}`,
 ];
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.625rem 1rem",
   fontSize: "0.875rem",
@@ -176,17 +176,17 @@ export default function TemplatesClient() {
     <div>
       {/* Starter templates banner */}
       {templates.length === 0 && (
-        <div className="rounded-2xl p-6 mb-6" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="rounded-2xl p-6 mb-6" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3" style={{ background: "rgba(124,58,237,0.1)" }}>
               <Layout size={20} style={{ color: "#c4b5fd" }} strokeWidth={1.5} />
             </div>
-            <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>No templates yet</p>
-            <p className="text-xs mb-5" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <p className="text-sm font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>No templates yet</p>
+            <p className="text-xs mb-5 text-(--admin-text-faint)">
               Use a starter or create your own. Plain text only — best for deliverability. Use{" "}
-              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
-              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, or{" "}
-              <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>{" "}
+              <code style={{ background: "var(--admin-hover-bg)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code>,{" "}
+              <code style={{ background: "var(--admin-hover-bg)", padding: "1px 5px", borderRadius: 4 }}>{"{{title}}"}</code>, or{" "}
+              <code style={{ background: "var(--admin-hover-bg)", padding: "1px 5px", borderRadius: 4 }}>{"{{company}}"}</code>{" "}
               for personalization.
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -196,7 +196,7 @@ export default function TemplatesClient() {
                   onClick={() => handleStarter(t)}
                   disabled={loading}
                   className="px-4 py-2 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] disabled:opacity-50"
-                  style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                 >
                   + {t.name}
                 </button>
@@ -214,13 +214,13 @@ export default function TemplatesClient() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             style={{ ...inputStyle, width: "auto", fontSize: "0.8rem", padding: "0.55rem 0.9rem", borderRadius: "0.75rem", cursor: "pointer" }}
           >
-            <option value="all" style={{ background: "#16181e" }}>All Categories</option>
+            <option value="all" style={{ background: "var(--admin-surface)" }}>All Categories</option>
             {TEMPLATE_CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value} style={{ background: "#16181e" }}>{c.label}</option>
+              <option key={c.value} value={c.value} style={{ background: "var(--admin-surface)" }}>{c.label}</option>
             ))}
           </select>
           <div className="relative">
-            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(255,255,255,0.3)" }} />
+            <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-(--admin-text-faint)" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -228,23 +228,23 @@ export default function TemplatesClient() {
               style={{ ...inputStyle, width: "220px", paddingLeft: "2.25rem", fontSize: "0.8rem" }}
             />
           </div>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.25)" }}>
+          <p className="text-xs text-(--admin-text-faint)">
             {shownTemplates.length} template{shownTemplates.length !== 1 ? "s" : ""}
           </p>
         </div>
         <button
           onClick={() => router.push("/bd825db8c738/templates/new")}
           className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-          style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+          style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
         >
           <Plus size={14} /> New Template
         </button>
       </div>
 
       {/* Template library — expandable rows, grouped visually by category badge */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
         {shownTemplates.length === 0 ? (
-          <p className="py-14 text-center text-sm" style={{ color: "rgba(255,255,255,0.3)" }}>
+          <p className="py-14 text-center text-sm text-(--admin-text-faint)">
             No templates match your filters.
           </p>
         ) : (
@@ -252,16 +252,16 @@ export default function TemplatesClient() {
             const cat = categoryMeta(t.category);
             const isOpen = expandedId === t.id;
             return (
-              <div key={t.id} style={{ borderBottom: i < shownTemplates.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+              <div key={t.id} style={{ borderBottom: i < shownTemplates.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
                 <button
                   type="button"
                   onClick={() => setExpandedId(isOpen ? null : t.id)}
-                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
+                  className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-(--admin-hover-bg)"
                 >
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cat.bg }}>
                     <Layout size={14} style={{ color: cat.color }} strokeWidth={1.75} />
                   </div>
-                  <p className="text-sm font-semibold text-white truncate flex-1 min-w-0">{t.name}</p>
+                  <p className="text-sm font-semibold text-(--admin-text) truncate flex-1 min-w-0">{t.name}</p>
                   <span
                     className="shrink-0 text-xs px-2.5 py-1 rounded-full font-semibold"
                     style={{ background: cat.bg, color: cat.color }}
@@ -270,21 +270,21 @@ export default function TemplatesClient() {
                   </span>
                   <ChevronDown
                     size={15}
-                    style={{ color: "rgba(255,255,255,0.3)", transform: isOpen ? "rotate(180deg)" : "rotate(-90deg)", transition: "transform 150ms" }}
+                    style={{ color: "var(--admin-text-faint)", transform: isOpen ? "rotate(180deg)" : "rotate(-90deg)", transition: "transform 150ms" }}
                   />
                 </button>
 
                 {isOpen && (
                   <div className="px-5 pb-5 flex flex-col gap-3">
-                    <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>Subject: {t.subject}</p>
+                    <p className="text-xs text-(--admin-text-muted)">Subject: {t.subject}</p>
                     {listName(t.list_id) && (
-                      <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}>
+                      <span className="self-start text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)" }}>
                         List: {listName(t.list_id)}
                       </span>
                     )}
                     <pre
                       className="text-xs rounded-xl p-3 overflow-hidden"
-                      style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", maxHeight: "72px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid rgba(255,255,255,0.04)" }}
+                      style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-faint)", maxHeight: "72px", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid var(--admin-border)" }}
                     >
                       {t.body.replace(/<[^>]+>/g, " ").trim().slice(0, 150)}…
                     </pre>
@@ -292,7 +292,7 @@ export default function TemplatesClient() {
                       <button
                         onClick={() => applyTemplate(t)}
                         className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.01]"
-                        style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}
+                        style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.2)" }}
                       >
                         <Send size={11} /> Use in Campaign
                       </button>
@@ -305,15 +305,15 @@ export default function TemplatesClient() {
                       </button>
                       <button
                         onClick={() => setPreviewing(t)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-(--admin-text-secondary) transition-all hover:bg-(--admin-hover-bg) hover:text-(--admin-text)"
                         title="Preview"
                       >
                         <Eye size={14} />
                       </button>
                       <button
                         onClick={() => copyBody(t.id, t.body)}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-white/10 ${
-                          copied === t.id ? "text-emerald-400" : "text-white/55 hover:text-white"
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-(--admin-hover-bg) ${
+                          copied === t.id ? "text-emerald-400" : "text-(--admin-text-secondary) hover:text-(--admin-text)"
                         }`}
                         title="Copy HTML"
                       >
@@ -321,14 +321,14 @@ export default function TemplatesClient() {
                       </button>
                       <button
                         onClick={() => router.push(`/bd825db8c738/templates/${t.id}`)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-white/10 hover:text-white"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-(--admin-text-secondary) transition-all hover:bg-(--admin-hover-bg) hover:text-(--admin-text)"
                         title="Edit"
                       >
                         <Edit2 size={14} />
                       </button>
                       <button
                         onClick={() => handleDelete(t.id)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white/55 transition-all hover:bg-red-500/15 hover:text-red-400"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-(--admin-text-secondary) transition-all hover:bg-red-500/15 hover:text-red-400"
                         title="Delete"
                       >
                         <Trash2 size={14} />
@@ -346,25 +346,25 @@ export default function TemplatesClient() {
       {previewing && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
           onClick={() => setPreviewing(null)}
         >
           <div
             className="relative w-full flex flex-col"
-            style={{ maxWidth: "680px", maxHeight: "90vh", background: "#1a1d23", borderRadius: "1rem", border: "1px solid rgba(255,255,255,0.08)" }}
+            style={{ maxWidth: "680px", maxHeight: "90vh", background: "var(--admin-surface)", borderRadius: "1rem", border: "1px solid var(--admin-border)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal header */}
-            <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--admin-border)" }}>
               <div>
-                <p className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>{previewing.name}</p>
-                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Subject: {previewing.subject}</p>
+                <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>{previewing.name}</p>
+                <p className="text-xs mt-0.5 text-(--admin-text-muted)">Subject: {previewing.subject}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => { applyTemplate(previewing); setPreviewing(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02]"
-                  style={{ background: "var(--color-red)", color: "#fff" }}
+                  style={{ background: "var(--admin-accent)", color: "#fff" }}
                 >
                   <Send size={11} /> Use in Campaign
                 </button>
@@ -377,8 +377,8 @@ export default function TemplatesClient() {
                 </button>
                 <button
                   onClick={() => setPreviewing(null)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-(--admin-hover-bg)"
+                  style={{ color: "var(--admin-text-muted)" }}
                 >
                   <X size={15} />
                 </button>
@@ -434,8 +434,8 @@ export default function TemplatesClient() {
 
       {/* Starter buttons when templates exist */}
       {templates.length > 0 && (
-        <div className="mt-5 pt-5 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <p className="w-full text-xs mb-1" style={{ color: "rgba(255,255,255,0.25)" }}>Add starter templates:</p>
+        <div className="mt-5 pt-5 flex flex-wrap gap-2" style={{ borderTop: "1px solid var(--admin-border)" }}>
+          <p className="w-full text-xs mb-1 text-(--admin-text-faint)">Add starter templates:</p>
           {STARTER_TEMPLATES.map((t) => {
             const added = templates.some((x) => x.name === t.name);
             return (
@@ -446,8 +446,8 @@ export default function TemplatesClient() {
                 title={added ? "Already in your templates" : undefined}
                 className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] disabled:hover:scale-100 disabled:cursor-not-allowed inline-flex items-center gap-1"
                 style={added
-                  ? { background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.25)" }
-                  : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)", opacity: loading ? 0.5 : 1 }}
+                  ? { background: "var(--admin-success-soft)", color: "var(--admin-success)", border: "1px solid rgba(34,197,94,0.25)" }
+                  : { background: "var(--admin-hover-bg)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)", opacity: loading ? 0.5 : 1 }}
               >
                 {added ? <><Check size={12} /> {t.name} — added</> : <>+ {t.name}</>}
               </button>

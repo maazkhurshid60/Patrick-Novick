@@ -9,9 +9,9 @@ import { BField, MessageFields, ListsFields, ButtonsFields, ImageAndFooterFields
 interface ContactList { id: number; name: string }
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.625rem 1rem",
   fontSize: "0.875rem",
@@ -37,8 +37,8 @@ function StepNav({ onBack, onNext, nextLabel }: { onBack?: () => void; onNext: (
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
-          style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+          style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
         >
           <ChevronLeft size={14} /> Back
         </button>
@@ -47,7 +47,7 @@ function StepNav({ onBack, onNext, nextLabel }: { onBack?: () => void; onNext: (
         type="button"
         onClick={onNext}
         className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-        style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+        style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
       >
         Next: {nextLabel} <ChevronRight size={14} />
       </button>
@@ -101,14 +101,14 @@ export default function TemplateMakerClient() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-2xl p-6" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
+      <div className="rounded-2xl p-6" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
         <div className="flex items-center gap-2 mb-1">
-          <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(230,57,70,0.12)" }}>
-            <Wand2 size={16} style={{ color: "#f87171" }} />
+          <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--admin-accent-soft)" }}>
+            <Wand2 size={16} style={{ color: "var(--admin-accent-text)" }} />
           </span>
-          <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Email Template Maker</p>
+          <p className="text-base font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Email Template Maker</p>
         </div>
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+        <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
           Build a branded, Outlook-safe email from simple fields — it&apos;s saved to your
           Templates and ready to send as a campaign.
         </p>
@@ -133,20 +133,20 @@ export default function TemplateMakerClient() {
                         ? { background: "#3b82f6", color: "#fff" }
                         : isDone
                         ? { background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.4)" }
-                        : { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.08)" }
+                        : { background: "var(--admin-surface-2)", color: "var(--admin-text-muted)", border: "1px solid var(--admin-border)" }
                     }
                   >
                     {isDone ? <Check size={12} /> : s.n}
                   </span>
                   <span
                     className="text-xs font-semibold hidden sm:inline"
-                    style={{ color: isActive ? "#fff" : isDone ? "#60a5fa" : "rgba(255,255,255,0.35)" }}
+                    style={{ color: isActive ? "#fff" : isDone ? "#60a5fa" : "var(--admin-text-muted)" }}
                   >
                     {s.label}
                   </span>
                 </button>
                 {i < STEPS.length - 1 && (
-                  <span className="w-5 sm:w-10 h-px shrink-0 mx-1.5 sm:mx-2.5" style={{ background: "rgba(255,255,255,0.1)" }} />
+                  <span className="w-5 sm:w-10 h-px shrink-0 mx-1.5 sm:mx-2.5" style={{ background: "var(--admin-border)" }} />
                 )}
               </div>
             );
@@ -163,24 +163,24 @@ export default function TemplateMakerClient() {
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Template name</p>
+                    <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-muted)" }}>Template name</p>
                     <input style={inputStyle} placeholder="e.g. NYC Employer Outreach" value={name} onChange={(e) => setName(e.target.value)} required />
                   </div>
                   <div>
-                    <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Email subject line</p>
+                    <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-muted)" }}>Email subject line</p>
                     <input style={inputStyle} placeholder="What recipients see in their inbox" value={subject} onChange={(e) => setSubject(e.target.value)} required />
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Contact list <span style={{ color: "rgba(255,255,255,0.2)" }}>(optional)</span></p>
+                  <p className="text-xs mb-1.5" style={{ color: "var(--admin-text-muted)" }}>Contact list <span style={{ color: "var(--admin-text-faint)" }}>(optional)</span></p>
                   <select
                     style={{ ...inputStyle, cursor: "pointer", maxWidth: 320 }}
                     value={listId ?? ""}
                     onChange={(e) => setListId(e.target.value ? Number(e.target.value) : null)}
                   >
-                    <option value="" style={{ background: "#16181e" }}>General (no specific list)</option>
+                    <option value="" style={{ background: "var(--admin-surface)" }}>General (no specific list)</option>
                     {lists.map((l) => (
-                      <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>
+                      <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>
                     ))}
                   </select>
                 </div>
@@ -191,8 +191,8 @@ export default function TemplateMakerClient() {
             {/* STEP 2 — Message */}
             {step === 2 && (
               <>
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  Tokens like <code style={{ background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere below.
+                <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>
+                  Tokens like <code style={{ background: "var(--admin-surface-2)", padding: "1px 5px", borderRadius: 4 }}>{"{{first_name}}"}</code> work anywhere below.
                 </p>
                 <MessageFields builder={builder} setB={setB} />
                 <BField label="Closing paragraph (optional)" value={builder.bodyAfter} onChange={(v) => setB({ bodyAfter: v })} area rows={2} />
@@ -203,9 +203,9 @@ export default function TemplateMakerClient() {
             {/* STEP 3 — Lists & Buttons */}
             {step === 3 && (
               <>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.3)" }}>Check-lists</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Check-lists</p>
                 <ListsFields builder={builder} setB={setB} />
-                <p className="text-xs font-bold uppercase tracking-wider mt-2" style={{ color: "rgba(255,255,255,0.3)" }}>Call-to-action buttons</p>
+                <p className="text-xs font-bold uppercase tracking-wider mt-2" style={{ color: "var(--admin-text-faint)" }}>Call-to-action buttons</p>
                 <ButtonsFields builder={builder} setB={setB} />
                 <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Image & Footer" />
               </>
@@ -222,24 +222,24 @@ export default function TemplateMakerClient() {
             {/* STEP 5 — Save */}
             {step === 5 && (
               <>
-                <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "rgba(255,255,255,0.3)" }}>Ready to save</p>
-                  <p className="text-sm text-white">{name || "Untitled template"}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>{subject || "No subject yet"}</p>
+                <div className="rounded-xl p-4" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
+                  <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "var(--admin-text-faint)" }}>Ready to save</p>
+                  <p className="text-sm text-(--admin-text)">{name || "Untitled template"}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-muted)" }}>{subject || "No subject yet"}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   <button
                     type="submit" disabled={loading || saved}
                     className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-                    style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+                    style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
                   >
                     <Check size={14} /> {saved ? "Saved!" : loading ? "Saving…" : "Save Template"}
                   </button>
                   <button
                     type="button"
                     onClick={useInCampaign}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5"
-                    style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-(--admin-hover-bg)"
+                    style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                   >
                     <Eye size={14} /> Use in Campaign
                   </button>
@@ -247,8 +247,8 @@ export default function TemplateMakerClient() {
                 <button
                   type="button"
                   onClick={() => setStep(4)}
-                  className="self-start flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-white/5"
-                  style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="self-start flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+                  style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                 >
                   <ChevronLeft size={14} /> Back
                 </button>
@@ -258,7 +258,7 @@ export default function TemplateMakerClient() {
 
           {/* Live preview — always visible, updates as you type on any step */}
           <div className="lg:sticky lg:top-4 h-fit">
-            <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>Live preview</p>
+            <p className="text-xs mb-1.5 font-semibold" style={{ color: "var(--admin-text-muted)" }}>Live preview</p>
             <EmailLivePreview builder={builder} footer={footer} previewHeight="70vh" />
           </div>
         </div>

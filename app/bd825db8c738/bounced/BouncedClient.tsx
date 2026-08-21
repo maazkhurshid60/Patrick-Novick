@@ -124,7 +124,7 @@ const GridCell = memo(function GridCell({
   const base: React.CSSProperties = {
     width: col.w,
     background: focused ? "rgba(59,130,246,0.08)" : isDirty ? "rgba(245,158,11,0.03)" : "transparent",
-    color: "#e5e7eb", border: focused ? "2px solid #3b82f6" : "2px solid transparent",
+    color: "var(--admin-text)", border: focused ? "2px solid #3b82f6" : "2px solid transparent",
     outline: "none", padding: "6px 8px", transition: "border-color .1s, background-color .1s",
   };
 
@@ -133,23 +133,25 @@ const GridCell = memo(function GridCell({
     if (col.kind === "reason") {
       return (
         <div style={{ width: col.w, padding: "6px 8px" }}>
+          {/* Bounce-reason chip stays amber/warning-family, not part of the
+              danger recolor — precedent from the prior red→indigo pass. */}
           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold inline-block max-w-full truncate"
-            style={{ background: "rgba(234,179,8,0.08)", color: "#fbbf24", border: "1px solid rgba(234,179,8,0.15)" }}
+            style={{ background: "var(--admin-warning-soft)", color: "var(--admin-warning)", border: "1px solid rgba(245,158,11,0.15)" }}
             title={row.reason}>{row.reason}</span>
         </div>
       );
     }
     if (col.kind === "date") {
-      return <div style={{ width: col.w, padding: "6px 8px", fontSize: "0.72rem", color: "rgba(255,255,255,0.4)" }}>{fmtDate(row.bounced_at)}</div>;
+      return <div style={{ width: col.w, padding: "6px 8px", fontSize: "0.72rem", color: "var(--admin-text-muted)" }}>{fmtDate(row.bounced_at)}</div>;
     }
     // lastsent
     return (
       <div style={{ width: col.w, padding: "6px 8px", fontSize: "0.72rem" }}>
         {row.last_sent ? (
-          <span style={{ color: "rgba(255,255,255,0.55)" }}>
-            {fmtDate(row.last_sent)}{row.send_count > 1 && <span style={{ color: "#4ade80", marginLeft: 5 }}>×{row.send_count}</span>}
+          <span style={{ color: "var(--admin-text-secondary)" }}>
+            {fmtDate(row.last_sent)}{row.send_count > 1 && <span style={{ color: "var(--admin-success)", marginLeft: 5 }}>×{row.send_count}</span>}
           </span>
-        ) : <span style={{ color: "rgba(255,255,255,0.25)" }}>Never</span>}
+        ) : <span style={{ color: "var(--admin-text-faint)" }}>Never</span>}
       </div>
     );
   }
@@ -172,10 +174,10 @@ const GridCell = memo(function GridCell({
           }}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           onKeyDown={(e) => onKeyDown(e, r, c)}
-          style={{ ...base, color: "#fff", cursor: rowId == null ? "not-allowed" : "pointer" }}
+          style={{ ...base, color: "var(--admin-text)", cursor: rowId == null ? "not-allowed" : "pointer" }}
         >
-          <option value="" style={{ background: "#16181e" }}>— None —</option>
-          {lists.map((l) => <option key={l.id} value={String(l.id)} style={{ background: "#16181e" }}>{l.name}</option>)}
+          <option value="" style={{ background: "var(--admin-surface)" }}>— None —</option>
+          {lists.map((l) => <option key={l.id} value={String(l.id)} style={{ background: "var(--admin-surface)" }}>{l.name}</option>)}
         </select>
         {saving && <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><Loader2 size={13} className="animate-spin text-blue-400" /></div>}
       </div>
@@ -190,11 +192,11 @@ const GridCell = memo(function GridCell({
         onChange={(e) => { const nv = e.target.value; setVal(nv); onChangePending(rk, col.key, nv === initialValue ? undefined : nv); }}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         onKeyDown={(e) => onKeyDown(e, r, c)}
-        style={{ ...base, color: "#fff", cursor: rowId == null ? "not-allowed" : "pointer" }}
+        style={{ ...base, color: "var(--admin-text)", cursor: rowId == null ? "not-allowed" : "pointer" }}
       >
-        <option value="active" style={{ background: "#16181e" }}>active</option>
-        <option value="unsubscribed" style={{ background: "#16181e" }}>unsubscribed</option>
-        <option value="invalid" style={{ background: "#16181e" }}>invalid</option>
+        <option value="active" style={{ background: "var(--admin-surface)" }}>active</option>
+        <option value="unsubscribed" style={{ background: "var(--admin-surface)" }}>unsubscribed</option>
+        <option value="invalid" style={{ background: "var(--admin-surface)" }}>invalid</option>
       </select>
     );
   }
@@ -220,7 +222,7 @@ const GridCell = memo(function GridCell({
 });
 
 const PER_PAGE = 100;
-const inputStyle = { border: "1px solid rgba(255,255,255,0.1)", color: "#fff", background: "rgba(255,255,255,0.04)", borderRadius: "0.625rem", padding: "0.45rem 0.7rem", fontSize: "0.8rem", outline: "none" };
+const inputStyle = { border: "1px solid var(--admin-border)", color: "var(--admin-text)", background: "var(--admin-surface-2)", borderRadius: "0.625rem", padding: "0.45rem 0.7rem", fontSize: "0.8rem", outline: "none" };
 
 export default function BouncedClient() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -463,7 +465,7 @@ export default function BouncedClient() {
     } catch (e: any) { setError(e?.message || "Upload failed"); } finally { setUploading(false); }
   }
 
-  const btn = "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-white/5";
+  const btn = "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors hover:bg-(--admin-hover-bg)";
   const dirtyCount = Object.keys(pendingEdits).length;
 
   return (
@@ -471,49 +473,49 @@ export default function BouncedClient() {
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3 flex-wrap shrink-0">
         <div>
-          <p className="text-lg font-black text-white" style={{ fontFamily: "var(--font-heading)" }}>
-            Bounced contacts <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.35)" }}>· {filtered.length}</span>
+          <p className="text-lg font-black text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
+            Bounced contacts <span className="text-sm font-medium" style={{ color: "var(--admin-text-muted)" }}>· {filtered.length}</span>
           </p>
-          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
-            Edit any cell and Save · fixing the <span style={{ color: "rgba(255,255,255,0.45)" }}>Email</span> releases them back to sendable · click a header to sort.
+          <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
+            Edit any cell and Save · fixing the <span style={{ color: "var(--admin-text-muted)" }}>Email</span> releases them back to sendable · click a header to sort.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
-            <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)" }} />
+            <Search size={14} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--admin-text-faint)" }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputStyle, padding: "0.45rem 0.7rem 0.45rem 2rem", width: 190 }} />
           </div>
           <select value={listFilter} onChange={(e) => setListFilter(e.target.value === "all" ? "all" : Number(e.target.value))} title="Filter by list — also scopes the export" style={{ ...inputStyle, cursor: "pointer", maxWidth: 190 }}>
-            <option value="all" style={{ background: "#16181e" }}>All lists</option>
-            {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}</option>)}
+            <option value="all" style={{ background: "var(--admin-surface)" }}>All lists</option>
+            {lists.map((l) => <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}</option>)}
           </select>
-          <button onClick={downloadCsv} className={btn} style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }} title="Export (scoped to the selected list)"><Download size={13} /> CSV</button>
-          <button onClick={downloadExcel} disabled={exporting} className={btn} style={{ border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>{exporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} Excel</button>
-          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>{uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}{uploading ? "Applying…" : "Upload fixed file"}</button>
+          <button onClick={downloadCsv} className={btn} style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }} title="Export (scoped to the selected list)"><Download size={13} /> CSV</button>
+          <button onClick={downloadExcel} disabled={exporting} className={btn} style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}>{exporting ? <Loader2 size={13} className="animate-spin" /> : <FileSpreadsheet size={13} />} Excel</button>
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-50" style={{ background: "var(--admin-success-soft)", color: "var(--admin-success)", border: "1px solid rgba(34,197,94,0.2)" }}>{uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}{uploading ? "Applying…" : "Upload fixed file"}</button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleUpload} style={{ display: "none" }} />
-          <button onClick={loadData} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/5" style={{ border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }} title="Refresh"><RefreshCw size={13} className={loading ? "animate-spin" : ""} /></button>
+          <button onClick={loadData} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-(--admin-hover-bg)" style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-muted)" }} title="Refresh"><RefreshCw size={13} className={loading ? "animate-spin" : ""} /></button>
         </div>
       </div>
 
       {banner && <div className="px-4 py-2.5 rounded-xl text-xs font-medium shrink-0" style={{ background: "rgba(96,165,250,0.1)", color: "#93c5fd", border: "1px solid rgba(96,165,250,0.2)" }}>{banner} <button onClick={() => setBanner("")} className="ml-2 underline">dismiss</button></div>}
-      {error && <div className="px-4 py-2.5 rounded-xl text-xs font-medium shrink-0" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{error} <button onClick={() => setError("")} className="ml-2 underline">dismiss</button></div>}
+      {error && <div className="px-4 py-2.5 rounded-xl text-xs font-medium shrink-0" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>{error} <button onClick={() => setError("")} className="ml-2 underline">dismiss</button></div>}
 
       {/* Grid */}
-      <div ref={gridRef} className="spreadsheet-grid" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "#14161b", width: "100%", maxWidth: "100%" }}>
+      <div ref={gridRef} className="spreadsheet-grid" style={{ border: "1px solid var(--admin-border)", borderRadius: "0.75rem", overflow: "auto", maxHeight: "calc(100vh - 190px)", background: "var(--admin-surface)", width: "100%", maxWidth: "100%" }}>
         {loading && rows.length === 0 ? (
-          <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}><Loader2 size={14} className="animate-spin" /> Loading bounced contacts…</div>
+          <div className="py-20 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--admin-text-muted)" }}><Loader2 size={14} className="animate-spin" /> Loading bounced contacts…</div>
         ) : pageRows.length === 0 ? (
-          <div className="py-20 text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>{rows.length === 0 ? "No bounced addresses — your list is clean." : "No bounced contacts match your filter."}</div>
+          <div className="py-20 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>{rows.length === 0 ? "No bounced addresses — your list is clean." : "No bounced contacts match your filter."}</div>
         ) : (
           <table style={{ borderCollapse: "separate", borderSpacing: 0, fontSize: "0.78rem", width: "max-content" }}>
             <thead>
               <tr>
-                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "#1e2128", color: "rgba(255,255,255,0.4)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.15)", minWidth: 150 }}>Actions</th>
+                <th style={{ position: "sticky", top: 0, left: 0, zIndex: 3, background: "var(--admin-surface)", color: "var(--admin-text-muted)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", minWidth: 150 }}>Actions</th>
                 {COLS.map((col) => {
                   const active = sortKey === col.key;
                   return (
                     <th key={col.key} onClick={() => toggleSort(col.key)} title="Click to sort"
-                      style={{ position: "sticky", top: 0, zIndex: 2, background: active ? "#242832" : "#1e2128", color: active ? "#fff" : "rgba(255,255,255,0.5)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid rgba(255,255,255,0.2)", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                      style={{ position: "sticky", top: 0, zIndex: 2, background: "var(--admin-surface)", color: active ? "var(--admin-text)" : "var(--admin-text-secondary)", padding: "8px 10px", fontWeight: 600, textAlign: "left", borderBottom: "2px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", minWidth: col.w, whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
                       <span className="inline-flex items-center gap-1">{col.label}{active && (sortDir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}</span>
                     </th>
                   );
@@ -523,19 +525,19 @@ export default function BouncedClient() {
             <tbody>
               {pageRows.map((row, r) => {
                 const rk = rowKey(row);
-                const bg = r % 2 === 0 ? "#14161b" : "#171a20";
+                const bg = "var(--admin-surface)";
                 return (
                   <tr key={rk} style={{ background: bg }}>
-                    <td style={{ position: "sticky", left: 0, zIndex: 1, background: bg, borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.15)", padding: "4px 8px" }}>
+                    <td style={{ position: "sticky", left: 0, zIndex: 1, background: bg, borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", padding: "4px 8px" }}>
                       <div className="flex items-center gap-1.5">
-                        <button onClick={() => release(row.email)} disabled={busy} title="Release without changing the email" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-[1.03] disabled:opacity-50" style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}><RotateCcw size={11} /> Release</button>
-                        <button onClick={() => setDeleteInfo({ id: row.id, email: row.email, name: String(row.name || row.email) })} disabled={busy} title="Delete entirely" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-[1.03] disabled:opacity-50" style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}><Trash2 size={11} /></button>
+                        <button onClick={() => release(row.email)} disabled={busy} title="Release without changing the email" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-[1.03] disabled:opacity-50" style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}><RotateCcw size={11} /> Release</button>
+                        <button onClick={() => setDeleteInfo({ id: row.id, email: row.email, name: String(row.name || row.email) })} disabled={busy} title="Delete entirely" className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold transition-all hover:scale-[1.03] disabled:opacity-50" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger)", border: "1px solid rgba(239,68,68,0.2)" }}><Trash2 size={11} /></button>
                       </div>
                     </td>
                     {COLS.map((col, c) => {
                       const ck = `${rk}::${col.key}`;
                       return (
-                        <td key={col.key} style={{ padding: 0, borderBottom: "1px solid rgba(255,255,255,0.08)", borderRight: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+                        <td key={col.key} style={{ padding: 0, borderBottom: "1px solid var(--admin-border)", borderRight: "1px solid var(--admin-border)", position: "relative" }}>
                           <GridCell
                             rk={rk} rowId={row.id} col={col}
                             initialValue={String(row[col.key] ?? "")}
@@ -557,21 +559,21 @@ export default function BouncedClient() {
       {/* Pager */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 shrink-0">
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>{(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} of {filtered.length}</p>
+          <p className="text-xs" style={{ color: "var(--admin-text-muted)" }}>{(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, filtered.length)} of {filtered.length}</p>
           <div className="flex items-center gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5" style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}><ChevronLeft size={13} /> Prev</button>
-            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.5)" }}>Page {currentPage} of {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-white/5" style={{ color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.08)" }}>Next <ChevronRight size={13} /></button>
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}><ChevronLeft size={13} /> Prev</button>
+            <span className="text-xs font-semibold" style={{ color: "var(--admin-text-muted)" }}>Page {currentPage} of {totalPages}</span>
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}>Next <ChevronRight size={13} /></button>
           </div>
         </div>
       )}
 
       {/* Floating Save bar */}
       {dirtyCount > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 px-4 py-3 rounded-xl shadow-2xl border flex-wrap sm:flex-nowrap" style={{ background: "#1a1d23", borderColor: "rgba(245,158,11,0.3)", width: "calc(100% - 32px)", maxWidth: 460 }}>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center justify-between gap-4 px-4 py-3 rounded-xl shadow-2xl border flex-wrap sm:flex-nowrap" style={{ background: "var(--admin-surface)", borderColor: "rgba(245,158,11,0.3)", width: "calc(100% - 32px)", maxWidth: 460 }}>
           <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Unsaved changes ({dirtyCount})</p>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={discardChanges} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-white/5 text-slate-400 disabled:opacity-40">Discard</button>
+            <button onClick={discardChanges} disabled={saving} className="px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-(--admin-hover-bg) text-slate-400 disabled:opacity-40">Discard</button>
             <button onClick={saveChanges} disabled={saving} className="px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 disabled:opacity-50">{saving ? <Loader2 size={13} className="animate-spin" /> : null} Save Changes</button>
           </div>
         </div>
@@ -579,13 +581,13 @@ export default function BouncedClient() {
 
       {/* Delete modal */}
       {deleteInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
-          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "#1a1d23", borderColor: "rgba(255,255,255,0.08)", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)" }}>
-            <h3 className="text-sm font-bold text-white mb-2">Delete Bounced Contact</h3>
-            <p className="text-xs text-slate-300 mb-4">You are about to delete <span className="font-semibold text-white">{deleteInfo.name}</span>.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in" style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-md rounded-xl p-5 border" style={{ background: "var(--admin-surface)", borderColor: "var(--admin-border)", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.5)" }}>
+            <h3 className="text-sm font-bold text-(--admin-text) mb-2">Delete Bounced Contact</h3>
+            <p className="text-xs text-slate-300 mb-4">You are about to delete <span className="font-semibold text-(--admin-text)">{deleteInfo.name}</span>.</p>
             <p className="text-xs text-slate-400 mb-5">This permanently deletes the contact from the database, removes all list memberships, and clears their bounce record. This cannot be undone.</p>
             <div className="flex justify-end gap-2 text-xs font-bold">
-              <button onClick={() => setDeleteInfo(null)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-white/5">Cancel</button>
+              <button onClick={() => setDeleteInfo(null)} className="px-3 py-1.5 rounded-lg text-slate-400 hover:bg-(--admin-hover-bg)">Cancel</button>
               <button onClick={executeDelete} className="px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-400">Delete Entirely</button>
             </div>
           </div>

@@ -53,7 +53,7 @@ export default function LoginForm() {
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}>
             Patrick
           </span>
-          <span className="text-xl font-bold" style={{ color: "var(--color-red)" }}>.</span>
+          <span className="text-xl font-bold" style={{ color: "#6366f1" }}>.</span>
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-heading)", color: "var(--color-dark)" }}>
             Novick
           </span>
@@ -69,7 +69,7 @@ export default function LoginForm() {
         {error && (
           <div
             className="mb-5 px-4 py-3 rounded-xl text-sm font-medium"
-            style={{ background: "#fff0f0", color: "var(--color-red)", border: "1px solid rgba(230,57,70,0.2)" }}
+            style={{ background: "#fff0f0", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)" }}
           >
             {error}
           </div>
@@ -89,7 +89,7 @@ export default function LoginForm() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-200"
               style={{ border: "1px solid var(--color-border)", color: "var(--color-dark)", background: "var(--color-light)" }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--color-red)")}
+              onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
               onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
             />
           </div>
@@ -107,7 +107,7 @@ export default function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all duration-200"
               style={{ border: "1px solid var(--color-border)", color: "var(--color-dark)", background: "var(--color-light)" }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--color-red)")}
+              onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
               onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
             />
           </div>
@@ -117,9 +117,9 @@ export default function LoginForm() {
             disabled={loading}
             className="mt-2 w-full px-6 py-3.5 rounded-full text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-              background: "var(--color-red)",
+              background: "#6366f1",
               fontFamily: "var(--font-heading)",
-              boxShadow: "0 4px 20px rgba(230,57,70,0.3)",
+              boxShadow: "0 4px 20px rgba(99,102,241,0.3)",
             }}
           >
             {loading ? "Signing in…" : "Sign In"}

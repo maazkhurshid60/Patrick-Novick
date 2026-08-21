@@ -9,9 +9,9 @@ import { buildMetroEmail, DEFAULT_BUILDER, DEFAULT_FOOTER, FooterSettings } from
 const PREVIEW_BODY = DEFAULT_BUILDER;
 
 const inputStyle = {
-  border: "1px solid rgba(255,255,255,0.08)",
-  color: "#fff",
-  background: "rgba(255,255,255,0.04)",
+  border: "1px solid var(--admin-border)",
+  color: "var(--admin-text)",
+  background: "var(--admin-surface-2)",
   borderRadius: "0.75rem",
   padding: "0.625rem 1rem",
   fontSize: "0.875rem",
@@ -24,7 +24,7 @@ function Field({ label, value, onChange, placeholder }: {
 }) {
   return (
     <div>
-      <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+      <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>{label}</p>
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
     </div>
   );
@@ -94,16 +94,16 @@ export default function FooterSettingsClient() {
 
   if (!loaded) {
     return (
-      <div className="flex items-center justify-center py-24 gap-2 text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <div className="flex items-center justify-center py-24 gap-2 text-sm" style={{ color: "var(--admin-text-muted)" }}>
         <Loader2 size={16} className="animate-spin" /> Loading footer settings…
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl p-7" style={{ background: "#1a1d23", border: "1px solid rgba(255,255,255,0.06)" }}>
-      <p className="text-sm font-bold text-white mb-1" style={{ fontFamily: "var(--font-heading)" }}>Email Footer</p>
-      <p className="text-xs mb-6" style={{ color: "rgba(255,255,255,0.4)" }}>
+    <div className="rounded-2xl p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
+      <p className="text-sm font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>Email Footer</p>
+      <p className="text-xs mb-6" style={{ color: "var(--admin-text-muted)" }}>
         This signature block and bottom bar are the same on every email the branded
         builder produces. Edit it once here — new and re-saved templates pick it up
         automatically. Templates already sent, or already saved with their own HTML,
@@ -134,7 +134,7 @@ export default function FooterSettingsClient() {
 
           {/* Logo — upload/URL + where it sits */}
           <div>
-            <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Footer logo (optional)</p>
+            <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Footer logo (optional)</p>
             <div className="flex gap-2">
               <input
                 value={footer.logoUrl}
@@ -143,8 +143,8 @@ export default function FooterSettingsClient() {
                 style={inputStyle}
               />
               <label
-                className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-white/5"
-                style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }}
+                className="flex items-center gap-1.5 px-3 rounded-xl text-xs font-bold cursor-pointer whitespace-nowrap transition-all hover:bg-(--admin-hover-bg)"
+                style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
               >
                 {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                 {uploading ? "Uploading…" : "Upload"}
@@ -157,16 +157,16 @@ export default function FooterSettingsClient() {
                 />
               </label>
             </div>
-            {uploadErr && <p className="text-xs mt-1" style={{ color: "#f87171" }}>{uploadErr}</p>}
+            {uploadErr && <p className="text-xs mt-1" style={{ color: "var(--admin-danger-text)" }}>{uploadErr}</p>}
             {footer.logoUrl && (
               <div className="mt-2 flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={footer.logoUrl} alt="Footer logo preview" style={{ height: 36, width: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)" }} />
+                <img src={footer.logoUrl} alt="Footer logo preview" style={{ height: 36, width: "auto", borderRadius: 6, border: "1px solid var(--admin-border)" }} />
                 <button
                   type="button"
                   onClick={() => setF({ logoUrl: "" })}
-                  className="flex items-center gap-1 text-xs transition-colors hover:text-white"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
+                  className="flex items-center gap-1 text-xs transition-colors hover:text-(--admin-text)"
+                  style={{ color: "var(--admin-text-muted)" }}
                 >
                   <X size={12} /> Remove
                 </button>
@@ -177,7 +177,7 @@ export default function FooterSettingsClient() {
                 so the choice is remembered if one is added later. */}
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
-                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Position</p>
+                <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Position</p>
                 <div className="flex gap-2">
                   {(["top", "bottom"] as const).map((pos) => (
                     <button
@@ -186,8 +186,8 @@ export default function FooterSettingsClient() {
                       onClick={() => setF({ logoPosition: pos })}
                       className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
                       style={footer.logoPosition === pos
-                        ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid var(--admin-accent-soft)" }
+                        : { background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                     >
                       {pos === "top" ? "Above signature" : "Below signature"}
                     </button>
@@ -195,7 +195,7 @@ export default function FooterSettingsClient() {
                 </div>
               </div>
               <div>
-                <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Alignment</p>
+                <p className="text-xs mb-1" style={{ color: "var(--admin-text-muted)" }}>Alignment</p>
                 <div className="flex gap-2">
                   {(["left", "center", "right"] as const).map((align) => (
                     <button
@@ -204,8 +204,8 @@ export default function FooterSettingsClient() {
                       onClick={() => setF({ logoAlign: align })}
                       className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
                       style={footer.logoAlign === align
-                        ? { background: "rgba(230,57,70,0.15)", color: "#f87171", border: "1px solid rgba(230,57,70,0.3)" }
-                        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                        ? { background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid var(--admin-accent-soft)" }
+                        : { background: "var(--admin-surface-2)", color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
                     >
                       {align}
                     </button>
@@ -220,7 +220,7 @@ export default function FooterSettingsClient() {
             onClick={handleSave}
             disabled={saving}
             className="flex items-center justify-center gap-2 mt-2 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50 w-fit"
-            style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+            style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
           >
             <Check size={14} /> {saved ? "Saved!" : saving ? "Saving…" : "Save Footer"}
           </button>
@@ -228,14 +228,14 @@ export default function FooterSettingsClient() {
 
         {/* Live preview */}
         <div className="lg:sticky lg:top-4 h-fit">
-          <p className="text-xs mb-1.5 font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <p className="text-xs mb-1.5 font-semibold" style={{ color: "var(--admin-text-muted)" }}>
             Live preview — sample email body, real footer
           </p>
           <iframe
             title="Footer preview"
             srcDoc={previewSrc}
             sandbox=""
-            style={{ width: "100%", height: "70vh", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "0.5rem", background: "#fff" }}
+            style={{ width: "100%", height: "70vh", border: "1px solid var(--admin-border)", borderRadius: "0.5rem", background: "#fff" }}
           />
         </div>
       </div>

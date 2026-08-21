@@ -19,6 +19,61 @@
   --font-sans: var(--font-inter);
 }
 
+/* ---------------------------------------------------------- admin theme
+   Scoped to the admin panel (app/bd825db8c738/**) only — the public site
+   above never reads these. Dark is the default and matches the values every
+   admin page already had hardcoded before this existed; [data-admin-theme
+   ="light"] is what AdminThemeProvider's toggle switches to. Components
+   migrate from raw hex to these var(--admin-*) tokens so the toggle actually
+   has something to flip. */
+[data-admin-theme] {
+  --admin-bg: #0e1116;
+  --admin-surface: #171a21;
+  --admin-surface-2: rgba(255, 255, 255, 0.04);
+  --admin-border: rgba(255, 255, 255, 0.06);
+  --admin-text: #ffffff;
+  --admin-text-secondary: rgba(255, 255, 255, 0.6);
+  --admin-text-muted: rgba(255, 255, 255, 0.4);
+  --admin-text-faint: rgba(255, 255, 255, 0.32);
+  --admin-accent: #6366f1;
+  --admin-accent-hover: #4f46e5;
+  --admin-accent-text: #818cf8;
+  --admin-accent-soft: rgba(99, 102, 241, 0.12);
+  --admin-danger: #ef4444;
+  --admin-danger-text: #f87171;
+  --admin-danger-soft: rgba(239, 68, 68, 0.12);
+  --admin-success: #22c55e;
+  --admin-success-soft: rgba(34, 197, 94, 0.12);
+  --admin-warning: #f59e0b;
+  --admin-warning-soft: rgba(245, 158, 11, 0.12);
+  --admin-hover-bg: rgba(255, 255, 255, 0.08);
+  --admin-scrim: rgba(0, 0, 0, 0.6);
+}
+
+[data-admin-theme="light"] {
+  --admin-bg: #f8fafc;
+  --admin-surface: #ffffff;
+  --admin-surface-2: rgba(15, 23, 42, 0.03);
+  --admin-border: rgba(15, 23, 42, 0.09);
+  --admin-text: #0f172a;
+  --admin-text-secondary: rgba(15, 23, 42, 0.65);
+  --admin-text-muted: rgba(15, 23, 42, 0.45);
+  --admin-text-faint: rgba(15, 23, 42, 0.38);
+  --admin-accent: #6366f1;
+  --admin-accent-hover: #4f46e5;
+  --admin-accent-text: #4f46e5;
+  --admin-accent-soft: rgba(99, 102, 241, 0.1);
+  --admin-danger: #ef4444;
+  --admin-danger-text: #dc2626;
+  --admin-danger-soft: rgba(239, 68, 68, 0.08);
+  --admin-success: #16a34a;
+  --admin-success-soft: rgba(34, 197, 94, 0.1);
+  --admin-warning: #d97706;
+  --admin-warning-soft: rgba(245, 158, 11, 0.1);
+  --admin-hover-bg: rgba(15, 23, 42, 0.06);
+  --admin-scrim: rgba(15, 23, 42, 0.3);
+}
+
 * {
   box-sizing: border-box;
 }

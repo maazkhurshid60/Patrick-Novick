@@ -41,7 +41,7 @@ const labelStyle: React.CSSProperties = {
   display: "block",
   fontSize: "0.6875rem",
   fontWeight: 600,
-  color: "rgba(255,255,255,0.35)",
+  color: "var(--admin-text-muted)",
   marginBottom: "0.3rem",
   letterSpacing: "0.04em",
   textTransform: "uppercase",
@@ -348,7 +348,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
         <button
           type="button" disabled={busy} onClick={open}
           className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:scale-[1.02] disabled:opacity-50"
-          style={{ background: "rgba(99,102,241,0.12)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
+          style={{ background: "var(--admin-accent-soft)", color: "var(--admin-accent-text)", border: "1px solid rgba(99,102,241,0.25)", fontFamily: "var(--font-heading)" }}
         >
           {busy ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} Upload Spreadsheet
         </button>
@@ -356,42 +356,42 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
 
       {/* Inline error shown near the trigger when there is no modal open yet */}
       {note && !showMapping && (
-        <div className="px-4 py-3 rounded-xl text-xs font-medium mt-2" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{note}</div>
+        <div className="px-4 py-3 rounded-xl text-xs font-medium mt-2" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>{note}</div>
       )}
 
       {/* ── Spreadsheet Field Mapping Modal ───────────────────────────────── */}
       {showMapping && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
+          style={{ background: "var(--admin-scrim)", backdropFilter: "blur(6px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
         >
           <div
             className="relative w-full flex flex-col"
-            style={{ background: "#16181e", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "1.25rem", maxWidth: "1100px", height: "92vh", overflow: "hidden" }}
+            style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)", borderRadius: "1.25rem", maxWidth: "1100px", height: "92vh", overflow: "hidden" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* ── Modal header ── */}
-            <div className="flex items-center justify-between px-8 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+            <div className="flex items-center justify-between px-8 py-5" style={{ borderBottom: "1px solid var(--admin-border)", flexShrink: 0 }}>
               <div>
-                <p className="text-base font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Field Mapping</p>
-                <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                <p className="text-base font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Spreadsheet Field Mapping</p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-muted)" }}>
                   {sheetHeaders.length} columns detected · {Object.keys(mappings).length} mapped · {sheetRows.length} rows to import
                 </p>
               </div>
-              <button onClick={closeModal} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5" style={{ color: "rgba(255,255,255,0.4)" }}><X size={16} /></button>
+              <button onClick={closeModal} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-(--admin-hover-bg)" style={{ color: "var(--admin-text-muted)" }}><X size={16} /></button>
             </div>
 
             {/* ── Scrollable body ── */}
             <div className="flex-1 overflow-y-auto px-8 py-5" style={{ minHeight: 0 }}>
 
               {/* View toggle: field mapping vs full data preview */}
-              <div className="flex items-center gap-1 p-1 rounded-lg mb-4 w-max" style={{ background: "rgba(255,255,255,0.04)" }}>
+              <div className="flex items-center gap-1 p-1 rounded-lg mb-4 w-max" style={{ background: "var(--admin-surface-2)" }}>
                 <button
                   type="button"
                   onClick={() => setShowPreview(false)}
                   className="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
-                  style={{ background: !showPreview ? "rgba(230,57,70,0.15)" : "transparent", color: !showPreview ? "#f87171" : "rgba(255,255,255,0.45)" }}
+                  style={{ background: !showPreview ? "var(--admin-accent-soft)" : "transparent", color: !showPreview ? "var(--admin-accent-text)" : "var(--admin-text-muted)" }}
                 >
                   Field Mapping
                 </button>
@@ -399,7 +399,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                   type="button"
                   onClick={() => setShowPreview(true)}
                   className="px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
-                  style={{ background: showPreview ? "rgba(230,57,70,0.15)" : "transparent", color: showPreview ? "#f87171" : "rgba(255,255,255,0.45)" }}
+                  style={{ background: showPreview ? "var(--admin-accent-soft)" : "transparent", color: showPreview ? "var(--admin-accent-text)" : "var(--admin-text-muted)" }}
                 >
                   Data Preview ({sheetRows.length})
                 </button>
@@ -407,16 +407,16 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
 
               {/* Full data preview — all columns, multiple rows */}
               {showPreview && (
-                <div className="rounded-xl overflow-auto" style={{ border: "1px solid rgba(255,255,255,0.07)", maxHeight: "62vh" }}>
+                <div className="rounded-xl overflow-auto" style={{ border: "1px solid var(--admin-border)", maxHeight: "62vh" }}>
                   <table style={{ borderCollapse: "collapse", width: "100%", minWidth: "max-content" }}>
                     <thead>
-                      <tr style={{ position: "sticky", top: 0, background: "#1d2026", zIndex: 1 }}>
-                        <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.3)", fontSize: "0.6875rem" }}>#</th>
+                      <tr style={{ position: "sticky", top: 0, background: "var(--admin-surface)", zIndex: 1 }}>
+                        <th style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid var(--admin-border)", color: "var(--admin-text-faint)", fontSize: "0.6875rem" }}>#</th>
                         {sheetHeaders.map((h, i) => {
                           const mappedKey = mappings[h];
                           return (
-                            <th key={i} style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>
-                              <div className="text-xs font-semibold mb-1" style={{ color: mappedKey ? "#fff" : "rgba(255,255,255,0.45)" }}>{h || "(empty)"}</div>
+                            <th key={i} style={{ padding: "0.5rem 0.75rem", textAlign: "left", borderBottom: "1px solid var(--admin-border)", whiteSpace: "nowrap" }}>
+                              <div className="text-xs font-semibold mb-1" style={{ color: mappedKey ? "var(--admin-text)" : "var(--admin-text-muted)" }}>{h || "(empty)"}</div>
                               <select
                                 value={mappedKey ?? ""}
                                 onChange={(e) => {
@@ -424,12 +424,12 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                                   if (e.target.value) nm[h] = e.target.value; else delete nm[h];
                                   setMappings(nm);
                                 }}
-                                className="h-6 px-1.5 rounded text-[10px] text-white outline-none"
-                                style={{ background: mappedKey ? "rgba(230,57,70,0.12)" : "rgba(255,255,255,0.05)", border: mappedKey ? "1px solid rgba(230,57,70,0.3)" : "1px solid rgba(255,255,255,0.1)", maxWidth: 170 }}
+                                className="h-6 px-1.5 rounded text-[10px] text-(--admin-text) outline-none"
+                                style={{ background: mappedKey ? "var(--admin-accent-soft)" : "var(--admin-surface-2)", border: mappedKey ? "1px solid rgba(99,102,241,0.3)" : "1px solid var(--admin-border)", maxWidth: 170 }}
                               >
-                                <option value="" style={{ background: "#16181e" }}>— Skip —</option>
+                                <option value="" style={{ background: "var(--admin-surface)" }}>— Skip —</option>
                                 {MAPPABLE_FIELDS.map((f) => (
-                                  <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
+                                  <option key={f.key} value={f.key} style={{ background: "var(--admin-surface)" }}>{f.label}</option>
                                 ))}
                               </select>
                             </th>
@@ -439,17 +439,17 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                     </thead>
                     <tbody>
                       {sheetRows.slice(0, 200).map((row, rIdx) => (
-                        <tr key={rIdx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                          <td style={{ padding: "0.2rem 0.75rem", color: "rgba(255,255,255,0.25)", fontSize: "0.7rem" }}>{rIdx + 1}</td>
+                        <tr key={rIdx} style={{ borderBottom: "1px solid var(--admin-border)" }}>
+                          <td style={{ padding: "0.2rem 0.75rem", color: "var(--admin-text-faint)", fontSize: "0.7rem" }}>{rIdx + 1}</td>
                           {sheetHeaders.map((_, cIdx) => {
                             const v = row[cIdx];
                             return (
                               <td key={cIdx} style={{ padding: "0.15rem 0.3rem" }}>
                                 <input
                                   defaultValue={v != null ? v.toString() : ""}
-                                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(230,57,70,0.45)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                                  onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(99,102,241,0.45)"; e.currentTarget.style.background = "var(--admin-surface-2)"; }}
                                   onBlur={(e) => { updatePreviewCell(rIdx, cIdx, e.target.value); e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.background = "transparent"; }}
-                                  style={{ width: "100%", minWidth: 100, background: "transparent", border: "1px solid transparent", borderRadius: 6, color: "rgba(255,255,255,0.72)", fontSize: "0.75rem", padding: "0.3rem 0.45rem", outline: "none" }}
+                                  style={{ width: "100%", minWidth: 100, background: "transparent", border: "1px solid transparent", borderRadius: 6, color: "var(--admin-text-secondary)", fontSize: "0.75rem", padding: "0.3rem 0.45rem", outline: "none" }}
                                 />
                               </td>
                             );
@@ -459,7 +459,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                     </tbody>
                   </table>
                   {sheetRows.length > 200 && (
-                    <p className="px-3 py-2 text-xs" style={{ color: "rgba(255,255,255,0.3)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <p className="px-3 py-2 text-xs" style={{ color: "var(--admin-text-faint)", borderTop: "1px solid var(--admin-border)" }}>
                       Showing first 200 of {sheetRows.length} rows. All {sheetRows.length} will be imported.
                     </p>
                   )}
@@ -468,12 +468,12 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
 
               {/* Column mapping table */}
               {!showPreview && (
-              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--admin-border)" }}>
                 {/* Sticky header row */}
-                <div className="grid gap-0" style={{ gridTemplateColumns: "2fr 1.4fr 2fr", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0.5rem 1rem" }}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Spreadsheet Column</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Sample Value</p>
-                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Map to System Field</p>
+                <div className="grid gap-0" style={{ gridTemplateColumns: "2fr 1.4fr 2fr", background: "var(--admin-surface-2)", borderBottom: "1px solid var(--admin-border)", padding: "0.5rem 1rem" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-text-faint)" }}>Spreadsheet Column</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-text-faint)" }}>Sample Value</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--admin-text-faint)" }}>Map to System Field</p>
                 </div>
 
                 {sheetHeaders.map((header, hIdx) => {
@@ -487,22 +487,22 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                       style={{
                         gridTemplateColumns: "2fr 1.4fr 2fr",
                         padding: "0.5rem 1rem",
-                        borderBottom: hIdx < sheetHeaders.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                        background: isMapped ? "rgba(230,57,70,0.03)" : "transparent",
+                        borderBottom: hIdx < sheetHeaders.length - 1 ? "1px solid var(--admin-border)" : "none",
+                        background: isMapped ? "rgba(99,102,241,0.03)" : "transparent",
                       }}
                     >
                       {/* Column name */}
                       <div className="flex items-center gap-2 pr-4 min-w-0">
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: isMapped ? "#f87171" : "rgba(255,255,255,0.15)" }} />
-                        <span className="text-sm font-medium truncate" style={{ color: isMapped ? "#fff" : "rgba(255,255,255,0.55)" }} title={header}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: isMapped ? "var(--admin-accent-text)" : "var(--admin-text-faint)" }} />
+                        <span className="text-sm font-medium truncate" style={{ color: isMapped ? "var(--admin-text)" : "var(--admin-text-secondary)" }} title={header}>
                           {header || "(empty)"}
                         </span>
                       </div>
 
                       {/* Sample value */}
                       <div className="pr-4 min-w-0">
-                        <span className="text-xs truncate block" style={{ color: "rgba(255,255,255,0.35)", fontFamily: "monospace" }} title={sample}>
-                          {sample || <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                        <span className="text-xs truncate block" style={{ color: "var(--admin-text-muted)", fontFamily: "monospace" }} title={sample}>
+                          {sample || <span style={{ color: "var(--admin-text-faint)" }}>—</span>}
                         </span>
                       </div>
 
@@ -515,15 +515,15 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                           else delete newMappings[header];
                           setMappings(newMappings);
                         }}
-                        className="w-full h-8 px-3 rounded-lg text-xs text-white outline-none"
+                        className="w-full h-8 px-3 rounded-lg text-xs text-(--admin-text) outline-none"
                         style={{
-                          background: isMapped ? "rgba(230,57,70,0.1)" : "rgba(255,255,255,0.04)",
-                          border: isMapped ? "1px solid rgba(230,57,70,0.25)" : "1px solid rgba(255,255,255,0.08)",
+                          background: isMapped ? "var(--admin-accent-soft)" : "var(--admin-surface-2)",
+                          border: isMapped ? "1px solid rgba(99,102,241,0.25)" : "1px solid var(--admin-border)",
                         }}
                       >
-                        <option value="" style={{ background: "#16181e" }}>— Skip Column —</option>
+                        <option value="" style={{ background: "var(--admin-surface)" }}>— Skip Column —</option>
                         {MAPPABLE_FIELDS.map((f) => (
-                          <option key={f.key} value={f.key} style={{ background: "#16181e" }}>{f.label}</option>
+                          <option key={f.key} value={f.key} style={{ background: "var(--admin-surface)" }}>{f.label}</option>
                         ))}
                       </select>
                     </div>
@@ -533,8 +533,8 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
               )}
 
               {/* ── Add to list ── */}
-              <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-heading)" }}>Add to Contact List <span style={{ color: "#f87171" }}>(required — pick one)</span></p>
+              <div className="mt-6 pt-5" style={{ borderTop: "1px solid var(--admin-border)" }}>
+                <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: "var(--admin-text-faint)", fontFamily: "var(--font-heading)" }}>Add to Contact List <span style={{ color: "var(--admin-danger-text)" }}>(required — pick one)</span></p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label style={labelStyle}>Select List</label>
@@ -546,14 +546,14 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                         if (v !== "new") setNewListName("");
                         if (v !== "unset") setNote("");
                       }}
-                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border w-full"
-                      style={{ background: "rgba(255,255,255,0.04)", borderColor: selectedListId === "unset" ? "rgba(230,57,70,0.5)" : "rgba(255,255,255,0.1)" }}
+                      className="h-9 px-3 rounded-lg text-xs text-(--admin-text) outline-none border w-full"
+                      style={{ background: "var(--admin-surface-2)", borderColor: selectedListId === "unset" ? "rgba(239,68,68,0.5)" : "var(--admin-border)" }}
                     >
-                      <option value="unset" style={{ background: "#16181e" }}>— Choose one (required) —</option>
-                      <option value="" style={{ background: "#16181e" }}>— Do not add to a list —</option>
-                      <option value="new" style={{ background: "#16181e" }}>[+ Create New List]</option>
+                      <option value="unset" style={{ background: "var(--admin-surface)" }}>— Choose one (required) —</option>
+                      <option value="" style={{ background: "var(--admin-surface)" }}>— Do not add to a list —</option>
+                      <option value="new" style={{ background: "var(--admin-surface)" }}>[+ Create New List]</option>
                       {lists.map((l) => (
-                        <option key={l.id} value={l.id} style={{ background: "#16181e" }}>{l.name}{l.member_count != null ? ` (${l.member_count} members)` : ""}</option>
+                        <option key={l.id} value={l.id} style={{ background: "var(--admin-surface)" }}>{l.name}{l.member_count != null ? ` (${l.member_count} members)` : ""}</option>
                       ))}
                     </select>
                   </div>
@@ -565,8 +565,8 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                       value={newListName}
                       onChange={(e) => setNewListName(e.target.value)}
                       placeholder="e.g. Imported Contacts"
-                      className="h-9 px-3 rounded-lg text-xs text-white outline-none border border-white/10 w-full"
-                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      className="h-9 px-3 rounded-lg text-xs text-(--admin-text) outline-none border border-(--admin-border) w-full"
+                      style={{ background: "var(--admin-surface-2)" }}
                       required
                     />
                   </div>
@@ -580,27 +580,27 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                   <p className="font-bold mb-1" style={{ color: "#93c5fd" }}>Email fallback</p>
                   {emailStats.fallback > 0 && (
                     <p style={{ color: "#93c5fd" }}>
-                      <span className="font-semibold text-white">{emailStats.fallback}</span> contact{emailStats.fallback === 1 ? "" : "s"} have no primary email — their business or personal email will be used instead.
+                      <span className="font-semibold text-(--admin-text)">{emailStats.fallback}</span> contact{emailStats.fallback === 1 ? "" : "s"} have no primary email — their business or personal email will be used instead.
                     </p>
                   )}
                   {emailStats.none > 0 && (
                     <p style={{ color: "#f8b4b4" }}>
-                      <span className="font-semibold text-white">{emailStats.none}</span> row{emailStats.none === 1 ? "" : "s"} have no usable email at all and will be skipped.
+                      <span className="font-semibold text-(--admin-text)">{emailStats.none}</span> row{emailStats.none === 1 ? "" : "s"} have no usable email at all and will be skipped.
                     </p>
                   )}
                 </div>
               )}
 
               {note && (
-                <div className="px-4 py-3 rounded-xl text-xs font-medium mt-4" style={{ background: "rgba(230,57,70,0.12)", color: "#f87171", border: "1px solid rgba(230,57,70,0.2)" }}>{note}</div>
+                <div className="px-4 py-3 rounded-xl text-xs font-medium mt-4" style={{ background: "var(--admin-danger-soft)", color: "var(--admin-danger-text)", border: "1px solid rgba(239,68,68,0.2)" }}>{note}</div>
               )}
             </div>{/* end scrollable body */}
 
             {/* ── Sticky footer ── */}
-            <div className="flex gap-3 px-8 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.07)", flexShrink: 0, background: "#16181e" }}>
+            <div className="flex gap-3 px-8 py-4" style={{ borderTop: "1px solid var(--admin-border)", flexShrink: 0, background: "var(--admin-surface)" }}>
               <button type="button" onClick={closeModal}
-                className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-white/5"
-                style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-heading)" }}>
+                className="flex-1 px-4 py-2.5 rounded-full text-sm font-bold transition-all hover:bg-(--admin-hover-bg)"
+                style={{ color: "var(--admin-text-muted)", border: "1px solid var(--admin-border)", fontFamily: "var(--font-heading)" }}>
                 Cancel
               </button>
               <button
@@ -608,7 +608,7 @@ export default function ContactImportModal({ lists, onImported, defaultListId, r
                 onClick={handleImportSpreadsheet}
                 disabled={busy}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-                style={{ background: "var(--color-red)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(230,57,70,0.3)" }}
+                style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
               >
                 {busy ? <Loader2 size={14} className="animate-spin" /> : null} Import Mapped Contacts
               </button>
