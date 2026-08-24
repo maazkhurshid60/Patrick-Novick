@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, Edit2, Check, X, Copy, Layout, Send, Eye, Clock, Search, ChevronDown } from "lucide-react";
 import { METRO_CLIENT_OUTREACH, METRO_MEP_OUTREACH, METRO_NYC_EMPLOYER_OUTREACH } from "@/lib/seedTemplates";
 import { TEMPLATE_CATEGORIES, categoryMeta } from "@/lib/templateCategories";
+import { isHtmlContent } from "@/lib/emailBuilder";
 
 interface Template {
   id: number;
@@ -26,11 +27,6 @@ const SIGNATURE = `
 Best,
 
 Patrick`;
-
-// A template body carrying its own HTML document/markup should be previewed and
-// sent as rendered HTML, not shown as source text.
-const isHtmlTemplate = (s: string) =>
-  /<!doctype html|<html[\s>]|<(table|div|p|a|img|span|body)[\s>]/i.test(s);
 
 const STARTER_TEMPLATES = [
   // Full HTML templates (the campaign sender delivers them as-is).
@@ -158,7 +154,7 @@ export default function TemplatesClient() {
     localStorage.setItem("campaign_draft", JSON.stringify({
       subject: t.subject,
       body: t.body,
-      isHtml: isHtmlTemplate(t.body),
+      isHtml: isHtmlContent(t.body),
     }));
     router.push("/bd825db8c738/campaigns");
   }
@@ -167,7 +163,7 @@ export default function TemplatesClient() {
     localStorage.setItem("scheduler_draft", JSON.stringify({
       subject: t.subject,
       body: t.body,
-      isHtml: isHtmlTemplate(t.body),
+      isHtml: isHtmlContent(t.body),
     }));
     router.push("/bd825db8c738/scheduler");
   }
@@ -387,7 +383,7 @@ export default function TemplatesClient() {
             {/* Preview: render HTML templates as the actual email; show plain-text
                 templates as formatted text with the signature. */}
             <div className="overflow-auto flex-1 p-4">
-              {isHtmlTemplate(previewing.body) ? (
+              {isHtmlContent(previewing.body) ? (
                 <iframe
                   title="Email preview"
                   srcDoc={previewing.body.replace(

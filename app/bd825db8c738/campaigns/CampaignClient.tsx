@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Clock, ChevronDown, ChevronLeft, ChevronRight, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2, Search, X, MapPin, Check, Pencil, CalendarClock } from "lucide-react";
+import { Send, Clock, ChevronDown, ChevronLeft, ChevronRight, Users, Trash2, Paperclip, AlertTriangle, Mail, Reply, CheckCircle2, Search, X, MapPin, Check, Pencil, CalendarClock, Layout } from "lucide-react";
 import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
+import { isHtmlContent } from "@/lib/emailBuilder";
 
 // The 5-step campaign builder flow. Each step renders a slice of the same
 // form state below — nothing is step-local, so switching steps never loses
@@ -139,6 +140,12 @@ export default function CampaignClient({
   const [history, setHistory] = useState<Campaign[]>([]);
   const [historyFilter, setHistoryFilter] = useState<number | "all">("all");
 
+  // "Start from a template" — lets a campaign begin from the Templates
+  // library without leaving this page (Templates itself still supports the
+  // same handoff via the campaign_draft localStorage key, read on mount below).
+  const [templates, setTemplates] = useState<{ id: number; name: string; subject: string; body: string }[]>([]);
+  const [templatePickerId, setTemplatePickerId] = useState("");
+
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [bodyIsHtml, setBodyIsHtml] = useState(false);
@@ -217,6 +224,25 @@ export default function CampaignClient({
     }
   }
 
+  async function fetchTemplates() {
+    const res = await fetch("/api/templates");
+    if (res.ok) setTemplates(await res.json());
+  }
+
+  function applyTemplate(id: string) {
+    const t = templates.find((x) => String(x.id) === id);
+    if (!t) return;
+    if ((subject.trim() || body.trim()) && !confirm(`Load "${t.name}"? This replaces the current subject and email body.`)) {
+      setTemplatePickerId("");
+      return;
+    }
+    setSubject(t.subject);
+    setBody(t.body);
+    setBodyIsHtml(isHtmlContent(t.body));
+    setTemplatePickerId("");
+    toast.success(`Loaded "${t.name}"`);
+  }
+
   async function fetchHistory(filter: number | "all" = historyFilter) {
     const url = filter === "all" ? "/api/campaigns/send" : `/api/campaigns/send?listId=${filter}`;
     const res = await fetch(url);
@@ -229,6 +255,7 @@ export default function CampaignClient({
   useEffect(() => {
     fetchLists();
     fetchContactCount();
+    fetchTemplates();
     const draft = localStorage.getItem("campaign_draft");
     if (draft) {
       try {
@@ -548,8 +575,24 @@ export default function CampaignClient({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Composer */}
       <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
           <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
+          {templates.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Layout size={13} style={{ color: "var(--admin-text-faint)" }} />
+              <select
+                value={templatePickerId}
+                onChange={(e) => applyTemplate(e.target.value)}
+                style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.5rem", color: "var(--admin-text)", fontSize: "0.72rem", padding: "0.35rem 0.6rem", outline: "none", cursor: "pointer", maxWidth: 200 }}
+                title="Start from a saved template"
+              >
+                <option value="" style={{ background: "var(--admin-surface)" }}>Start from a template…</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id} style={{ background: "var(--admin-surface)" }}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Stepper */}

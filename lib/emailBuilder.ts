@@ -10,6 +10,14 @@
 //
 // Personalization tokens ({{first_name}} etc.) pass straight through untouched.
 
+// A template/campaign body carrying its own HTML document/markup should be
+// treated (previewed, sent, loaded into the campaign builder) as rendered
+// HTML rather than shown as plain source text. Shared by the Templates page
+// and the Campaign builder's "start from a template" picker.
+export function isHtmlContent(s: string): boolean {
+  return /<!doctype html|<html[\s>]|<(table|div|p|a|img|span|body)[\s>]/i.test(s);
+}
+
 export interface EmailBuilderInput {
   eyebrow: string;      // small gold label above the headline
   headline: string;     // the H1
