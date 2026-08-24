@@ -6,15 +6,16 @@ import { Send, Clock, ChevronDown, ChevronLeft, ChevronRight, Users, Trash2, Pap
 import { ToastProvider, toast, Spinner, LoadingOverlay } from "../Toast";
 import { isHtmlContent } from "@/lib/emailBuilder";
 
-// The 5-step campaign builder flow. Each step renders a slice of the same
+// The 6-step campaign builder flow. Each step renders a slice of the same
 // form state below — nothing is step-local, so switching steps never loses
 // what was typed.
 const STEPS = [
-  { n: 1, label: "Recipients" },
-  { n: 2, label: "Subject" },
-  { n: 3, label: "Email" },
-  { n: 4, label: "Preview" },
-  { n: 5, label: "Schedule" },
+  { n: 1, label: "Template" },
+  { n: 2, label: "Recipients" },
+  { n: 3, label: "Subject" },
+  { n: 4, label: "Email" },
+  { n: 5, label: "Preview" },
+  { n: 6, label: "Schedule" },
 ] as const;
 
 interface Campaign {
@@ -120,7 +121,7 @@ export default function CampaignClient({
   lists: ContactList[];
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [recipientsEditOpen, setRecipientsEditOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -144,7 +145,7 @@ export default function CampaignClient({
   // library without leaving this page (Templates itself still supports the
   // same handoff via the campaign_draft localStorage key, read on mount below).
   const [templates, setTemplates] = useState<{ id: number; name: string; subject: string; body: string }[]>([]);
-  const [templatePickerId, setTemplatePickerId] = useState("");
+  const [previewingTemplate, setPreviewingTemplate] = useState<{ id: number; name: string; subject: string; body: string } | null>(null);
 
   const [customAttachment, setCustomAttachment] = useState<{ name: string; content: string; size: number } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -229,18 +230,16 @@ export default function CampaignClient({
     if (res.ok) setTemplates(await res.json());
   }
 
-  function applyTemplate(id: string) {
-    const t = templates.find((x) => String(x.id) === id);
-    if (!t) return;
+  function applyTemplate(t: { id: number; name: string; subject: string; body: string }) {
     if ((subject.trim() || body.trim()) && !confirm(`Load "${t.name}"? This replaces the current subject and email body.`)) {
-      setTemplatePickerId("");
       return;
     }
     setSubject(t.subject);
     setBody(t.body);
     setBodyIsHtml(isHtmlContent(t.body));
-    setTemplatePickerId("");
     toast.success(`Loaded "${t.name}"`);
+    setPreviewingTemplate(null);
+    setStep(2);
   }
 
   async function fetchHistory(filter: number | "all" = historyFilter) {
@@ -264,6 +263,10 @@ export default function CampaignClient({
         setBody(b ?? "");
         if (typeof h === "boolean") setBodyIsHtml(h);
         localStorage.removeItem("campaign_draft");
+        // A template (or scheduled draft) was already chosen on the page that
+        // sent us here — skip past the in-wizard template step instead of
+        // asking again.
+        setStep(2);
       } catch { /* ignore */ }
     }
   }, []);
@@ -577,22 +580,6 @@ export default function CampaignClient({
       <div className="lg:col-span-2 rounded-2xl p-5 sm:p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
         <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
           <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>New Campaign</p>
-          {templates.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Layout size={13} style={{ color: "var(--admin-text-faint)" }} />
-              <select
-                value={templatePickerId}
-                onChange={(e) => applyTemplate(e.target.value)}
-                style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)", borderRadius: "0.5rem", color: "var(--admin-text)", fontSize: "0.72rem", padding: "0.35rem 0.6rem", outline: "none", cursor: "pointer", maxWidth: 200 }}
-                title="Start from a saved template"
-              >
-                <option value="" style={{ background: "var(--admin-surface)" }}>Start from a template…</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id} style={{ background: "var(--admin-surface)" }}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Stepper */}
@@ -636,8 +623,56 @@ export default function CampaignClient({
         </div>
 
         <form onSubmit={handleSend} className="flex flex-col gap-5">
-          {/* STEP 1 — Recipients */}
+          {/* STEP 1 — Template */}
           {step === 1 && (
+            <>
+              <div>
+                <p style={labelStyle}>Start from a template</p>
+                <p className="text-xs mt-1 mb-3" style={{ color: "var(--admin-text-faint)" }}>
+                  Pick a saved template to pre-fill the subject and email, or skip and start from scratch.
+                </p>
+                {templates.length === 0 ? (
+                  <div className="rounded-xl p-6 text-center flex flex-col items-center gap-2" style={{ background: "var(--admin-surface-2)", border: "1px dashed var(--admin-border)" }}>
+                    <Layout size={20} className="text-(--admin-text-faint)" strokeWidth={1.5} />
+                    <p className="text-sm" style={{ color: "var(--admin-text-muted)" }}>No saved templates yet — skip ahead and write this one from scratch.</p>
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {templates.map((t) => (
+                      <div key={t.id} className="rounded-xl p-4 flex flex-col gap-2.5" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold truncate text-(--admin-text)">{t.name}</p>
+                          <p className="text-xs truncate mt-0.5" style={{ color: "var(--admin-text-faint)" }}>{t.subject || "No subject"}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewingTemplate(t)}
+                            className="flex-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+                            style={{ border: "1px solid var(--admin-border)", color: "var(--admin-text-secondary)" }}
+                          >
+                            Preview
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => applyTemplate(t)}
+                            className="flex-1 px-3 py-1.5 rounded-full text-xs font-bold text-white transition-all hover:scale-[1.02]"
+                            style={{ background: "var(--admin-accent)" }}
+                          >
+                            Use this
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <StepNav onNext={() => setStep(2)} nextLabel="Recipients" />
+            </>
+          )}
+
+          {/* STEP 2 — Recipients */}
+          {step === 2 && (
             <>
               {/* Send to — summary + inline edit */}
               <div className="rounded-xl p-4" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
@@ -827,20 +862,30 @@ export default function CampaignClient({
                   <p style={labelStyle}>Est. recipients</p>
                   <p className="text-2xl font-black" style={{ fontFamily: "var(--font-heading)", color: "var(--admin-text)" }}>{recipientCount}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
-                  style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
-                >
-                  Next: Subject <ChevronRight size={14} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg)"
+                    style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
+                  >
+                    <ChevronLeft size={14} /> Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="flex items-center gap-1.5 px-6 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:scale-[1.02]"
+                    style={{ background: "var(--admin-accent)", fontFamily: "var(--font-heading)", boxShadow: "0 4px 16px rgba(99,102,241,0.3)" }}
+                  >
+                    Next: Subject <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
             </>
           )}
 
-          {/* STEP 2 — Subject */}
-          {step === 2 && (
+          {/* STEP 3 — Subject */}
+          {step === 3 && (
             <>
               <div>
                 <label style={labelStyle}>Subject</label>
@@ -849,12 +894,12 @@ export default function CampaignClient({
                   Personalize with {"{{first_name}}"}, {"{{title}}"}, or {"{{company}}"} — these also work in the body.
                 </p>
               </div>
-              <StepNav onBack={() => setStep(1)} onNext={() => setStep(3)} nextLabel="Email" />
+              <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Email" />
             </>
           )}
 
-          {/* STEP 3 — Email */}
-          {step === 3 && (
+          {/* STEP 4 — Email */}
+          {step === 4 && (
             <>
               {/* Reply-to */}
               <div>
@@ -939,12 +984,12 @@ export default function CampaignClient({
                 )}
               </div>
 
-              <StepNav onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Preview" />
+              <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Preview" />
             </>
           )}
 
-          {/* STEP 4 — Preview & test */}
-          {step === 4 && (
+          {/* STEP 5 — Preview & test */}
+          {step === 5 && (
             <>
               <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--admin-border)" }}>
                 <div className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between" style={{ background: "var(--admin-surface-2)", color: "var(--admin-text-muted)" }}>
@@ -1018,12 +1063,12 @@ export default function CampaignClient({
                 )}
               </div>
 
-              <StepNav onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Schedule" />
+              <StepNav onBack={() => setStep(4)} onNext={() => setStep(6)} nextLabel="Schedule" />
             </>
           )}
 
-          {/* STEP 5 — Schedule / Send */}
-          {step === 5 && (
+          {/* STEP 6 — Schedule / Send */}
+          {step === 6 && (
             <>
               <div className="rounded-xl p-4 flex flex-col gap-2" style={{ background: "var(--admin-surface-2)", border: "1px solid var(--admin-border)" }}>
                 <p style={labelStyle}>Ready to go</p>
@@ -1054,7 +1099,7 @@ export default function CampaignClient({
 
               <button
                 type="button"
-                onClick={() => setStep(4)}
+                onClick={() => setStep(5)}
                 className="self-start flex items-center gap-1.5 text-sm font-semibold transition-colors hover:bg-(--admin-hover-bg) px-4 py-2.5 rounded-full"
                 style={{ color: "var(--admin-text-secondary)", border: "1px solid var(--admin-border)" }}
               >
@@ -1131,6 +1176,75 @@ export default function CampaignClient({
         )}
       </div>
     </div>
+
+    {/* Template preview modal — mirrors the one on the Templates page */}
+    {previewingTemplate && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-6"
+        style={{ background: "var(--admin-scrim)", backdropFilter: "blur(4px)" }}
+        onClick={() => setPreviewingTemplate(null)}
+      >
+        <div
+          className="relative w-full flex flex-col"
+          style={{ maxWidth: "680px", maxHeight: "90vh", background: "var(--admin-surface)", borderRadius: "1rem", border: "1px solid var(--admin-border)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: "1px solid var(--admin-border)" }}>
+            <div>
+              <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>{previewingTemplate.name}</p>
+              <p className="text-xs mt-0.5 text-(--admin-text-muted)">Subject: {previewingTemplate.subject || "—"}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => applyTemplate(previewingTemplate)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-[1.02]"
+                style={{ background: "var(--admin-accent)", color: "#fff" }}
+              >
+                Use this template
+              </button>
+              <button
+                onClick={() => setPreviewingTemplate(null)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:bg-(--admin-hover-bg)"
+                style={{ color: "var(--admin-text-muted)" }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
+          <div className="overflow-auto flex-1 p-4">
+            {isHtmlContent(previewingTemplate.body) ? (
+              <iframe
+                title="Template preview"
+                srcDoc={previewingTemplate.body.replace(
+                  /https:\/\/patricknovick\.com\//g,
+                  (typeof window !== "undefined" ? window.location.origin : "https://patricknovick.com") + "/"
+                )}
+                sandbox=""
+                style={{ width: "100%", height: "70vh", border: 0, borderRadius: "0.5rem", background: "#fff", display: "block" }}
+              />
+            ) : (
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  fontFamily: "'Georgia', serif",
+                  fontSize: "14px",
+                  lineHeight: "1.8",
+                  color: "#1a1a2e",
+                  background: "#fff",
+                  borderRadius: "0.5rem",
+                  padding: "32px 40px",
+                  margin: 0,
+                  minHeight: "400px",
+                }}
+              >
+                {previewingTemplate.body}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

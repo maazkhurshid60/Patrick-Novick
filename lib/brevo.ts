@@ -148,6 +148,22 @@ export async function getBouncedEmails(days = 90): Promise<Set<string>> {
   return out;
 }
 
+/* One retry on a genuine network-level failure (fetch throwing — DNS blip,
+   connect timeout, dropped connection), not on an HTTP error response (a
+   4xx/5xx is a real answer from Brevo, retrying it just wastes a request).
+   Without this, a single transient blip during the loop below can fail every
+   recipient in the batch, which is exactly what an all-failed "0 sent"
+   campaign in Sent History looks like — the fix mirrors the same retry
+   already added to the Turso client (lib/db.ts) for the same class of error. */
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    await new Promise((r) => setTimeout(r, 500));
+    return await fetch(url, init);
+  }
+}
+
 /**
  * Sends a transactional email to multiple recipients via Brevo API.
  * Each recipient gets an individual email (BCC-safe — no address leaking).
@@ -185,7 +201,7 @@ export async function sendCampaignEmail(
 
     let res: Response;
     try {
-      res = await fetch(`${BREVO_API_URL}/smtp/email`, {
+      res = await fetchWithRetry(`${BREVO_API_URL}/smtp/email`, {
         method: "POST",
         headers: {
           "api-key": getApiKey(),
