@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Upload, X } from "lucide-react";
 import { buildMetroEmail, DEFAULT_BUILDER, DEFAULT_FOOTER, FooterSettings } from "@/lib/emailBuilder";
+import { ToastProvider, toast } from "../Toast";
 
 // A fixed sample body — this page previews the FOOTER, so the body just needs
 // to look like a real email around it, not be editable here.
@@ -50,13 +51,24 @@ export default function FooterSettingsClient() {
 
   async function handleSave() {
     setSaving(true);
-    const res = await fetch("/api/footer-settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(footer),
-    });
-    setSaving(false);
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+    try {
+      const res = await fetch("/api/footer-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(footer),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Could not save — please try again.");
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      toast.error("Couldn't reach the server. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadLogo(file: File) {
@@ -101,6 +113,8 @@ export default function FooterSettingsClient() {
   }
 
   return (
+    <>
+    <ToastProvider />
     <div className="rounded-2xl p-7" style={{ background: "var(--admin-surface)", border: "1px solid var(--admin-border)" }}>
       <p className="text-sm font-bold text-(--admin-text) mb-1" style={{ fontFamily: "var(--font-heading)" }}>Email Footer</p>
       <p className="text-xs mb-6" style={{ color: "var(--admin-text-muted)" }}>
@@ -240,5 +254,6 @@ export default function FooterSettingsClient() {
         </div>
       </div>
     </div>
+    </>
   );
 }

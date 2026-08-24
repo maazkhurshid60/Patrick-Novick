@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, type ComponentType } from "react";
 import {
-  ExternalLink, BarChart2, Mail, Users, Layout, Activity, Menu, X, UserCog,
+  ExternalLink, BarChart2, Mail, Users, Layout, Menu, X, UserCog,
   Inbox, ChevronDown, Sun, Moon,
 } from "lucide-react";
 import { useAdminTheme } from "./ThemeProvider";
@@ -13,14 +13,23 @@ const BASE = "/bd825db8c738";
 type IconType = ComponentType<{ size?: number; strokeWidth?: number }>;
 
 type NavLeaf = { label: string; href: string; key: string; adminOnly?: boolean };
-type NavLink = { type: "link"; label: string; icon: IconType; href: string; key: string; badge?: string };
+// `children` is for a link that also needs a permanently-visible sub-item
+// underneath it (Reports under Dashboard) — unlike NavGroup, there's no
+// collapse/expand toggle, since the parent itself stays a clickable page.
+type NavLink = {
+  type: "link"; label: string; icon: IconType; href: string; key: string; badge?: string;
+  children?: NavLeaf[];
+};
 type NavGroup = { type: "group"; label: string; icon: IconType; key: string; items: NavLeaf[] };
 
 /* Grouped so the sidebar reads as ~6 sections instead of a flat list of every
    sub-page. Each page still passes its own leaf `key` to <Sidebar active=… />
    unchanged — grouping only changes how those same keys are presented. */
 const NAV: (NavLink | NavGroup)[] = [
-  { type: "link", label: "Dashboard", icon: BarChart2, href: BASE, key: "dashboard" },
+  {
+    type: "link", label: "Dashboard", icon: BarChart2, href: BASE, key: "dashboard",
+    children: [{ label: "Reports", href: `${BASE}/analytics`, key: "analytics" }],
+  },
   {
     type: "group", label: "Contacts", icon: Users, key: "contacts-group",
     items: [
@@ -48,12 +57,12 @@ const NAV: (NavLink | NavGroup)[] = [
       { label: "Template Maker", href: `${BASE}/template-maker`, key: "template-maker" },
     ],
   },
-  { type: "link", label: "Reports", icon: Activity, href: `${BASE}/analytics`, key: "analytics" },
   {
     type: "group", label: "Admin", icon: UserCog, key: "admin-group",
     items: [
       { label: "Email Footer", href: `${BASE}/footer-settings`, key: "footer-settings" },
       { label: "Users", href: `${BASE}/users`, key: "users", adminOnly: true },
+      { label: "Vault", href: `${BASE}/vault`, key: "vault", adminOnly: true },
     ],
   },
 ];
@@ -89,7 +98,7 @@ export default function Sidebar({ active }: { active: string }) {
   }, []);
 
   const handleLinkClick = (e: React.MouseEvent) => {
-    if (typeof window !== "undefined" && (window as any).__hasUnsavedChanges) {
+    if (typeof window !== "undefined" && (window as unknown as { __hasUnsavedChanges?: boolean }).__hasUnsavedChanges) {
       if (!window.confirm("You have unsaved changes. Are you sure you want to leave this page?")) {
         e.preventDefault();
         return;
@@ -154,31 +163,57 @@ export default function Sidebar({ active }: { active: string }) {
               const isActive = active === entry.key;
               const Icon = entry.icon;
               return (
-                <Link
-                  key={entry.key}
-                  href={entry.href}
-                  onClick={handleLinkClick}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? ""
-                      : "text-(--admin-text-muted) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
-                  }`}
-                  style={{
-                    background: isActive ? "var(--admin-accent-soft)" : undefined,
-                    color: isActive ? "var(--admin-accent-text)" : undefined,
-                  }}
-                >
-                  <Icon size={15} strokeWidth={1.75} />
-                  <span className="flex-1">{entry.label}</span>
-                  {entry.badge && (
-                    <span
-                      className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
-                      style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}
-                    >
-                      {entry.badge}
-                    </span>
+                <div key={entry.key}>
+                  <Link
+                    href={entry.href}
+                    onClick={handleLinkClick}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                      isActive
+                        ? ""
+                        : "text-(--admin-text-muted) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
+                    }`}
+                    style={{
+                      background: isActive ? "var(--admin-accent-soft)" : undefined,
+                      color: isActive ? "var(--admin-accent-text)" : undefined,
+                    }}
+                  >
+                    <Icon size={15} strokeWidth={1.75} />
+                    <span className="flex-1">{entry.label}</span>
+                    {entry.badge && (
+                      <span
+                        className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                        style={{ background: "var(--admin-hover-bg)", color: "var(--admin-text-muted)" }}
+                      >
+                        {entry.badge}
+                      </span>
+                    )}
+                  </Link>
+                  {entry.children && (
+                    <div className="ml-4 pl-3 mt-0.5 flex flex-col gap-0.5 border-l border-(--admin-border)">
+                      {entry.children.map((child) => {
+                        const childActive = active === child.key;
+                        return (
+                          <Link
+                            key={child.key}
+                            href={child.href}
+                            onClick={handleLinkClick}
+                            className={`block px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 ${
+                              childActive
+                                ? ""
+                                : "text-(--admin-text-faint) hover:bg-(--admin-hover-bg) hover:text-(--admin-text) hover:translate-x-0.5"
+                            }`}
+                            style={{
+                              background: childActive ? "var(--admin-accent-soft)" : undefined,
+                              color: childActive ? "var(--admin-accent-text)" : undefined,
+                            }}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
                   )}
-                </Link>
+                </div>
               );
             }
 

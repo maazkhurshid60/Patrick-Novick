@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPassword, createSessionToken, SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session";
-import { findUserForLogin, usernameExists } from "@/lib/users";
+import { findUserForLogin, usernameExists, checkLoginLockout, recordFailedLogin, clearLoginAttempts } from "@/lib/users";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let username = "";
@@ -12,6 +12,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     password = String(body.password ?? "");
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const lockedFor = await checkLoginLockout(username);
+  if (lockedFor !== null) {
+    const minutes = Math.ceil(lockedFor / 60);
+    return NextResponse.json(
+      { error: `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.` },
+      { status: 429 }
+    );
   }
 
   // DB-backed accounts first. The env bootstrap admin is only a fallback and
@@ -27,10 +36,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!userId) {
+    await recordFailedLogin(username);
     // Fixed delay to slow brute-force attempts
     await new Promise((r) => setTimeout(r, 500));
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
+
+  await clearLoginAttempts(username);
 
   const token = createSessionToken(userId);
   const response = NextResponse.json({ success: true });

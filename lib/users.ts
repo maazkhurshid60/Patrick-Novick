@@ -47,6 +47,47 @@ export async function findUserForLogin(username: string, password: string): Prom
   return Number(row.id);
 }
 
+// ─── Login lockout ──────────────────────────────────────────────────────────
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_SECONDS = 15 * 60;
+
+// Seconds remaining if `username` is currently locked out, else null.
+export async function checkLoginLockout(username: string): Promise<number | null> {
+  if (!username) return null;
+  const res = await db.execute({
+    sql: "SELECT locked_until FROM login_attempts WHERE username = ?",
+    args: [username],
+  });
+  const lockedUntil = Number(res.rows[0]?.locked_until) || 0;
+  const remaining = lockedUntil - Math.floor(Date.now() / 1000);
+  return remaining > 0 ? remaining : null;
+}
+
+// Records a failed login, locking the username out once MAX_FAILED_ATTEMPTS is reached.
+export async function recordFailedLogin(username: string): Promise<void> {
+  if (!username) return;
+  const res = await db.execute({
+    sql: "SELECT fail_count FROM login_attempts WHERE username = ?",
+    args: [username],
+  });
+  const count = (Number(res.rows[0]?.fail_count) || 0) + 1;
+  const lockedUntil = count >= MAX_FAILED_ATTEMPTS ? Math.floor(Date.now() / 1000) + LOCKOUT_SECONDS : 0;
+  await db.execute({
+    sql: `INSERT INTO login_attempts (username, fail_count, locked_until, updated_at)
+          VALUES (?, ?, ?, unixepoch())
+          ON CONFLICT(username) DO UPDATE SET
+            fail_count = excluded.fail_count, locked_until = excluded.locked_until, updated_at = unixepoch()`,
+    args: [username, count, lockedUntil],
+  });
+}
+
+// Clears attempt tracking after a successful login.
+export async function clearLoginAttempts(username: string): Promise<void> {
+  if (!username) return;
+  await db.execute({ sql: "DELETE FROM login_attempts WHERE username = ?", args: [username] });
+}
+
 // ─── Session → user resolution ────────────────────────────────────────────────
 
 // Resolves the logged-in user from a session token. The env bootstrap admin is

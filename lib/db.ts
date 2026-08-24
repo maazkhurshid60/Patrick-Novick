@@ -7,6 +7,45 @@ const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
+/* The HTTP transport occasionally hits a transient connect timeout to
+   Turso's edge (observed directly: a `UND_ERR_CONNECT_TIMEOUT` that
+   succeeds on the very next attempt a few seconds later) — not a bad
+   query, not bad data, just a blip. Without a retry, that blip surfaces as
+   a 500 from whichever route happened to be running, and several of those
+   routes (e.g. the footer editor's save button) don't show the user an
+   error when that happens — it just looks like nothing happened. One quick
+   retry here fixes the common case for every caller at once, since
+   everything in this file goes through `db.execute`/`db.batch`. A second,
+   real failure still throws, so a genuinely down database still fails
+   loudly rather than hanging. */
+function isTransientNetworkError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const code = (err as { cause?: { code?: string } } | undefined)?.cause?.code
+    ?? (err as { code?: string } | undefined)?.code;
+  return (
+    msg.includes("fetch failed") ||
+    code === "UND_ERR_CONNECT_TIMEOUT" ||
+    code === "ECONNRESET" ||
+    code === "ETIMEDOUT" ||
+    code === "ENOTFOUND"
+  );
+}
+
+function withRetry<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
+  return async (...args: A): Promise<R> => {
+    try {
+      return await fn(...args);
+    } catch (err) {
+      if (!isTransientNetworkError(err)) throw err;
+      await new Promise((r) => setTimeout(r, 400));
+      return await fn(...args);
+    }
+  };
+}
+
+db.execute = withRetry(db.execute.bind(db));
+db.batch = withRetry(db.batch.bind(db));
+
 // Create tables on startup
 db.batch([
   `CREATE TABLE IF NOT EXISTS te_connections (
@@ -123,6 +162,32 @@ db.batch([
     role          TEXT NOT NULL DEFAULT 'member',
     active        INTEGER NOT NULL DEFAULT 1,
     created_at    INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // Login brute-force lockout. Tracked by username (not just DB user id) so it
+  // also covers the env bootstrap admin, which has no admin_users row. A
+  // successful login clears the row; MAX_FAILED_ATTEMPTS in a row locks the
+  // username out for LOCKOUT_SECONDS (see lib/users.ts).
+  `CREATE TABLE IF NOT EXISTS login_attempts (
+    username     TEXT PRIMARY KEY,
+    fail_count   INTEGER NOT NULL DEFAULT 0,
+    locked_until INTEGER NOT NULL DEFAULT 0,
+    updated_at   INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  // A small credential vault for things an admin needs to keep on hand —
+  // logins to other systems (e.g. the JobFolder admin panel), API consoles,
+  // etc. `secret_enc` is AES-256-GCM ciphertext (lib/crypto.ts, keyed by
+  // TOKEN_ENCRYPTION_KEY) — never plaintext at rest, and never included in a
+  // list response; only GET /api/vault/[id]/reveal decrypts it, on demand.
+  `CREATE TABLE IF NOT EXISTS vault_entries (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    label       TEXT NOT NULL,
+    username    TEXT NOT NULL DEFAULT '',
+    url         TEXT NOT NULL DEFAULT '',
+    notes       TEXT NOT NULL DEFAULT '',
+    secret_enc  TEXT NOT NULL,
+    created_by  TEXT NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
   // Scheduled campaign sends. `scheduled_at` is the absolute UTC epoch the send
   // is due (computed from the user's local time + IANA `timezone` at creation).
