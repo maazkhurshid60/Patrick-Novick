@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import { useState, useEffect, useCallback, useRef, FormEvent } from "react";
 import {
   Plus, X, KeyRound, Lock, Eye, EyeOff, Copy, Check, Trash2, Pencil, ExternalLink,
 } from "lucide-react";
@@ -22,6 +22,16 @@ interface VaultEntry {
   created_at: number;
   updated_at: number;
 }
+
+interface AuditEntry {
+  id: number;
+  entry_id: number;
+  entry_label: string;
+  username: string;
+  created_at: number;
+}
+
+const AUTO_HIDE_MS = 30_000;
 
 const inp = {
   border: "1px solid var(--admin-border)",
@@ -50,6 +60,14 @@ function fmtDate(unix: number) {
   return new Date(unix * 1000).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+function fmtRelative(unix: number) {
+  const diff = Math.floor(Date.now() / 1000) - unix;
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return fmtDate(unix);
+}
+
 export default function VaultClient() {
   const [me, setMe] = useState<Me | null>(null);
   const [meLoaded, setMeLoaded] = useState(false);
@@ -69,11 +87,21 @@ export default function VaultClient() {
   const [confirmDelete, setConfirmDelete] = useState<VaultEntry | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  // Revealed secrets live only in memory, per row, until the page reloads —
-  // never fetched until asked for, never cached to disk.
+  // Revealed secrets live only in memory, per row, until the page reloads,
+  // are manually hidden, or AUTO_HIDE_MS elapses — never cached to disk.
   const [revealed, setRevealed] = useState<Record<number, string>>({});
-  const [revealingId, setRevealingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const revealTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+
+  // Revealing (or copying) a secret requires re-entering the admin's own
+  // password — step-up auth, so a hijacked session cookie alone can't read
+  // one out. See POST /api/vault/[id]/reveal.
+  const [revealPrompt, setRevealPrompt] = useState<{ entry: VaultEntry; intent: "reveal" | "copy" } | null>(null);
+  const [revealPassword, setRevealPassword] = useState("");
+  const [revealSubmitting, setRevealSubmitting] = useState(false);
+  const [revealError, setRevealError] = useState("");
+
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -85,6 +113,11 @@ export default function VaultClient() {
     }
   }, []);
 
+  const loadAudit = useCallback(async () => {
+    const res = await fetch("/api/vault/audit");
+    if (res.ok) setAudit(await res.json());
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/me")
@@ -93,7 +126,7 @@ export default function VaultClient() {
         if (cancelled) return;
         setMe(data);
         setMeLoaded(true);
-        if (data?.role === "admin") loadEntries();
+        if (data?.role === "admin") { loadEntries(); loadAudit(); }
       })
       .catch(() => {
         if (cancelled) return;
@@ -101,7 +134,37 @@ export default function VaultClient() {
         setMeLoaded(true);
       });
     return () => { cancelled = true; };
-  }, [loadEntries]);
+  }, [loadEntries, loadAudit]);
+
+  // Clear every pending auto-hide timer on unmount.
+  useEffect(() => {
+    const timeouts = revealTimeouts.current;
+    return () => { Object.values(timeouts).forEach(clearTimeout); };
+  }, []);
+
+  function hideRevealed(id: number) {
+    if (revealTimeouts.current[id]) {
+      clearTimeout(revealTimeouts.current[id]);
+      delete revealTimeouts.current[id];
+    }
+    setRevealed((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function scheduleAutoHide(id: number) {
+    if (revealTimeouts.current[id]) clearTimeout(revealTimeouts.current[id]);
+    revealTimeouts.current[id] = setTimeout(() => {
+      delete revealTimeouts.current[id];
+      setRevealed((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, AUTO_HIDE_MS);
+  }
 
   function closeAdd() {
     setShowAdd(false);
@@ -155,11 +218,7 @@ export default function VaultClient() {
       if (!res.ok) { toast.error(data.error ?? "Failed to update entry"); return; }
       toast.success(`“${editForm.label}” updated`);
       // A changed secret invalidates whatever was previously revealed in memory.
-      setRevealed((prev) => {
-        const next = { ...prev };
-        delete next[editEntry.id];
-        return next;
-      });
+      hideRevealed(editEntry.id);
       closeEdit();
       loadEntries();
     } catch {
@@ -176,6 +235,7 @@ export default function VaultClient() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(data.error ?? "Failed to delete entry"); return; }
       setEntries((prev) => prev.filter((x) => x.id !== entry.id));
+      hideRevealed(entry.id);
       toast.success(`“${entry.label}” deleted`);
     } catch {
       toast.error("Couldn't reach the server. Please try again.");
@@ -185,44 +245,59 @@ export default function VaultClient() {
     }
   }
 
-  async function toggleReveal(entry: VaultEntry) {
+  function toggleReveal(entry: VaultEntry) {
     if (revealed[entry.id] !== undefined) {
-      setRevealed((prev) => {
-        const next = { ...prev };
-        delete next[entry.id];
-        return next;
-      });
+      hideRevealed(entry.id);
       return;
     }
-    setRevealingId(entry.id);
-    try {
-      const res = await fetch(`/api/vault/${entry.id}/reveal`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(data.error ?? "Failed to reveal secret"); return; }
-      setRevealed((prev) => ({ ...prev, [entry.id]: data.secret }));
-    } catch {
-      toast.error("Couldn't reach the server. Please try again.");
-    } finally {
-      setRevealingId(null);
-    }
+    setRevealPrompt({ entry, intent: "reveal" });
+    setRevealPassword("");
+    setRevealError("");
   }
 
-  async function copySecret(entry: VaultEntry) {
-    let secret = revealed[entry.id];
-    if (secret === undefined) {
-      try {
-        const res = await fetch(`/api/vault/${entry.id}/reveal`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) { toast.error(data.error ?? "Failed to copy"); return; }
-        secret = data.secret;
-      } catch {
-        toast.error("Couldn't reach the server. Please try again.");
-        return;
-      }
+  function copySecret(entry: VaultEntry) {
+    const cached = revealed[entry.id];
+    if (cached !== undefined) {
+      navigator.clipboard.writeText(cached);
+      setCopiedId(entry.id);
+      setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
+      return;
     }
-    await navigator.clipboard.writeText(secret);
-    setCopiedId(entry.id);
-    setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
+    setRevealPrompt({ entry, intent: "copy" });
+    setRevealPassword("");
+    setRevealError("");
+  }
+
+  async function submitReveal(e: FormEvent) {
+    e.preventDefault();
+    if (!revealPrompt) return;
+    const { entry, intent } = revealPrompt;
+    setRevealSubmitting(true);
+    setRevealError("");
+    try {
+      const res = await fetch(`/api/vault/${entry.id}/reveal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: revealPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setRevealError(data.error ?? "Failed to verify"); return; }
+      if (intent === "reveal") {
+        setRevealed((prev) => ({ ...prev, [entry.id]: data.secret }));
+        scheduleAutoHide(entry.id);
+      } else {
+        await navigator.clipboard.writeText(data.secret);
+        setCopiedId(entry.id);
+        setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
+      }
+      loadAudit();
+      setRevealPrompt(null);
+      setRevealPassword("");
+    } catch {
+      setRevealError("Couldn't reach the server. Please try again.");
+    } finally {
+      setRevealSubmitting(false);
+    }
   }
 
   // ── Access control ──────────────────────────────────────────────────────────
@@ -328,11 +403,10 @@ export default function VaultClient() {
                         </code>
                         <button
                           onClick={() => toggleReveal(entry)}
-                          disabled={revealingId === entry.id}
                           aria-label={isRevealed ? "Hide secret" : "Reveal secret"}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-(--admin-hover-bg) text-(--admin-text-muted) disabled:opacity-50"
+                          className="p-1.5 rounded-lg transition-colors hover:bg-(--admin-hover-bg) text-(--admin-text-muted)"
                         >
-                          {revealingId === entry.id ? <Spinner /> : isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                          {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                         <button
                           onClick={() => copySecret(entry)}
@@ -367,6 +441,22 @@ export default function VaultClient() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {audit.length > 0 && (
+        <div className="mt-6 rounded-2xl p-5 border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
+          <p className="text-xs font-bold uppercase tracking-wider text-(--admin-text-faint) mb-3">Recent reveals</p>
+          <div className="flex flex-col gap-2">
+            {audit.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-(--admin-text-secondary)">
+                  <span className="font-semibold text-(--admin-text)">{a.username}</span> revealed “{a.entry_label}”
+                </span>
+                <span className="text-(--admin-text-faint) whitespace-nowrap">{fmtRelative(a.created_at)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -507,6 +597,49 @@ export default function VaultClient() {
                 {busyId === confirmDelete.id ? "Deleting…" : "Delete"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step-up password prompt — required to reveal or copy a secret */}
+      {revealPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "var(--admin-scrim)" }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
+                Confirm your password
+              </p>
+              <button
+                onClick={() => setRevealPrompt(null)}
+                aria-label="Close"
+                className="p-1 rounded-lg hover:bg-(--admin-hover-bg) text-(--admin-text-muted)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-(--admin-text-muted) mb-4">
+              {revealPrompt.intent === "copy" ? "Copying" : "Revealing"} “{revealPrompt.entry.label}” needs your password again.
+            </p>
+            <form onSubmit={submitReveal} className="space-y-3">
+              <input
+                type="password"
+                autoFocus
+                required
+                style={inp}
+                value={revealPassword}
+                onChange={(e) => setRevealPassword(e.target.value)}
+                placeholder="Your password"
+              />
+              {revealError && <p className="text-xs text-(--admin-danger-text)">{revealError}</p>}
+              <button
+                type="submit"
+                disabled={revealSubmitting}
+                className="w-full py-2.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: "var(--admin-accent)" }}
+              >
+                {revealSubmitting ? "Checking…" : revealPrompt.intent === "copy" ? "Copy" : "Reveal"}
+              </button>
+            </form>
           </div>
         </div>
       )}

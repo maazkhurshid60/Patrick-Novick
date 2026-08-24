@@ -37,12 +37,56 @@ export async function listVaultEntries(): Promise<VaultEntrySummary[]> {
   }));
 }
 
-/** The one place a stored secret is ever decrypted. */
-export async function revealVaultSecret(id: number): Promise<string | null> {
-  const res = await db.execute({ sql: "SELECT secret_enc FROM vault_entries WHERE id = ?", args: [id] });
+/** The one place a stored secret is ever decrypted. Returns the label too, for the audit log. */
+export async function revealVaultSecret(id: number): Promise<{ secret: string; label: string } | null> {
+  const res = await db.execute({ sql: "SELECT secret_enc, label FROM vault_entries WHERE id = ?", args: [id] });
   const row = res.rows[0];
   if (!row) return null;
-  return decrypt(row.secret_enc as string);
+  return { secret: decrypt(row.secret_enc as string), label: row.label as string };
+}
+
+// ─── Reveal audit log / rate limit ─────────────────────────────────────────────
+
+const REVEAL_WINDOW_SECONDS = 10 * 60;
+const MAX_REVEALS_PER_WINDOW = 20;
+
+export interface VaultAuditEntry {
+  id: number;
+  entry_id: number;
+  entry_label: string;
+  username: string;
+  created_at: number;
+}
+
+/** How many reveals `username` has made in the last REVEAL_WINDOW_SECONDS, if any hit the cap. */
+export async function revealsRemaining(username: string): Promise<number> {
+  const res = await db.execute({
+    sql: "SELECT COUNT(*) AS n FROM vault_audit_log WHERE username = ? AND created_at > unixepoch() - ?",
+    args: [username, REVEAL_WINDOW_SECONDS],
+  });
+  const count = Number(res.rows[0]?.n) || 0;
+  return Math.max(0, MAX_REVEALS_PER_WINDOW - count);
+}
+
+export async function logReveal(entryId: number, entryLabel: string, username: string): Promise<void> {
+  await db.execute({
+    sql: "INSERT INTO vault_audit_log (entry_id, entry_label, username) VALUES (?, ?, ?)",
+    args: [entryId, entryLabel, username],
+  });
+}
+
+export async function listVaultAuditLog(limit: number): Promise<VaultAuditEntry[]> {
+  const res = await db.execute({
+    sql: "SELECT id, entry_id, entry_label, username, created_at FROM vault_audit_log ORDER BY created_at DESC LIMIT ?",
+    args: [limit],
+  });
+  return res.rows.map((r) => ({
+    id: Number(r.id),
+    entry_id: Number(r.entry_id),
+    entry_label: r.entry_label as string,
+    username: r.username as string,
+    created_at: Number(r.created_at),
+  }));
 }
 
 export type VaultWriteResult = { ok: true; id: number } | { ok: false; error: string; status: number };

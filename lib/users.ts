@@ -1,6 +1,6 @@
 import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
 import db from "@/lib/db";
-import { sessionUserId } from "@/lib/session";
+import { sessionUserId, verifyPassword } from "@/lib/session";
 
 export type Role = "admin" | "member";
 
@@ -45,6 +45,20 @@ export async function findUserForLogin(username: string, password: string): Prom
   if (Number(row.active) !== 1) return null;
   if (!verifyHash(password, row.password_hash as string, row.password_salt as string)) return null;
   return Number(row.id);
+}
+
+// Re-checks a logged-in user's own password (step-up auth — e.g. before
+// revealing a vault secret). Works for both DB accounts and the env
+// bootstrap admin, mirroring the same two checks the login route makes.
+export async function verifyUserPassword(user: SessionUser, password: string): Promise<boolean> {
+  if (user.id === "env") return verifyPassword(user.username, password);
+  const res = await db.execute({
+    sql: "SELECT password_hash, password_salt FROM admin_users WHERE id = ? AND active = 1",
+    args: [Number(user.id)],
+  });
+  const row = res.rows[0];
+  if (!row) return false;
+  return verifyHash(password, row.password_hash as string, row.password_salt as string);
 }
 
 // ─── Login lockout ──────────────────────────────────────────────────────────

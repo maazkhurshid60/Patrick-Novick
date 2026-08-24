@@ -92,13 +92,14 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   // scoped to a list).
   const brevo: BrevoStats = listId ? deriveBrevoFromEvents(events, label) : await getBrevoStats(days, brevoRange);
 
-  // Clicks over time, bucketed by UTC day — from the event feed above, since
-  // clicks aren't logged in our own DB (only opens are, via the tracking pixel).
+  // Opens and clicks over time, bucketed by UTC day — both from Brevo's live
+  // event feed above, not our own DB. Nothing here is persisted; it's
+  // re-fetched from Brevo via BREVO_API_KEY on every request.
   const clicksByDayMap = new Map<string, number>();
+  const opensByDayMap = new Map<string, number>();
   for (const e of events) {
-    if (e.event !== "clicks") continue;
-    const day = e.date.slice(0, 10);
-    clicksByDayMap.set(day, (clicksByDayMap.get(day) ?? 0) + 1);
+    if (e.event === "clicks") clicksByDayMap.set(e.date.slice(0, 10), (clicksByDayMap.get(e.date.slice(0, 10)) ?? 0) + 1);
+    else if (e.event === "opened") opensByDayMap.set(e.date.slice(0, 10), (opensByDayMap.get(e.date.slice(0, 10)) ?? 0) + 1);
   }
 
   // Audience totals from our own send logs. Sends & opens honour the date range
@@ -154,40 +155,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     total_suppressed: Number(t.total_suppressed ?? 0),
   };
 
-  // Chart data (Opens over time, Top Devices, Top Locations) — always scoped to
-  // a concrete window (chartRange), unlike the "Total Opens" stat above, which
-  // is genuinely all-time when no explicit date range is picked. A trend chart
-  // spanning full account history isn't a useful default.
-  const chartOpenConds = [
-    `eo.campaign_id ${listId ? "IN (SELECT id FROM campaigns WHERE list_id = ?)" : "IN (SELECT id FROM campaigns)"}`,
-    "eo.opened_at >= ? AND eo.opened_at < ?",
-  ];
-  const chartOpenArgs: number[] = [...(listId ? [listId] : []), chartRange.start, chartRange.endExclusive];
-  const chartOpenWhere = chartOpenConds.join(" AND ");
-
-  const [opensByDayRes, devicesRes, locationsRes] = await Promise.all([
-    db.execute({
-      sql: `SELECT strftime('%Y-%m-%d', eo.opened_at, 'unixepoch') AS date, COUNT(*) AS n
-            FROM email_opens eo WHERE ${chartOpenWhere} GROUP BY date ORDER BY date`,
-      args: chartOpenArgs,
-    }),
-    db.execute({
-      sql: `SELECT COALESCE(NULLIF(eo.device,''), 'other') AS device, COUNT(*) AS n
-            FROM email_opens eo WHERE ${chartOpenWhere} GROUP BY device`,
-      args: chartOpenArgs,
-    }),
-    db.execute({
-      sql: `SELECT COALESCE(NULLIF(c.city,''), '') AS city, COALESCE(NULLIF(c.state,''), '') AS state, COUNT(*) AS n
-            FROM email_opens eo JOIN contacts c ON LOWER(c.email) = eo.email
-            WHERE ${chartOpenWhere} AND (c.city != '' OR c.state != '')
-            GROUP BY c.city, c.state ORDER BY n DESC LIMIT 20`,
-      args: chartOpenArgs,
-    }),
-  ]);
-
-  // Zero-fill every calendar day in the window — GROUP BY only returns days
-  // that had at least one row, and a trend chart with silently-skipped zero
-  // days would compress into a misleadingly busy line.
+  // Zero-fill every calendar day in the window — the event feed only has
+  // entries for days that had at least one hit, and a trend chart with
+  // silently-skipped zero days would compress into a misleadingly busy line.
   function zeroFillDays(counts: Map<string, number>): { date: string; count: number }[] {
     const out: { date: string; count: number }[] = [];
     for (let ts = chartRange.start; ts < chartRange.endExclusive; ts += 86400) {
@@ -197,13 +167,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return out;
   }
 
-  const opensByDayMap = new Map(opensByDayRes.rows.map((r) => [String(r.date), Number(r.n)]));
   const opensByDay = zeroFillDays(opensByDayMap);
   const clicksByDayFilled = zeroFillDays(clicksByDayMap);
-  const devices = devicesRes.rows.map((r) => ({ device: String(r.device), count: Number(r.n) }));
-  const locations = locationsRes.rows.map((r) => ({
-    city: String(r.city), state: String(r.state), count: Number(r.n),
-  }));
 
   // Per-contact engagement: who we've emailed, how many times, and when last —
   // built from the append-only send log so re-sends to the same person count.
@@ -255,6 +220,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({
     brevo, events: [] as BrevoEvent[], contacts, totals,
-    charts: { opensByDay, clicksByDay: clicksByDayFilled, devices, locations },
+    charts: { opensByDay, clicksByDay: clicksByDayFilled },
   });
 }

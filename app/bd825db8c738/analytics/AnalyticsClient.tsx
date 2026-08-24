@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2, ChevronLeft, ChevronRight, MapPin, Reply, MousePointerClick } from "lucide-react";
-import { LineChart, DonutChart } from "./charts";
+import { Mail, Eye, AlertTriangle, UserMinus, Send, Users, TrendingUp, Loader2, ChevronLeft, ChevronRight, Reply, MousePointerClick } from "lucide-react";
+import { LineChart } from "./charts";
 
 interface ContactEngagement {
   email: string;
@@ -48,13 +48,9 @@ interface BrevoEvent {
 }
 
 interface DayCount { date: string; count: number }
-interface DeviceCount { device: string; count: number }
-interface LocationCount { city: string; state: string; count: number }
 interface ChartsData {
   opensByDay: DayCount[];
   clicksByDay: DayCount[];
-  devices: DeviceCount[];
-  locations: LocationCount[];
 }
 
 interface AnalyticsData {
@@ -75,18 +71,11 @@ interface CampaignRow {
   target_list: string | null;
 }
 
-const DEVICE_META: Record<string, { label: string; color: string }> = {
-  desktop: { label: "Desktop", color: "#3b82f6" },
-  mobile: { label: "Mobile", color: "#16a34a" },
-  other: { label: "Other", color: "#7c3aed" },
-};
-
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "campaigns", label: "Campaigns" },
   { key: "contacts", label: "Contacts" },
   { key: "replies", label: "Replies" },
-  { key: "geo", label: "Geo" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -264,19 +253,6 @@ export default function AnalyticsClient() {
   const deliveryRate = b && b.requests > 0 ? Math.round((b.delivered / b.requests) * 100) : 0;
   const openRate = b && b.delivered > 0 ? Math.round((b.uniqueOpens / b.delivered) * 100) : 0;
 
-  // Fixed device order (desktop → mobile → other), zero-filled — a categorical
-  // donut must not reorder itself as the underlying counts change week to week.
-  const deviceCounts = new Map((data?.charts.devices ?? []).map((d) => [d.device, d.count]));
-  const donutSegments = (["desktop", "mobile", "other"] as const).map((key) => ({
-    label: DEVICE_META[key].label,
-    value: deviceCounts.get(key) ?? 0,
-    color: DEVICE_META[key].color,
-  }));
-
-  const allLocations = data?.charts.locations ?? [];
-  const topLocations = allLocations.slice(0, 4);
-  const locationsTotal = allLocations.reduce((s, l) => s + l.count, 0) || 1;
-
   const filteredContacts = (data?.contacts ?? []).filter((c) => {
     const cq = contactsSearch.trim().toLowerCase();
     if (!cq) return true;
@@ -355,7 +331,7 @@ export default function AnalyticsClient() {
 
       {tab === "overview" && (
       <>
-      {/* Visual reports: opens/clicks trend, device split, top locations */}
+      {/* Visual reports: opens/clicks trend — both live from Brevo's API, never stored in our DB */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="p-5" style={card}>
           <p className="text-sm font-bold text-(--admin-text) mb-3" style={{ fontFamily: "var(--font-heading)" }}>Opens Over Time</p>
@@ -366,32 +342,6 @@ export default function AnalyticsClient() {
             <MousePointerClick size={14} style={{ color: "var(--admin-text-faint)" }} /> Clicks Over Time
           </p>
           <LineChart data={data?.charts.clicksByDay ?? []} color="#60a5fa" />
-        </div>
-        <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-(--admin-text) mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Devices</p>
-          <DonutChart segments={donutSegments} />
-          <p className="text-xs mt-4" style={{ color: "var(--admin-text-faint)" }}>
-            From opens only, and only opens recorded since device tracking was added — proxy-prefetched opens (Apple Mail Privacy, Gmail image proxy) count as &ldquo;Other.&rdquo;
-          </p>
-        </div>
-        <div className="p-5" style={card}>
-          <p className="text-sm font-bold text-(--admin-text) mb-4" style={{ fontFamily: "var(--font-heading)" }}>Top Locations</p>
-          {topLocations.length === 0 ? (
-            <p className="text-xs" style={{ color: "var(--admin-text-faint)" }}>No location data for this window.</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {topLocations.map((l, i) => (
-                <li key={`${l.city}-${l.state}`} className="flex items-center gap-3 text-sm">
-                  <span className="text-xs font-bold w-4 shrink-0" style={{ color: "var(--admin-text-faint)" }}>{i + 1}</span>
-                  <MapPin size={12} className="shrink-0" style={{ color: "var(--admin-text-faint)" }} />
-                  <span className="flex-1 min-w-0 truncate" style={{ color: "var(--admin-text)" }}>
-                    {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
-                  </span>
-                  <span className="font-bold" style={{ color: "var(--admin-text)" }}>{Math.round((l.count / locationsTotal) * 100)}%</span>
-                </li>
-              ))}
-            </ol>
-          )}
         </div>
       </div>
       <p className="text-xs text-center" style={{ color: "var(--admin-text-faint)" }}>
@@ -679,42 +629,6 @@ export default function AnalyticsClient() {
                 <p className="px-5 py-3 text-xs" style={{ color: "var(--admin-text-faint)" }}>Showing the first 100 of {filteredContacts.length}.</p>
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {tab === "geo" && (
-        <div style={card} className="overflow-hidden">
-          <div className="px-5 py-4" style={{ borderBottom: "1px solid var(--admin-border)" }}>
-            <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>Opens by Location</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--admin-text-faint)" }}>
-              From each contact&apos;s city/state on file, not IP geolocation.
-            </p>
-          </div>
-          {allLocations.length === 0 ? (
-            <div className="py-12 text-center text-xs" style={{ color: "var(--admin-text-faint)" }}>No location data for this window.</div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--admin-border)" }}>
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Location</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Opens</th>
-                  <th className="text-right px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--admin-text-faint)" }}>Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allLocations.map((l, i) => (
-                  <tr key={`${l.city}-${l.state}`} style={{ borderBottom: i < allLocations.length - 1 ? "1px solid var(--admin-border)" : "none" }}>
-                    <td className="px-5 py-3 text-sm flex items-center gap-2" style={{ color: "var(--admin-text)" }}>
-                      <MapPin size={12} style={{ color: "var(--admin-text-faint)" }} />
-                      {[l.city, l.state].filter(Boolean).join(", ") || "Unknown"}
-                    </td>
-                    <td className="px-5 py-3 text-right text-sm font-bold text-(--admin-text)">{l.count}</td>
-                    <td className="px-5 py-3 text-right text-sm" style={{ color: "var(--admin-text-muted)" }}>{Math.round((l.count / locationsTotal) * 100)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           )}
         </div>
       )}

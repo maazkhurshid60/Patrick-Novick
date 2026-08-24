@@ -189,6 +189,17 @@ db.batch([
     created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
   )`,
+  // One row per successful decrypt of a vault secret — who, which entry, when.
+  // Doubles as the source for the reveal rate limit (lib/vault.ts) so a
+  // compromised session can't be used to dump every stored credential at once.
+  `CREATE TABLE IF NOT EXISTS vault_audit_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id    INTEGER NOT NULL,
+    entry_label TEXT NOT NULL DEFAULT '',
+    username    TEXT NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_vault_audit_username_created ON vault_audit_log(username, created_at)`,
   // Scheduled campaign sends. `scheduled_at` is the absolute UTC epoch the send
   // is due (computed from the user's local time + IANA `timezone` at creation).
   // The cron worker (/api/scheduler/run) claims due rows and dispatches them via
