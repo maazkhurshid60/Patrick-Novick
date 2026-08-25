@@ -90,6 +90,24 @@ export default function About() {
           About Me
         </motion.p>
 
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, delay: 0.05 }}
+          className="mb-14 rounded-3xl overflow-hidden"
+          style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.15)" }}
+        >
+          <video
+            controls
+            playsInline
+            preload="metadata"
+            poster="/ChatGPT-Image.webp"
+            className="w-full aspect-video bg-black"
+          >
+            <source src="/patrick-intro.mp4" type="video/mp4" />
+          </video>
+        </motion.div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
           {/* Left */}
           <div>
