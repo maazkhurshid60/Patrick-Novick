@@ -55,12 +55,12 @@ const NAV: (NavLink | NavGroup)[] = [
     items: [
       { label: "Templates", href: `${BASE}/templates`, key: "templates" },
       { label: "Template Maker", href: `${BASE}/template-maker`, key: "template-maker" },
+      { label: "Email Footer", href: `${BASE}/footer-settings`, key: "footer-settings" },
     ],
   },
   {
     type: "group", label: "Admin", icon: UserCog, key: "admin-group",
     items: [
-      { label: "Email Footer", href: `${BASE}/footer-settings`, key: "footer-settings" },
       { label: "Users", href: `${BASE}/users`, key: "users", adminOnly: true },
       { label: "Vault", href: `${BASE}/vault`, key: "vault", adminOnly: true },
     ],
