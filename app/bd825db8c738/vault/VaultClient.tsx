@@ -90,16 +90,9 @@ export default function VaultClient() {
   // Revealed secrets live only in memory, per row, until the page reloads,
   // are manually hidden, or AUTO_HIDE_MS elapses — never cached to disk.
   const [revealed, setRevealed] = useState<Record<number, string>>({});
+  const [revealingId, setRevealingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const revealTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
-
-  // Revealing (or copying) a secret requires re-entering the admin's own
-  // password — step-up auth, so a hijacked session cookie alone can't read
-  // one out. See POST /api/vault/[id]/reveal.
-  const [revealPrompt, setRevealPrompt] = useState<{ entry: VaultEntry; intent: "reveal" | "copy" } | null>(null);
-  const [revealPassword, setRevealPassword] = useState("");
-  const [revealSubmitting, setRevealSubmitting] = useState(false);
-  const [revealError, setRevealError] = useState("");
 
   const [audit, setAudit] = useState<AuditEntry[]>([]);
 
@@ -245,59 +238,43 @@ export default function VaultClient() {
     }
   }
 
-  function toggleReveal(entry: VaultEntry) {
+  async function toggleReveal(entry: VaultEntry) {
     if (revealed[entry.id] !== undefined) {
       hideRevealed(entry.id);
       return;
     }
-    setRevealPrompt({ entry, intent: "reveal" });
-    setRevealPassword("");
-    setRevealError("");
-  }
-
-  function copySecret(entry: VaultEntry) {
-    const cached = revealed[entry.id];
-    if (cached !== undefined) {
-      navigator.clipboard.writeText(cached);
-      setCopiedId(entry.id);
-      setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
-      return;
-    }
-    setRevealPrompt({ entry, intent: "copy" });
-    setRevealPassword("");
-    setRevealError("");
-  }
-
-  async function submitReveal(e: FormEvent) {
-    e.preventDefault();
-    if (!revealPrompt) return;
-    const { entry, intent } = revealPrompt;
-    setRevealSubmitting(true);
-    setRevealError("");
+    setRevealingId(entry.id);
     try {
-      const res = await fetch(`/api/vault/${entry.id}/reveal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: revealPassword }),
-      });
+      const res = await fetch(`/api/vault/${entry.id}/reveal`);
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setRevealError(data.error ?? "Failed to verify"); return; }
-      if (intent === "reveal") {
-        setRevealed((prev) => ({ ...prev, [entry.id]: data.secret }));
-        scheduleAutoHide(entry.id);
-      } else {
-        await navigator.clipboard.writeText(data.secret);
-        setCopiedId(entry.id);
-        setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
-      }
+      if (!res.ok) { toast.error(data.error ?? "Failed to reveal secret"); return; }
+      setRevealed((prev) => ({ ...prev, [entry.id]: data.secret }));
+      scheduleAutoHide(entry.id);
       loadAudit();
-      setRevealPrompt(null);
-      setRevealPassword("");
     } catch {
-      setRevealError("Couldn't reach the server. Please try again.");
+      toast.error("Couldn't reach the server. Please try again.");
     } finally {
-      setRevealSubmitting(false);
+      setRevealingId(null);
     }
+  }
+
+  async function copySecret(entry: VaultEntry) {
+    let secret = revealed[entry.id];
+    if (secret === undefined) {
+      try {
+        const res = await fetch(`/api/vault/${entry.id}/reveal`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { toast.error(data.error ?? "Failed to copy"); return; }
+        secret = data.secret;
+        loadAudit();
+      } catch {
+        toast.error("Couldn't reach the server. Please try again.");
+        return;
+      }
+    }
+    await navigator.clipboard.writeText(secret);
+    setCopiedId(entry.id);
+    setTimeout(() => setCopiedId((id) => (id === entry.id ? null : id)), 1500);
   }
 
   // ── Access control ──────────────────────────────────────────────────────────
@@ -403,10 +380,11 @@ export default function VaultClient() {
                         </code>
                         <button
                           onClick={() => toggleReveal(entry)}
+                          disabled={revealingId === entry.id}
                           aria-label={isRevealed ? "Hide secret" : "Reveal secret"}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-(--admin-hover-bg) text-(--admin-text-muted)"
+                          className="p-1.5 rounded-lg transition-colors hover:bg-(--admin-hover-bg) text-(--admin-text-muted) disabled:opacity-50"
                         >
-                          {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                          {revealingId === entry.id ? <Spinner /> : isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                         <button
                           onClick={() => copySecret(entry)}
@@ -597,49 +575,6 @@ export default function VaultClient() {
                 {busyId === confirmDelete.id ? "Deleting…" : "Delete"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step-up password prompt — required to reveal or copy a secret */}
-      {revealPrompt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "var(--admin-scrim)" }}>
-          <div className="w-full max-w-sm rounded-2xl p-6 border border-(--admin-border)" style={{ background: "var(--admin-surface)" }}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-(--admin-text)" style={{ fontFamily: "var(--font-heading)" }}>
-                Confirm your password
-              </p>
-              <button
-                onClick={() => setRevealPrompt(null)}
-                aria-label="Close"
-                className="p-1 rounded-lg hover:bg-(--admin-hover-bg) text-(--admin-text-muted)"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="text-xs text-(--admin-text-muted) mb-4">
-              {revealPrompt.intent === "copy" ? "Copying" : "Revealing"} “{revealPrompt.entry.label}” needs your password again.
-            </p>
-            <form onSubmit={submitReveal} className="space-y-3">
-              <input
-                type="password"
-                autoFocus
-                required
-                style={inp}
-                value={revealPassword}
-                onChange={(e) => setRevealPassword(e.target.value)}
-                placeholder="Your password"
-              />
-              {revealError && <p className="text-xs text-(--admin-danger-text)">{revealError}</p>}
-              <button
-                type="submit"
-                disabled={revealSubmitting}
-                className="w-full py-2.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-60"
-                style={{ background: "var(--admin-accent)" }}
-              >
-                {revealSubmitting ? "Checking…" : revealPrompt.intent === "copy" ? "Copy" : "Reveal"}
-              </button>
-            </form>
           </div>
         </div>
       )}
