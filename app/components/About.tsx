@@ -97,15 +97,15 @@ export default function About() {
           className="mb-14 rounded-3xl overflow-hidden"
           style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.15)" }}
         >
-          <video
-            controls
-            playsInline
-            preload="metadata"
-            poster="/ChatGPT-Image.webp"
-            className="w-full aspect-video bg-black"
-          >
-            <source src="/patrick-intro.mp4" type="video/mp4" />
-          </video>
+          <iframe
+            src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7498076119125065728"
+            height="744"
+            width="100%"
+            frameBorder="0"
+            allowFullScreen
+            title="Preconstruction Manager job opening — LinkedIn post"
+            className="block"
+          />
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
