@@ -1,25 +1,22 @@
 "use client";
 
-import Script from "next/script";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { Play } from "lucide-react";
 
-/* TikTok job-ad clips (@patricknovick225) — add new video IDs here as
-   Patrick shares more. embed.js (loaded once, below) finds every
-   .tiktok-embed blockquote on the page and renders the player into it. */
-const VIDEO_IDS = [
-  "7678660383099407647",
-  "7678658540050943263",
-  "7678040762646318367",
-];
+export interface TikTokVideo {
+  id: string;
+  url: string;
+  thumbnailUrl: string | null;
+  title: string | null;
+}
 
-export default function Videos() {
+export default function Videos({ videos }: { videos: TikTokVideo[] }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
     <section id="videos" ref={ref} className="py-24 lg:py-32" style={{ background: "var(--color-light)" }}>
-      <Script async src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
       <div className="max-w-6xl mx-auto px-6">
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -42,24 +39,53 @@ export default function Videos() {
           Job Openings, <span style={{ color: "var(--color-red)" }}>On Video</span>
         </motion.h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
-          {VIDEO_IDS.map((id, i) => (
-            <motion.div
-              key={id}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {videos.map((v, i) => (
+            <motion.a
+              key={v.id}
+              href={v.url}
+              target="_blank"
+              rel="noopener noreferrer"
               initial={{ opacity: 0, y: 24 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: 0.15 + i * 0.08 }}
-              className="w-full flex justify-center"
+              className="group relative block overflow-hidden rounded-3xl"
+              style={{ aspectRatio: "9 / 16", boxShadow: "0 20px 50px rgba(0,0,0,0.15)" }}
             >
-              <blockquote
-                className="tiktok-embed"
-                cite={`https://www.tiktok.com/@patricknovick225/video/${id}`}
-                data-video-id={id}
-                style={{ maxWidth: 325, minWidth: 260, width: "100%" }}
-              >
-                <section />
-              </blockquote>
-            </motion.div>
+              {v.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={v.thumbnailUrl}
+                  alt={v.title ?? "TikTok video"}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, var(--color-dark), #2a2a2a)" }} />
+              )}
+
+              {/* Legibility gradient for the caption */}
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.05) 45%)" }} />
+
+              {/* Play button */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-full transition-transform duration-300 group-hover:scale-110"
+                  style={{ background: "rgba(255,255,255,0.92)" }}
+                >
+                  <Play size={20} style={{ color: "var(--color-red)", marginLeft: 2 }} fill="var(--color-red)" />
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div className="absolute inset-x-0 bottom-0 p-5">
+                <p className="line-clamp-2 text-sm font-semibold leading-snug text-white">
+                  {v.title?.split("#")[0].trim() || "Watch on TikTok"}
+                </p>
+                <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
+                  TikTok · @patricknovick225
+                </p>
+              </div>
+            </motion.a>
           ))}
         </div>
       </div>
