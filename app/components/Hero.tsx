@@ -108,6 +108,30 @@ export default function Hero() {
               placements.
             </motion.p>
 
+            <motion.ul
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="mt-5 flex flex-wrap gap-x-6 gap-y-2"
+            >
+              {[
+                "Always remain 100% free for Job Seekers!",
+                "Focus strictly on engineering, architecture, and construction",
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-2 text-sm font-medium"
+                  style={{ color: "var(--color-gray)" }}
+                >
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ background: "var(--color-red)" }}
+                  />
+                  {item}
+                </li>
+              ))}
+            </motion.ul>
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
