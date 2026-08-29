@@ -94,16 +94,16 @@ export default function About() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.05 }}
-          className="mb-14 rounded-3xl overflow-hidden"
+          className="relative mb-14 aspect-video overflow-hidden rounded-3xl"
           style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.15)" }}
         >
           <iframe
-            src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7498076119125065728"
-            height="744"
+            src="https://www.youtube.com/embed/3ORE7EmXdiA"
             width="100%"
-            frameBorder="0"
+            height="100%"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            title="Preconstruction Manager job opening — LinkedIn post"
+            title="Metro Associates — intro video"
             className="block"
           />
         </motion.div>
