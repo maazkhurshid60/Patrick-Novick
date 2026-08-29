@@ -2,6 +2,7 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import About from "./components/About";
 import Services from "./components/Services";
+import Specialties from "./components/Specialties";
 import Stats from "./components/Stats";
 import Metro from "./components/Metro";
 import Contact from "./components/Contact";
@@ -20,7 +21,7 @@ const jsonLd = {
   worksFor: {
     "@type": "Organization",
     name: "Metro Associates",
-    url: "https://metro.associates",
+    url: "https://www.metroassoc.com",
   },
   knowsAbout: [
     "Executive Recruiting",
@@ -44,6 +45,7 @@ export default function Home() {
         <Hero />
         <About />
         <Services />
+        <Specialties />
         <Stats />
         <Metro />
         <Contact />
