@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   const logoAlign = body.logoAlign === "center" || body.logoAlign === "right" ? body.logoAlign : "left";
   const logoPosition = body.logoPosition === "bottom" ? "bottom" : "top";
 
-  await db.execute({
+  const result = await db.execute({
     sql: `UPDATE email_footer_settings SET
             signature_name=?, signature_title=?, phone_display=?, phone_href=?, email=?,
             link1_label=?, link1_url=?, link2_label=?, link2_url=?, tagline=?,
@@ -65,5 +65,18 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       str(body.logoUrl), logoAlign, logoPosition,
     ],
   });
+
+  /* id=1 is the table's only legal row (CHECK (id = 1) in lib/db.ts), seeded
+     at startup, so this should always match exactly one row. If it ever
+     doesn't — e.g. a request landing mid-cold-start, before the startup
+     seed has finished inserting it — the old code returned {success:true}
+     regardless, so the save silently did nothing and the form looked fine.
+     Surface that instead of lying about it. */
+  if (result.rowsAffected === 0) {
+    return NextResponse.json(
+      { error: "Save didn't take — the settings row wasn't found. Please try again in a few seconds." },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ success: true });
 }
