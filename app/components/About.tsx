@@ -98,7 +98,7 @@ export default function About() {
           style={{ boxShadow: "0 30px 80px rgba(0,0,0,0.15)" }}
         >
           <iframe
-            src="https://www.youtube.com/embed/3ORE7EmXdiA"
+            src="https://www.youtube.com/embed/uAf_glcuaDo"
             width="100%"
             height="100%"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
