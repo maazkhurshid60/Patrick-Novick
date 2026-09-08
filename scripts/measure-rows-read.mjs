@@ -17,7 +17,16 @@ const db = createClient({
 });
 
 const QUERIES = {
-  "GET /api/contacts (current)": `
+  "GET /api/contacts (correlated + index) [live]": `
+    SELECT c.*,
+      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent,
+      (SELECT GROUP_CONCAT(cl.name, ', ') FROM contact_list_members clm
+        JOIN contact_lists cl ON clm.list_id = cl.id WHERE clm.contact_id = c.id) AS lists,
+      (SELECT GROUP_CONCAT(clm.list_id, ', ') FROM contact_list_members clm
+        WHERE clm.contact_id = c.id) AS list_ids
+    FROM contacts c ORDER BY c.created_at DESC`,
+
+  "GET /api/contacts (grouped joins, rejected)": `
     SELECT c.*,
            COALESCE(s.campaigns_sent, 0) AS campaigns_sent,
            m.lists, m.list_ids
@@ -35,15 +44,6 @@ const QUERIES = {
       FROM campaign_recipients GROUP BY email
     ) s ON s.email = c.email
     ORDER BY c.created_at DESC`,
-
-  "GET /api/contacts (old, correlated)": `
-    SELECT c.*,
-      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent,
-      (SELECT GROUP_CONCAT(cl.name, ', ') FROM contact_list_members clm
-        JOIN contact_lists cl ON clm.list_id = cl.id WHERE clm.contact_id = c.id) AS lists,
-      (SELECT GROUP_CONCAT(clm.list_id, ', ') FROM contact_list_members clm
-        WHERE clm.contact_id = c.id) AS list_ids
-    FROM contacts c ORDER BY c.created_at DESC`,
 
   "contacts count": `SELECT COUNT(*) FROM contacts`,
   "lists with sizes": `

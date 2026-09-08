@@ -14,38 +14,35 @@ function isValidEmail(email: string): boolean {
 /* GET /api/contacts — every contact, with its lists and how many campaigns
  * it has been sent.
  *
- * This used to run three correlated subqueries per contact row. Two of them
- * asked contact_list_members "which lists is this contact in", which its
- * PRIMARY KEY (list_id, contact_id) cannot answer — a composite index only
- * reads left to right — so each of the 4,530 contacts scanned all 4,779
- * membership rows twice. One load of the contacts page read on the order of
- * 43 million rows, and Turso meters rows read.
+ * The SQL is unchanged, but it is only affordable because of an index.
+ * contact_list_members has PRIMARY KEY (list_id, contact_id), which answers
+ * "who is in this list" but not "which lists is this contact in" — a
+ * composite index is only usable left to right. The two GROUP_CONCAT
+ * subqueries below ask the second question, so before idx_clm_contact
+ * existed each of the 4,530 contacts scanned all 4,779 membership rows
+ * twice: one page load cost on the order of 43 million rows read, and Turso
+ * meters rows read. With the index the same query runs 6,756 ms -> 127 ms on
+ * a copy of production, ~12.6k rows read per call against the live database.
  *
- * Now each table is aggregated once and joined. Verified against the old
- * query on a copy of production: identical output for all 4,530 rows,
- * 6,756 ms -> ~130 ms. The indexes it relies on are created by
- * scripts/add-perf-indexes.mjs.
+ * A rewrite using grouped LEFT JOINs was tried and rejected. It looked equal
+ * on local SQLite, but measured against Turso's own rows-read counter it was
+ * several times more expensive — SQLite materialises the subqueries and
+ * builds automatic covering indexes for the joins, and that work is metered
+ * too. Keep the correlated form; keep the index. See
+ * scripts/add-perf-indexes.mjs and scripts/measure-rows-read.mjs.
  */
 export async function GET(): Promise<NextResponse> {
   const result = await db.execute(`
     SELECT c.*,
-           COALESCE(s.campaigns_sent, 0) AS campaigns_sent,
-           m.lists,
-           m.list_ids
+      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent,
+      (SELECT GROUP_CONCAT(cl.name, ', ')
+       FROM contact_list_members clm
+       JOIN contact_lists cl ON clm.list_id = cl.id
+       WHERE clm.contact_id = c.id) AS lists,
+      (SELECT GROUP_CONCAT(clm.list_id, ', ')
+       FROM contact_list_members clm
+       WHERE clm.contact_id = c.id) AS list_ids
     FROM contacts c
-    LEFT JOIN (
-      SELECT clm.contact_id                 AS cid,
-             GROUP_CONCAT(cl.name, ', ')    AS lists,
-             GROUP_CONCAT(clm.list_id, ', ') AS list_ids
-      FROM contact_list_members clm
-      JOIN contact_lists cl ON cl.id = clm.list_id
-      GROUP BY clm.contact_id
-    ) m ON m.cid = c.id
-    LEFT JOIN (
-      SELECT email, COUNT(DISTINCT campaign_id) AS campaigns_sent
-      FROM campaign_recipients
-      GROUP BY email
-    ) s ON s.email = c.email
     ORDER BY c.created_at DESC
   `);
   return NextResponse.json(result.rows);
