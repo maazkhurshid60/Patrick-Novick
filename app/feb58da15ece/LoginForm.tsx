@@ -29,11 +29,18 @@ export default function LoginForm() {
         router.push(from);
         router.refresh();
       } else {
-        const data = await res.json();
-        setError(data.error ?? "Invalid credentials");
+        /* An error response is not guaranteed to carry JSON — an unhandled
+           500 from the platform has an empty body, and res.json() throws on
+           it. That threw into the catch below, so a server fault was
+           reported as "Network error", which is the one thing it was not. */
+        const data = await res.json().catch(() => null);
+        setError(
+          data?.error ?? `Sign-in failed (server returned ${res.status}). Please tell your administrator.`,
+        );
       }
     } catch {
-      setError("Network error — please try again");
+      // Genuinely no response: offline, DNS, connection refused.
+      setError("Couldn't reach the server — check your connection and try again");
     } finally {
       setLoading(false);
     }
