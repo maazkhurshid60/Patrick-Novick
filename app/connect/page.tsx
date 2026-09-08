@@ -4,6 +4,12 @@ import Link from "next/link";
 
 const ADMIN_USER_ID = 1;
 
+/* This page asks the database whether the Top Echelon integration is already
+   connected, and redirects when it is. Prerendering it would freeze that
+   answer at build time — and make the build itself depend on the database,
+   which is what broke the deploy. */
+export const dynamic = "force-dynamic";
+
 const ERROR_MESSAGES: Record<string, string> = {
   missing_params: "OAuth response was missing required parameters.",
   invalid_state: "CSRF state mismatch — please try again.",
