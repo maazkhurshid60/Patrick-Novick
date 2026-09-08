@@ -11,19 +11,41 @@ function isValidEmail(email: string): boolean {
 }
 
 
-// GET /api/contacts — list all contacts with sent campaign count
+/* GET /api/contacts — every contact, with its lists and how many campaigns
+ * it has been sent.
+ *
+ * This used to run three correlated subqueries per contact row. Two of them
+ * asked contact_list_members "which lists is this contact in", which its
+ * PRIMARY KEY (list_id, contact_id) cannot answer — a composite index only
+ * reads left to right — so each of the 4,530 contacts scanned all 4,779
+ * membership rows twice. One load of the contacts page read on the order of
+ * 43 million rows, and Turso meters rows read.
+ *
+ * Now each table is aggregated once and joined. Verified against the old
+ * query on a copy of production: identical output for all 4,530 rows,
+ * 6,756 ms -> ~130 ms. The indexes it relies on are created by
+ * scripts/add-perf-indexes.mjs.
+ */
 export async function GET(): Promise<NextResponse> {
   const result = await db.execute(`
     SELECT c.*,
-      (SELECT COUNT(DISTINCT campaign_id) FROM campaign_recipients WHERE email = c.email) AS campaigns_sent,
-      (SELECT GROUP_CONCAT(cl.name, ', ')
-       FROM contact_list_members clm
-       JOIN contact_lists cl ON clm.list_id = cl.id
-       WHERE clm.contact_id = c.id) AS lists,
-      (SELECT GROUP_CONCAT(clm.list_id, ', ')
-       FROM contact_list_members clm
-       WHERE clm.contact_id = c.id) AS list_ids
+           COALESCE(s.campaigns_sent, 0) AS campaigns_sent,
+           m.lists,
+           m.list_ids
     FROM contacts c
+    LEFT JOIN (
+      SELECT clm.contact_id                 AS cid,
+             GROUP_CONCAT(cl.name, ', ')    AS lists,
+             GROUP_CONCAT(clm.list_id, ', ') AS list_ids
+      FROM contact_list_members clm
+      JOIN contact_lists cl ON cl.id = clm.list_id
+      GROUP BY clm.contact_id
+    ) m ON m.cid = c.id
+    LEFT JOIN (
+      SELECT email, COUNT(DISTINCT campaign_id) AS campaigns_sent
+      FROM campaign_recipients
+      GROUP BY email
+    ) s ON s.email = c.email
     ORDER BY c.created_at DESC
   `);
   return NextResponse.json(result.rows);
