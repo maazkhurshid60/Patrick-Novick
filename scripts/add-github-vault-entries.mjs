@@ -39,7 +39,9 @@ const REPOS = [
   { label: "GitHub — Patrick Novick", url: "https://github.com/maazkhurshid60/Patrick-Novick" },
   { label: "GitHub — Metro Associates", url: "https://github.com/maazkhurshid60/metorassoiate" },
   { label: "GitHub — JobFolder", url: "https://github.com/maazkhurshid60/Job-site" },
-  { label: "GitHub — EM Creative Studio", url: "https://github.com/maazkhurshid60/em-creative-studio" },
+  /* EM Creative Studio (maazkhurshid60/em-creative-studio) is deliberately
+     absent. It was added, then removed on request — leaving it here would
+     put it straight back on the next run. */
 ];
 
 const USERNAME = "maazkhurshid60";
